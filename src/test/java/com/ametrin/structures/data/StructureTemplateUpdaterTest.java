@@ -1,9 +1,13 @@
 package com.ametrin.structures.data;
 
 import net.minecraft.SharedConstants;
+import net.minecraft.core.Direction;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.nbt.*;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +49,32 @@ class StructureTemplateUpdaterTest {
         new StructureTemplateUpdater(List.of(source)).run(CachedOutput.NO_CACHE).join();
 
         assertArrayEquals(before, Files.readAllBytes(file));
+    }
+
+    @Test
+    void fixtureMarkersLeaveTheOldBlockStateForm(MinecraftServer server, @TempDir Path source) throws Exception {
+        var file = source.resolve("data/examplemod/structure/crypt.nbt");
+        Files.createDirectories(file.getParent());
+        NbtIo.writeCompressed(TagParser.parseCompoundFully("""
+                {DataVersion: %d, size: [1, 1, 1], entities: [], palette: [{id: "ametrin_structures:fixture"}],
+                 blocks: [{pos: [0, 0, 0], state: 0, nbt: {id: "ametrin_structures:fixture",
+                   becomes: {Name: "minecraft:oak_stairs", Properties: {facing: "east"}},
+                   fixtures: [
+                     {type: "ametrin_structures:block_state", state: {Name: "minecraft:stone"}},
+                     {type: "ametrin_structures:loot_container", loot_table: "minecraft:chests/simple_dungeon", block: {id: "minecraft:chest"}},
+                     {type: "ametrin_structures:entity", entity: "minecraft:zombie", nbt: {Name: "kept"}},
+                     {type: "othermod:unknown", state: {Name: "minecraft:stone"}}]}}]}
+                """.formatted(SharedConstants.getCurrentVersion().dataVersion().version())), file);
+
+        new StructureTemplateUpdater(List.of(source)).run(CachedOutput.NO_CACHE).join();
+
+        var marker = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap()).getListOrEmpty("blocks").getCompoundOrEmpty(0).getCompoundOrEmpty("nbt");
+        assertEquals(Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST), BlockState.CODEC.parse(NbtOps.INSTANCE, marker.get("becomes")).getOrThrow());
+        var fixtures = marker.getListOrEmpty("fixtures");
+        assertEquals(StringTag.valueOf("minecraft:stone"), fixtures.getCompoundOrEmpty(0).get("state"));
+        assertEquals(TagParser.parseCompoundFully("{id: \"minecraft:chest\"}"), fixtures.getCompoundOrEmpty(1).get("block"), "the current form stays as written");
+        assertEquals(TagParser.parseCompoundFully("{Name: \"kept\"}"), fixtures.getCompoundOrEmpty(2).get("nbt"), "only block state fields change");
+        assertEquals(TagParser.parseCompoundFully("{Name: \"minecraft:stone\"}"), fixtures.getCompoundOrEmpty(3).get("state"), "an unknown type stays as stored");
     }
 
     private static CompoundTag template(int version, String block) {

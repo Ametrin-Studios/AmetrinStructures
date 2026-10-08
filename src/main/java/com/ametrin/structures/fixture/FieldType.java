@@ -1,5 +1,6 @@
 package com.ametrin.structures.fixture;
 
+import com.ametrin.structures.util.ASCodecs;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
@@ -109,7 +110,7 @@ public record FieldType<T>(
 
     /// Written like `/setblock` does: `minecraft:chest[facing=north]`.
     public static FieldType<BlockState> blockState() {
-        return new FieldType<>("block state", BlockState.CODEC, (text, registries) -> {
+        return new FieldType<>("block state", ASCodecs.BLOCK_STATE, (text, registries) -> {
             try {
                 return DataResult.success(BlockStateParser.parseForBlock(registries.lookupOrThrow(Registries.BLOCK), text.trim(), false).blockState());
             } catch (CommandSyntaxException exception) {

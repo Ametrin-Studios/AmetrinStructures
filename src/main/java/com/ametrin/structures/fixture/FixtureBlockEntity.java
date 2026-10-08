@@ -1,6 +1,7 @@
 package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASBlockEntities;
+import com.ametrin.structures.util.ASCodecs;
 import com.ametrin.structures.util.PositionHelper;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
@@ -201,7 +202,7 @@ public class FixtureBlockEntity extends BlockEntity {
         this.markPostProcessing = input.getBooleanOr(MARK_POST_PROCESSING_KEY, false);
         // One out of range is left out; the structure check reports it.
         this.offset = input.read(OFFSET_KEY, OFFSET_CODEC).orElse(Vec3.ZERO);
-        this.becomes = input.read(BECOMES_KEY, BlockState.CODEC);
+        this.becomes = input.read(BECOMES_KEY, ASCodecs.BLOCK_STATE);
     }
 
     @Override
@@ -214,7 +215,7 @@ public class FixtureBlockEntity extends BlockEntity {
         output.putBoolean(USE_GRAVITY_KEY, useGravity);
         output.putBoolean(MARK_POST_PROCESSING_KEY, markPostProcessing);
         output.store(OFFSET_KEY, Vec3.CODEC, offset);
-        becomes.ifPresent(state -> output.store(BECOMES_KEY, BlockState.CODEC, state));
+        becomes.ifPresent(state -> output.store(BECOMES_KEY, ASCodecs.BLOCK_STATE, state));
     }
 
     @Override

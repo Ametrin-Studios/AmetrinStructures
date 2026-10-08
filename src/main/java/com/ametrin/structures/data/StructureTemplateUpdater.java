@@ -1,5 +1,6 @@
 package com.ametrin.structures.data;
 
+import com.ametrin.structures.fixture.LegacyFixtureData;
 import com.ametrin.structures.util.ASLog;
 import com.google.common.hash.Hashing;
 import net.minecraft.SharedConstants;
@@ -29,7 +30,8 @@ import java.util.stream.Stream;
 
 /// Brings structure templates saved by an older game version up to the current one, so worlds don't have to fix them each time they load them.
 ///
-/// Rewrites every outdated `data/<namespace>/structure/**.nbt` under the source folders in place.
+/// Rewrites every outdated `data/<namespace>/structure/**.nbt` under the source folders in place, and
+/// every one whose fixture markers still hold block states saved before Minecraft 26.3.
 /// Pass the data generator's `--input` folders, from [GatherDataEvent#getInputs()]:
 ///
 /// ```java
@@ -92,14 +94,22 @@ public final class StructureTemplateUpdater implements DataProvider {
         try {
             var tag = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
             int version = NbtUtils.getDataVersion(tag, UNVERSIONED);
-            if (version >= SharedConstants.getCurrentVersion().dataVersion().version()) {
+            boolean outdated = version < SharedConstants.getCurrentVersion().dataVersion().version();
+            var updated = outdated ? update(tag, version) : tag;
+            // The data version doesn't cover the markers: a template stamped as current can still hold their old form.
+            boolean markersUpdated = LegacyFixtureData.updateTemplate(updated);
+            if (!outdated && !markersUpdated) {
                 return;
             }
             var bytes = new ByteArrayOutputStream();
-            NbtIo.writeCompressed(update(tag, version), bytes);
-            var updated = bytes.toByteArray();
-            output.writeIfNeeded(file, updated, Hashing.sha1().hashBytes(updated));
-            ASLog.info("Updated structure template {} from data version {}", file, version);
+            NbtIo.writeCompressed(updated, bytes);
+            var written = bytes.toByteArray();
+            output.writeIfNeeded(file, written, Hashing.sha1().hashBytes(written));
+            if (outdated) {
+                ASLog.info("Updated structure template {} from data version {}", file, version);
+            } else {
+                ASLog.info("Updated the fixture markers in structure template {}", file);
+            }
         } catch (IOException exception) {
             throw new UncheckedIOException("Could not update structure template " + file, exception);
         }
