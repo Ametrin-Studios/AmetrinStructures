@@ -120,12 +120,18 @@ neoForge.ideSyncTask generateModMetadata
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
+            artifactId = "${mod_id}-${minecraft_version}"
             from components.java
+
+            pom {
+                url = 'https://github.com/Ametrin-Studios/AmetrinStructures'
+            }
         }
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/repo"
+            name = 'Ametrin'
+            url = uri(rootProject.file("../maven"))
         }
     }
 }
