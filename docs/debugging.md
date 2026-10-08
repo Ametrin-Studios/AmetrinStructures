@@ -1,8 +1,7 @@
 Debugging structures
 ====================
 
-Spread report
--------------
+## Spread report
 
 ```
 /ametrin structures spread <structure|#tag> [radius] [color] [rejected [all]]
@@ -52,8 +51,7 @@ Reports for different structures, tags or sets stay side by side, so you can com
 - Both replace all earlier waypoints, so the gray spots are never mixed up with another report's.
 - `/ametrin structures spread clear` removes all of them.
 
-Checking structures
--------------------
+## Checking structures
 
 ```
 /ametrin structures check [namespace]
@@ -77,8 +75,7 @@ the first 50 problems; the log lists all of them.
 A jigsaw that other pieces attach to isn't checked, since the attached piece takes its place. That
 leaves out the many vanilla jigsaws that point back the way they came.
 
-Fixtures
---------
+## Fixtures
 
 "Generate now" in a fixture's screen runs it in place, the way generation would, ignoring its
 generation chance. The fixture goes back into your inventory first, with all its settings, so you
@@ -90,8 +87,7 @@ why.
 Broken fixture presets are logged as warnings when the server starts: unknown fixture types,
 parameters or presets, values that don't parse, and presets that use each other in a cycle.
 
-Structure blocks
-----------------
+## Structure blocks
 
 The structure block's name box completes the ids of every template the server can load, from mods,
 datapacks and the world's saved templates.
@@ -126,7 +122,6 @@ were new, changed or already there.
 The command only exists in a development environment, never on a real server or client, since it
 writes into the project.
 
-Debug logging
--------------
+## Debug logging
 
 Set `ASLog.DEV = true` for extra log output, such as fixture values that fell back to their defaults.

@@ -1,5 +1,4 @@
-Ametrin Structures
-==================
+# Ametrin Structures
 
 A library mod for Minecraft structure mod developers.
 
@@ -16,3 +15,5 @@ A library mod for Minecraft structure mod developers.
 Using the library: [getting started](docs/getting-started.md), [extending it](docs/extending.md) and
 [debugging helpers](docs/debugging.md).  
 [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced) is a source-available mod using it.
+
+Disclaimer: This mod is inspired by [Structure Gel API](https://www.curseforge.com/minecraft/mc-mods/structure-gel-api)
