@@ -1,5 +1,4 @@
-Debugging structures
-====================
+# Debugging structures
 
 ## Spread report
 
@@ -124,4 +123,5 @@ writes into the project.
 
 ## Debug logging
 
-Set `ASLog.DEV = true` for extra log output, such as fixture values that fell back to their defaults.
+Some details are only logged at debug level, such as loot that found no room in a filled container.
+The run configurations of NeoForge's mod template log at that level.

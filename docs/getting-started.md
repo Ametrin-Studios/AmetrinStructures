@@ -76,16 +76,10 @@ Two calls connect the register to the game:
 ExampleStructures.REGISTER.register(modBus);
 
 // Datagen
-modBus.
-
-addListener(GatherDataEvent.Client .class, event ->{
-var registries = new RegistrySetBuilder();
-    ExampleStructures.REGISTER.
-
-bootstrap(registries);
-    event.
-
-createDatapackRegistryObjects(registries);
+modBus.addListener(GatherDataEvent.Client.class, event -> {
+    var registries = new RegistrySetBuilder();
+    ExampleStructures.REGISTER.bootstrap(registries);
+    event.createDatapackRegistryObjects(registries);
 });
 ```
 
@@ -119,14 +113,9 @@ vanilla structure.
 balcony gets a hill raised under it. Give the template a smaller box to fit to:
 
 ```java
-tower.single(t ->t
-        .
-
-template("tower")
-        .
-
-terrainBox(TerrainBox.footprint())
-        )
+tower.single(t -> t
+        .template("tower")
+        .terrainBox(TerrainBox.footprint()))
 ```
 
 `TerrainBox.footprint()` uses the blocks at and below ground level.
@@ -138,35 +127,15 @@ order, and falls back to the next when one doesn't fit:
 
 ```java
 REGISTER.set("graves")
-        .
-
-horizontalPlacement(new RandomSpreadStructurePlacement(20, 8,RandomSpreadType.LINEAR, 482_193))
-        .
-
-simple("small",grave ->grave
-        .
-
-single("graves/small")
-                .
-
-surface()
-                .
-
-weight(3)
-        )
-                .
-
-simple("large",grave ->grave
-        .
-
-single("graves/large")
-                .
-
-surface()
-        )
-                .
-
-build();
+        .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
+        .simple("small", grave -> grave
+                .single("graves/small")
+                .surface()
+                .weight(3))
+        .simple("large", grave -> grave
+                .single("graves/large")
+                .surface())
+        .build();
 ```
 
 Structures in a set are named `<set>_<suffix>`, here `examplemod:graves_small` and
