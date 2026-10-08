@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.ametrin.structures.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "LakeFeatureMixin",
+    "MinecartSpawnerMixin",
+    "SpawnerBlockEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
