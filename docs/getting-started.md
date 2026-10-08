@@ -1,12 +1,9 @@
-Getting started
-===============
+# Getting started
 
 This guide takes you from an empty mod to a structure generating in the world. It assumes you know how to build a
 structure with structure blocks and how NeoForge datagen works.
 
-1. Depend on the library
-
-------------------------
+## 1. Depend on the library
 
 Add the Ametrin Studios maven and the library to your `build.gradle`:
 
@@ -34,9 +31,7 @@ ordering = "AFTER"
 side = "BOTH"
 ```
 
-2. Build the template
-
-------------------------------
+## 2. Build the template
 
 Before saving, fill every space that should keep its air, such as rooms and hallways, with foam
 from the operator items tab. Foam turns into air when the structure generates. Air blocks get treated as structure void
@@ -46,9 +41,7 @@ Placing a foam item while crouching fills the space based on rules defined by th
 spreading. Interior Foam is probably what you need most of the time. To remove a blob of foam, use an amethyst shard on
 it in creative mode.
 
-3. Declare the structure
-
-------------------------
+## 3. Declare the structure
 
 ```java
 public final class ExampleStructures {
@@ -74,9 +67,7 @@ public final class ExampleStructures {
 `build()` checks everything right away, so a mistake shows up when datagen runs, not while you
 explore a world.
 
-4. Wire it up
-
--------------
+## 4. Wire it up
 
 Two calls connect the register to the game:
 
@@ -101,10 +92,9 @@ createDatapackRegistryObjects(registries);
 Run datagen, then start the game. `/locate structure examplemod:ruined_tower` finds your structure.
 If it doesn't show up where you expect, [`/ametrin structures spread`](debugging.md) tells you why.
 
-Going further
--------------
+## Going further
 
-The builder has more to offer than the example shows; your IDE's completion lists it all. Some
+The builder has more to offer than the example shows. Your IDE's completion lists it all. Some
 highlights:
 
 **Several templates.** `weighted(...)` picks one of several templates at random, `compound(...)`
@@ -129,11 +119,14 @@ vanilla structure.
 balcony gets a hill raised under it. Give the template a smaller box to fit to:
 
 ```java
-tower.single(t ->t.
+tower.single(t ->t
+        .
 
-template("tower").
+template("tower")
+        .
 
-terrainBox(TerrainBox.footprint()))
+terrainBox(TerrainBox.footprint())
+        )
 ```
 
 `TerrainBox.footprint()` uses the blocks at and below ground level.
@@ -150,21 +143,28 @@ REGISTER.set("graves")
 horizontalPlacement(new RandomSpreadStructurePlacement(20, 8,RandomSpreadType.LINEAR, 482_193))
         .
 
-simple("small",grave ->grave.
-
-single("graves/small").
-
-surface().
-
-weight(3))
+simple("small",grave ->grave
         .
 
-simple("large",grave ->grave.
+single("graves/small")
+                .
 
-single("graves/large").
+surface()
+                .
 
-surface())
+weight(3)
+        )
+                .
+
+simple("large",grave ->grave
         .
+
+single("graves/large")
+                .
+
+surface()
+        )
+                .
 
 build();
 ```
@@ -200,14 +200,14 @@ programArguments.addAll '--input', file('src/main/resources/').getAbsolutePath()
 ```
 
 ```java
+// Datagen
 event.addProvider(new StructureTemplateUpdater(event.getInputs()));
 ```
 
 Commit the rewritten files like any other change.
 
 For a real-world example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a
-source-available mod using
-this library.
+source-available mod using this library.
 
-See [extending.md](extending.md) to add your own building blocks, and [debugging.md](debugging.md)
-for the tools that help tune a structure.
+See [extending.md](extending.md) to add your own building blocks, and [debugging.md](debugging.md) for the tools that
+help tune a structure.

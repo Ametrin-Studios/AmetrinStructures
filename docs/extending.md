@@ -1,5 +1,4 @@
-Extending the library
-=====================
+# Extending the library
 
 Most building blocks are registry-backed: implement an interface, give it a `MapCodec`, and register
 a type object in the library's registry with an ordinary `DeferredRegister`. Your additions are then
@@ -9,8 +8,7 @@ usable from Java builders and from JSON alike. The registry keys are in `ASRegis
 serves as a
 real-world example.
 
-Placement filters
------------------
+## Placement filters
 
 A filter decides whether a simple or jigsaw structure may generate at a spot.
 
@@ -48,8 +46,7 @@ Reference: [`PlacementFilters`](../src/main/java/com/ametrin/structures/structur
 `ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java) and [
 `ASPlacementFilters`](../src/main/java/com/ametrin/structures/registry/ASPlacementFilters.java).
 
-Piece sources
--------------
+## Piece sources
 
 A piece source decides which pieces a simple structure places. Register a `PieceSourceType` in
 `ASRegistries.PIECE_SOURCE_TYPE` and pass the source with `.pieces(...)`.
@@ -64,8 +61,7 @@ into them.
 Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/simple/PieceSources.java) and [
 `ASPieceSources`](../src/main/java/com/ametrin/structures/registry/ASPieceSources.java).
 
-Structures of your own
-----------------------
+## Structures of your own
 
 A structure set accepts any structure next to simple ones. `structure(...)` takes a factory from the
 shared settings to your structure, and keeps biomes, weight, step, terrain adaptation and spawn
@@ -85,14 +81,13 @@ To place pieces from saved templates, extend `ExtendedTemplateStructurePiece`. L
 structure's pieces, it runs fixtures, removes foam, and saves its liquid settings and foundation with
 the piece. Other template pieces place fixture blocks as they were saved.
 
-Reference: [
-`ExtendedJigsawStructure`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedJigsawStructure.java), [
-`SimpleStructurePiece`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructurePiece.java), [
-`ASStructureTypes`](../src/main/java/com/ametrin/structures/registry/ASStructureTypes.java) and [
-`ASPieceTypes`](../src/main/java/com/ametrin/structures/registry/ASPieceTypes.java).
+Reference:
+[`ExtendedJigsawStructure`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedJigsawStructure.java),
+[`SimpleStructurePiece`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructurePiece.java),
+[`ASStructureTypes`](../src/main/java/com/ametrin/structures/registry/ASStructureTypes.java) and
+[`ASPieceTypes`](../src/main/java/com/ametrin/structures/registry/ASPieceTypes.java).
 
-Placements
-----------
+## Placements
 
 `horizontalPlacement(...)` accepts any `StructurePlacement`, vanilla's or your own. The function
 overload receives the bootstrap context, for placements that reference registry entries.
@@ -101,13 +96,12 @@ overload receives the bootstrap context, for placements that reference registry 
 nearby" and "is this position inside a structure" for a structure, holder set or tag, which is handy
 for placements and features that should keep their distance.
 
-Reference: [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java), [
-`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java), [
-`LakeProof`](../src/main/java/com/ametrin/structures/placement/LakeProof.java) and [
-`ASPlacementTypes`](../src/main/java/com/ametrin/structures/registry/ASPlacementTypes.java).
+Reference: [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java),
+[`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java),
+[`LakeProof`](../src/main/java/com/ametrin/structures/placement/LakeProof.java) and
+[`ASPlacementTypes`](../src/main/java/com/ametrin/structures/registry/ASPlacementTypes.java).
 
-Processors
-----------
+## Processors
 
 `ReplaceBlockProcessor` swaps random blocks, e.g. to weather a build. In a simple structure template's
 own processor list, `InlineFromStructureProcessor.INSTANCE` marks where the structure's processors
@@ -123,14 +117,14 @@ still clears it.
 `RemoveFoamProcessor` is added to every piece automatically. Declare one yourself to fill foam with
 something else: `RemoveFoamProcessor.WATER` floods the inside of a sunken build.
 
-Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java), [
-`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java), [
-`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/simple/InlineFromStructureProcessor.java), [
-`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java) and [
-`ASProcessors`](../src/main/java/com/ametrin/structures/registry/ASProcessors.java).
+Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java),
+[`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java),
+[
+`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/simple/InlineFromStructureProcessor.java),
+[`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java) and
+[`ASProcessors`](../src/main/java/com/ametrin/structures/registry/ASProcessors.java).
 
-Fixtures
---------
+## Fixtures
 
 A fixture is a record implementing `Fixture`. Its fields are `FixtureField`s: the record's codec is
 built from them, and the authoring screen builds its rows from them, with validation and completion
@@ -172,8 +166,7 @@ Override `references()` to return the registry keys the fixture names, such as l
 Reference: [`Fixtures`](../src/main/java/com/ametrin/structures/fixture/Fixtures.java) and [
 `ASFixtures`](../src/main/java/com/ametrin/structures/registry/ASFixtures.java).
 
-Fixture presets
----------------
+## Fixture presets
 
 A `FixturePreset` is a weighted list of fixtures, like the one a fixture block holds, that many
 fixtures can share. Change the preset and every structure using it follows, and datapacks can
@@ -220,8 +213,7 @@ holds the fixture's fields next to its `type`, `weight` and `generation_chance`:
 
 Reference: [`FixturePreset`](../src/main/java/com/ametrin/structures/fixture/FixturePreset.java).
 
-Fixture conditions
-------------------
+## Fixture conditions
 
 Any alternative, on a fixture block or in a preset, can have `conditions`. They are tested where the
 fixture acts, after the marker is gone; alternatives whose conditions don't all pass are left out
@@ -272,8 +264,7 @@ The fixture's screen edits them as SNBT. Register your own kinds as a `FixtureCo
 Reference: [`FixtureConditions`](../src/main/java/com/ametrin/structures/fixture/FixtureConditions.java) and [
 `ASFixtureConditions`](../src/main/java/com/ametrin/structures/registry/ASFixtureConditions.java).
 
-Spawner profiles
-----------------
+## Spawner profiles
 
 A `SpawnerProfile` configures a spawner: delays, counts, ranges and what it spawns. Place spawners
 using it with the `spawner_profile` fixture. A spawner applies its profile every time it loads, so
@@ -306,8 +297,7 @@ a death loot table.
 Reference: [`SpawnerProfile`](../src/main/java/com/ametrin/structures/spawner/SpawnerProfile.java) and [
 `ASSpawnerProfiles`](../src/main/java/com/ametrin/structures/registry/ASSpawnerProfiles.java).
 
-Foam
-----
+## Foam
 
 How foam spreads is data on the item stack, not the block. `FoamPresets.stack(spread, name)` makes a
 foam item from any `FoamSpread`: a `FoamSpreadBehavior` choosing where each step reaches, plus
@@ -333,8 +323,8 @@ It spreads, dissolves and refills openings like the library's foam, and turns in
 state when the structure generates, whatever the piece's `RemoveFoamProcessor` fills with.
 `FoamPresets.stack(item, spread, name)` makes stacks of it with other spreads.
 
-Reference: [`FoamSpreadBehaviors`](../src/main/java/com/ametrin/structures/foam/FoamSpreadBehaviors.java), [
-`FoamSpreadRestrictions`](../src/main/java/com/ametrin/structures/foam/FoamSpreadRestrictions.java), [
-`FoamPresets`](../src/main/java/com/ametrin/structures/foam/FoamPresets.java), [
-`ASFoamSpreadBehaviors`](../src/main/java/com/ametrin/structures/registry/ASFoamSpreadBehaviors.java) and [
-`ASFoamSpreadRestrictions`](../src/main/java/com/ametrin/structures/registry/ASFoamSpreadRestrictions.java).
+Reference: [`FoamSpreadBehaviors`](../src/main/java/com/ametrin/structures/foam/FoamSpreadBehaviors.java),
+[`FoamSpreadRestrictions`](../src/main/java/com/ametrin/structures/foam/FoamSpreadRestrictions.java),
+[`FoamPresets`](../src/main/java/com/ametrin/structures/foam/FoamPresets.java),
+[`ASFoamSpreadBehaviors`](../src/main/java/com/ametrin/structures/registry/ASFoamSpreadBehaviors.java) and
+[`ASFoamSpreadRestrictions`](../src/main/java/com/ametrin/structures/registry/ASFoamSpreadRestrictions.java).
