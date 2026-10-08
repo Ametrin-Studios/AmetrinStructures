@@ -12,10 +12,12 @@ import net.minecraft.client.gui.ComponentPath;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.tabs.MenuTabBar;
 import net.minecraft.client.gui.components.tabs.Tab;
 import net.minecraft.client.gui.components.tabs.TabManager;
-import net.minecraft.client.gui.components.tabs.TabNavigationBar;
+import net.minecraft.client.gui.layouts.FrameLayout;
 import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.layouts.Layout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
@@ -58,7 +60,7 @@ public class FixtureScreen extends Screen {
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
     private final TabManager tabManager = new TabManager(this::addRenderableWidget, this::removeWidget, this::onTabSelected, _ -> {});
-    private @Nullable TabNavigationBar tabNavigationBar;
+    private @Nullable MenuTabBar tabNavigationBar;
     private int tabIndex;
     private final List<ListTab> tabs = new ArrayList<>();
 
@@ -78,7 +80,7 @@ public class FixtureScreen extends Screen {
     private String becomes;
 
     public static void open(FixtureBlockEntity marker) {
-        Minecraft.getInstance().setScreen(new FixtureScreen(marker));
+        Minecraft.getInstance().gui.setScreen(new FixtureScreen(marker));
     }
 
     private FixtureScreen(FixtureBlockEntity marker) {
@@ -105,7 +107,7 @@ public class FixtureScreen extends Screen {
         tabs.clear();
         tabs.add(new ListTab(Component.translatable("screen.ametrin_structures.page.fixtures"), this::populateFixtures));
         tabs.add(new ListTab(Component.translatable("screen.ametrin_structures.page.settings"), this::populateSettings));
-        tabNavigationBar = TabNavigationBar.builder(tabManager, width).addTabs(tabs.toArray(Tab[]::new)).build();
+        tabNavigationBar = MenuTabBar.builder(tabManager, width).addTabs(tabs.toArray(Tab[]::new)).build();
         addRenderableWidget(tabNavigationBar);
 
         var footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
@@ -128,7 +130,7 @@ public class FixtureScreen extends Screen {
         if (tabNavigationBar == null) {
             return;
         }
-        tabNavigationBar.updateWidth(width);
+        tabNavigationBar.arrangeElements(width);
         int tabAreaTop = tabNavigationBar.getRectangle().bottom();
         tabManager.setTabArea(new ScreenRectangle(0, tabAreaTop, width, height - layout.getFooterHeight() - tabAreaTop));
         layout.setHeaderHeight(tabAreaTop);
@@ -682,11 +684,13 @@ public class FixtureScreen extends Screen {
         private final Component title;
         private final Populator populator;
         private final RowList list = new RowList();
+        private final FrameLayout layout = new FrameLayout();
         private final CompletionPopup completions = new CompletionPopup(font);
 
         private ListTab(Component title, Populator populator) {
             this.title = title;
             this.populator = populator;
+            layout.addChild(list);
             populate();
         }
 
@@ -720,6 +724,11 @@ public class FixtureScreen extends Screen {
         @Override
         public void doLayout(ScreenRectangle area) {
             list.updateSizeAndPosition(area.width(), area.height(), area.left(), area.top());
+        }
+
+        @Override
+        public Layout getLayout() {
+            return layout;
         }
     }
 

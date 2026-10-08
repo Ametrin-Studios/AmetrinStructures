@@ -1,7 +1,6 @@
 package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.client.FixtureScreen;
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.FrontAndTop;
@@ -31,8 +30,6 @@ import org.jspecify.annotations.Nullable;
 /// When the structure generates, the marker performs an action and removes itself.
 @ApiStatus.Internal
 public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, SimpleWaterloggedBlock {
-    public static final MapCodec<FixtureBlock> CODEC = simpleCodec(FixtureBlock::new);
-
     public static final EnumProperty<FrontAndTop> ORIENTATION = BlockStateProperties.ORIENTATION;
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
@@ -42,11 +39,6 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
                 .any()
                 .setValue(ORIENTATION, FrontAndTop.NORTH_UP)
                 .setValue(WATERLOGGED, false));
-    }
-
-    @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() {
-        return CODEC;
     }
 
     @Override

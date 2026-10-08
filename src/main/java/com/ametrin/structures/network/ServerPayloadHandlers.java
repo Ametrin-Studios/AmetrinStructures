@@ -5,6 +5,7 @@ import com.ametrin.structures.fixture.FixtureGeneration;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.ApiStatus;
@@ -24,7 +25,7 @@ public final class ServerPayloadHandlers {
             return;
         }
         if (payload.registry().equals(ASPayloads.RequestRegistryKeys.STRUCTURE_TEMPLATES)) {
-            List<Identifier> templates = player.level().getServer().getStructureManager().listTemplates().sorted().toList();
+            List<Identifier> templates = player.level().getServer().getStructureTemplateManager().listTemplates().sorted().toList();
             NetworkHelper.sendTo(player, new ASPayloads.SendRegistryKeys(payload.registry(), templates));
             return;
         }
@@ -52,7 +53,7 @@ public final class ServerPayloadHandlers {
         }
         var copy = marker.toItemStack(level.registryAccess());
         if (!player.getInventory().contains(copy)) {
-            player.getInventory().placeItemBackInInventory(copy);
+            player.getInventory().placeItemBackInInventory(copy, Prediction.SERVER_ONLY);
         }
         FixtureGeneration.runNow(level, payload.pos());
     }

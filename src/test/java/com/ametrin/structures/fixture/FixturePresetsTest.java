@@ -8,7 +8,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -62,7 +62,7 @@ class FixturePresetsTest {
         var json = JsonParser.parseString("""
                 {"fixtures": [
                   {"type": "ametrin_structures:loot_container", "loot_table": "minecraft:chests/buried_treasure"},
-                  {"weight": 2, "type": "ametrin_structures:loot_container", "loot_table": "minecraft:chests/buried_treasure", "block": {"Name": "minecraft:stone"}},
+                  {"weight": 2, "type": "ametrin_structures:loot_container", "loot_table": "minecraft:chests/buried_treasure", "block": "minecraft:stone"},
                   {"type": "minecraft:nope"}
                 ]}""");
         var ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
@@ -99,9 +99,9 @@ class FixturePresetsTest {
 
     @Test
     void anEntityTakesItsSpawnData() {
-        var spawnData = new SpawnDataBuilder(EntityType.ZOMBIE)
+        var spawnData = new SpawnDataBuilder(EntityTypes.ZOMBIE)
                 .equipment(BuiltInLootTables.SIMPLE_DUNGEON)
-                .passenger(EntityType.CHICKEN)
+                .passenger(EntityTypes.CHICKEN)
                 .build();
         var alternative = FixturePreset.builder().entity(2, spawnData).build().fixtures().getFirst();
         assertEquals(2, alternative.weight());
@@ -114,7 +114,7 @@ class FixturePresetsTest {
 
     @Test
     void deathLootIsItsOwnFieldNotExtraData() {
-        var spawnData = new SpawnDataBuilder(EntityType.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON).build();
+        var spawnData = new SpawnDataBuilder(EntityTypes.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON).build();
         var entity = (Fixtures.SpawnEntity) FixturePreset.builder().entity(1, spawnData).build().fixtures().getFirst().fixture();
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.deathLootTable());
         assertEquals(Optional.empty(), entity.nbt(), "extra data would turn off the entity's randomization");
@@ -138,7 +138,7 @@ class FixturePresetsTest {
 
     @Test
     void aSpawnerFromTheBuilderWritesOnlyItsEntity(MinecraftServer server) {
-        var preset = FixturePreset.builder().spawner(2, EntityType.HUSK).build();
+        var preset = FixturePreset.builder().spawner(2, EntityTypes.HUSK).build();
         var json = JsonParser.parseString("""
                 {"fixtures": [{"weight": 2, "type": "ametrin_structures:spawner", "entity": "minecraft:husk"}]}""");
         assertEquals(json, FixturePreset.CODEC.encodeStart(server.registryAccess().createSerializationContext(JsonOps.INSTANCE), preset).getOrThrow());

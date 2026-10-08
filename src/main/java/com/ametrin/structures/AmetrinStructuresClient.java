@@ -4,7 +4,7 @@ import com.ametrin.structures.client.*;
 import com.ametrin.structures.client.compat.SpreadWaypointsClient;
 import com.ametrin.structures.network.ASPayloads;
 import com.ametrin.structures.registry.ASBlockEntities;
-import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.BlockEntityTypes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -44,7 +44,7 @@ public class AmetrinStructuresClient {
         static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerBlockEntityRenderer(ASBlockEntities.FIXTURE.get(), FixtureRenderer::new);
             if (ASClientConfig.STRUCTURE_BLOCK_NAME_TAGS.getAsBoolean()) {
-                event.registerBlockEntityRenderer(BlockEntityType.STRUCTURE_BLOCK, _ -> new StructureBlockRenderer());
+                event.registerBlockEntityRenderer(BlockEntityTypes.STRUCTURE_BLOCK, _ -> new StructureBlockRenderer());
             }
         }
     }

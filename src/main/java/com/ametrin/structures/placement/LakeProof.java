@@ -7,7 +7,6 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -37,7 +36,7 @@ public final class LakeProof {
         var structures = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
         for (int chunkX = SectionPos.blockToSectionCoord(box.minX()); chunkX <= SectionPos.blockToSectionCoord(box.maxX()); chunkX++) {
             for (int chunkZ = SectionPos.blockToSectionCoord(box.minZ()); chunkZ <= SectionPos.blockToSectionCoord(box.maxZ()); chunkZ++) {
-                for (var start : manager.startsForStructure(new ChunkPos(chunkX, chunkZ), structure -> structures.wrapAsHolder(structure).is(tag))) {
+                for (var start : manager.startsForStructure(chunkX, chunkZ, structure -> structures.wrapAsHolder(structure).is(tag))) {
                     if (start.getBoundingBox().intersects(box) && start.getPieces().stream().anyMatch(piece -> piece.getBoundingBox().intersects(box))) {
                         return true;
                     }
@@ -50,7 +49,7 @@ public final class LakeProof {
     public static boolean isInsideStructure(WorldGenLevel level, BlockPos pos, Structure structure, boolean pieceGranularity) {
         var manager = structureManager(level);
         return pieceGranularity
-                ? manager.getStructureWithPieceAt(pos, structure).isValid()
+                ? manager.getStructureWithPieceAt(pos.getX(), pos.getY(), pos.getZ(), structure).isValid()
                 : manager.getStructureAt(pos, structure).isValid();
     }
 

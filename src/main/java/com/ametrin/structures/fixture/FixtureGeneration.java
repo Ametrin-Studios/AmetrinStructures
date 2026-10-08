@@ -96,7 +96,7 @@ public final class FixtureGeneration {
         }
 
         if (marker.markPostProcessing()) {
-            level.getChunk(actionBlockPos).markPosForPostprocessing(actionBlockPos);
+            level.getChunk(actionBlockPos).markPosForPostProcessing(actionBlockPos);
         }
     }
 

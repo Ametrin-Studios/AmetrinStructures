@@ -46,7 +46,7 @@ import net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig;
 import net.minecraft.world.level.block.entity.vault.VaultBlockEntity;
 import net.minecraft.world.level.block.entity.vault.VaultConfig;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -476,7 +476,7 @@ public final class Fixtures {
 
         @Override
         public void apply(FixtureContext context) {
-            spawn(zombie ? EntityType.ZOMBIE_VILLAGER : EntityType.VILLAGER, null, context, entity -> {
+            spawn(zombie ? EntityTypes.ZOMBIE_VILLAGER : EntityTypes.VILLAGER, null, context, entity -> {
                 if (!(entity instanceof VillagerDataHolder villager)) {
                     return;
                 }
@@ -711,10 +711,6 @@ public final class Fixtures {
             Optional<ResourceKey<LootTable>> lootTable,
             Optional<ItemStackTemplate> keyItem,
             Optional<ResourceKey<LootTable>> displayLootTable) implements Fixture {
-        // Vanilla's defaults, whose config constant isn't public.
-        private static final double VAULT_ACTIVATION_RANGE = 4.0;
-        private static final double VAULT_DEACTIVATION_RANGE = 4.5;
-
         public static final FixtureField<Boolean> OMINOUS = FixtureField.withDefault("ominous", FieldType.bool(), false);
         public static final FixtureField<Optional<ResourceKey<LootTable>>> LOOT_TABLE = FixtureField.optional("loot_table", FieldType.registryKey(Registries.LOOT_TABLE));
         public static final FixtureField<Optional<ItemStackTemplate>> KEY_ITEM = FixtureField.optional("key_item", FieldType.item());
@@ -752,8 +748,8 @@ public final class Fixtures {
             var defaultKey = ominous ? Items.OMINOUS_TRIAL_KEY : Items.TRIAL_KEY;
             return new VaultConfig(
                     lootTable.orElse(defaultLootTable),
-                    VAULT_ACTIVATION_RANGE,
-                    VAULT_DEACTIVATION_RANGE,
+                    VaultConfig.DEFAULT.activationRange(),
+                    VaultConfig.DEFAULT.deactivationRange(),
                     keyItem.map(ItemStackTemplate::create).orElseGet(() -> new ItemStack(defaultKey)),
                     displayLootTable);
         }
@@ -769,8 +765,8 @@ public final class Fixtures {
         }
     }
 
-    public record PlaceFeature(ResourceKey<ConfiguredFeature<?, ?>> feature) implements Fixture {
-        public static final FixtureField<ResourceKey<ConfiguredFeature<?, ?>>> FEATURE = FixtureField.required("feature", FieldType.registryKey(Registries.CONFIGURED_FEATURE));
+    public record PlaceFeature(ResourceKey<Feature> feature) implements Fixture {
+        public static final FixtureField<ResourceKey<Feature>> FEATURE = FixtureField.required("feature", FieldType.registryKey(Registries.FEATURE));
         public static final List<FixtureField<?>> FIELDS = List.of(FEATURE);
         public static final MapCodec<PlaceFeature> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                         FEATURE.forGetter(PlaceFeature::feature))
@@ -778,7 +774,7 @@ public final class Fixtures {
 
         @Override
         public void apply(FixtureContext context) {
-            context.level().registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE).get(feature)
+            context.level().registryAccess().lookupOrThrow(Registries.FEATURE).get(feature)
                     .map(Holder::value)
                     .ifPresentOrElse(
                             value -> value.place(context.level(), context.generator(), context.random(), context.actionBlockPos()),
@@ -965,7 +961,7 @@ public final class Fixtures {
     private static void placeSpawner(
             FixtureContext context, boolean minecart, BiConsumer<IAttachmentHolder, BaseSpawner> configure) {
         if (minecart) {
-            spawn(EntityType.SPAWNER_MINECART, null, context, entity -> {
+            spawn(EntityTypes.SPAWNER_MINECART, null, context, entity -> {
                 if (entity instanceof MinecartSpawner cart) {
                     configure.accept(cart, cart.getSpawner());
                 }

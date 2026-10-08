@@ -94,7 +94,7 @@ public class AmetrinStructures {
     }
 
     private static void gatherData(GatherDataEvent.Client event) {
-        event.createDatapackRegistryObjects(new RegistrySetBuilder().add(ASRegistries.SPAWNER_PROFILE, ASSpawnerProfiles::bootstrap));
+        event.createWorldRegistryObjects(new RegistrySetBuilder().add(ASRegistries.SPAWNER_PROFILE, ASSpawnerProfiles::bootstrap));
         event.createProvider(ASModelProvider::new);
         event.createBlockAndItemTags(ASBlockTagsProvider::new, ASItemTagsProvider::new);
     }

@@ -37,7 +37,7 @@ class ReplaceBlockProcessorTest {
         assertInstanceOf(ReplaceBlockProcessor.Condition.InTag.class, condition("\"#minecraft:stairs\""));
         assertInstanceOf(
                 ReplaceBlockProcessor.Condition.IsState.class,
-                condition("{\"Name\":\"minecraft:oak_stairs\",\"Properties\":{\"facing\":\"north\"}}"));
+                condition("{\"id\":\"minecraft:oak_stairs\",\"properties\":{\"facing\":\"north\"}}"));
     }
 
     @Test
@@ -64,21 +64,21 @@ class ReplaceBlockProcessorTest {
 
     @Test
     void aStateMatchesOnlyThatState() {
-        var condition = condition("{\"Name\":\"minecraft:oak_stairs\",\"Properties\":{\"facing\":\"north\",\"half\":\"top\"}}");
+        var condition = condition("{\"id\":\"minecraft:oak_stairs\",\"properties\":{\"facing\":\"north\",\"half\":\"top\"}}");
         assertTrue(condition.test(NORTH_TOP_OAK_STAIRS));
         assertTrue(!condition.test(NORTH_TOP_OAK_STAIRS.setValue(StairBlock.FACING, Direction.EAST)));
     }
 
     @Test
     void withoutPreserveStateTheTargetIsPlacedAsDeclared() {
-        var processor = processor("{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:spruce_stairs\"}}");
+        var processor = processor("{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":\"minecraft:spruce_stairs\"}");
         assertEquals(Blocks.SPRUCE_STAIRS.defaultBlockState(), process(processor, NORTH_TOP_OAK_STAIRS));
     }
 
     @Test
     void preserveStateKeepsTheShapeOfTheReplacedBlock() {
         var processor = processor(
-                "{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:spruce_stairs\"},\"preserve_state\":true}");
+                "{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":\"minecraft:spruce_stairs\",\"preserve_state\":true}");
         assertEquals(
                 Blocks.SPRUCE_STAIRS.defaultBlockState()
                         .setValue(StairBlock.FACING, Direction.NORTH)
@@ -88,7 +88,7 @@ class ReplaceBlockProcessorTest {
 
     @Test
     void chanceZeroNeverReplaces() {
-        var processor = processor("{\"condition\":\"minecraft:oak_stairs\",\"chance\":0,\"change_to\":{\"Name\":\"minecraft:air\"}}");
+        var processor = processor("{\"condition\":\"minecraft:oak_stairs\",\"chance\":0,\"change_to\":\"minecraft:air\"}");
         assertEquals(NORTH_TOP_OAK_STAIRS, process(processor, NORTH_TOP_OAK_STAIRS));
     }
 
@@ -97,9 +97,9 @@ class ReplaceBlockProcessorTest {
         var data = new CompoundTag();
         data.putString("LootTable", "minecraft:chests/simple_dungeon");
         var chest = new StructureTemplate.StructureBlockInfo(BlockPos.ZERO, Blocks.CHEST.defaultBlockState(), data);
-        var toBarrel = processor("{\"condition\":\"minecraft:chest\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:barrel\"}}");
-        var toChest = processor("{\"condition\":\"minecraft:chest\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:chest\",\"Properties\":{\"facing\":\"east\"}}}");
-        var preserving = processor("{\"condition\":\"minecraft:chest\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:barrel\"},\"preserve_state\":true}");
+        var toBarrel = processor("{\"condition\":\"minecraft:chest\",\"chance\":1,\"change_to\":\"minecraft:barrel\"}");
+        var toChest = processor("{\"condition\":\"minecraft:chest\",\"chance\":1,\"change_to\":{\"id\":\"minecraft:chest\",\"properties\":{\"facing\":\"east\"}}}");
+        var preserving = processor("{\"condition\":\"minecraft:chest\",\"chance\":1,\"change_to\":\"minecraft:barrel\",\"preserve_state\":true}");
         assertNull(process(toBarrel, chest).nbt());
         assertEquals(data, process(toChest, chest).nbt());
         assertEquals(data, process(preserving, chest).nbt());

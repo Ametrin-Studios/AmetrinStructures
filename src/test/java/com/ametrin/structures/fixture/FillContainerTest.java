@@ -61,7 +61,7 @@ class FillContainerTest {
     @Test
     void aBlockWithoutAnInventoryIsRejected() {
         var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": {"Name": "minecraft:stone"}}
+                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": "minecraft:stone"}
                 """);
         assertTrue(Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).isError());
     }
@@ -69,7 +69,7 @@ class FillContainerTest {
     @Test
     void anyBlockWithAnInventoryIsAccepted() {
         var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": {"Name": "minecraft:furnace"}}
+                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": "minecraft:furnace"}
                 """);
         var fixture = assertInstanceOf(Fixtures.FillContainer.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
         assertEquals(Blocks.FURNACE, fixture.block().getBlock());

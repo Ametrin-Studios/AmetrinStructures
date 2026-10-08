@@ -32,7 +32,7 @@ class StructureTemplateUpdaterTest {
 
         var updated = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
         assertEquals(SharedConstants.getCurrentVersion().dataVersion().version(), NbtUtils.getDataVersion(updated));
-        assertEquals("minecraft:short_grass", updated.getListOrEmpty("palette").getCompoundOrEmpty(0).getStringOr("Name", ""));
+        assertEquals("minecraft:short_grass", updated.getListOrEmpty("palette").getCompoundOrEmpty(0).getStringOr("id", ""));
     }
 
     @Test

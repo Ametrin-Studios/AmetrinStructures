@@ -1,7 +1,10 @@
 package com.ametrin.structures.mixin;
 
 import com.ametrin.structures.placement.LakeProof;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.LakeFeature;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LakeFeature.class)
 public class LakeFeatureMixin {
     @Inject(method = "place", at = @At("HEAD"), cancellable = true)
-    private void ametrin$skipLakeProofStructures(FeaturePlaceContext<LakeFeature.Configuration> context, CallbackInfoReturnable<Boolean> callback) {
-        if (LakeProof.isLakeProofed(context.level(), context.origin())) {
+    private void ametrin$skipLakeProofStructures(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin, CallbackInfoReturnable<Boolean> callback) {
+        if (LakeProof.isLakeProofed(level, origin)) {
             callback.setReturnValue(false);
         }
     }

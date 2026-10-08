@@ -6,8 +6,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderSet;
-import net.minecraft.core.RegistryCodecs;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.codec.RegistryCodecs;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -20,7 +20,7 @@ public final class FixtureConditions {
     private FixtureConditions() {}
 
     public record InBiome(HolderSet<Biome> biomes) implements FixtureCondition {
-        public static final MapCodec<InBiome> CODEC = RegistryCodecs.homogeneousList(Registries.BIOME)
+        public static final MapCodec<InBiome> CODEC = RegistryCodecs.holderSet(Registries.BIOME)
                 .fieldOf("biomes")
                 .xmap(InBiome::new, InBiome::biomes);
 

@@ -162,6 +162,6 @@ final class ExampleStructures {
 
     /// Datagen: writes the structures, structure sets and pools as JSON.
     static void gatherData(GatherDataEvent.Client event) {
-        event.createDatapackRegistryObjects(registries());
+        event.createWorldRegistryObjects(registries());
     }
 }

@@ -79,7 +79,7 @@ final class StructureCheck {
     }
 
     static Report run(MinecraftServer server, Predicate<Holder.Reference<Structure>> structures) {
-        var check = new StructureCheck(server.getStructureManager(), server.registryAccess(), server.reloadableRegistries().lookup());
+        var check = new StructureCheck(server.getStructureTemplateManager(), server.registryAccess(), server.reloadableRegistries().lookup());
         var checked = new LinkedHashMap<Identifier, Structure>();
         server.registryAccess().lookupOrThrow(Registries.STRUCTURE).listElements()
                 .filter(structures)
@@ -184,7 +184,7 @@ final class StructureCheck {
 
     private record Connector(StructureTemplate.JigsawBlockInfo jigsaw, String template) {
         Component at() {
-            return Component.translatable("commands.ametrin_structures.check.at", jigsaw.info().pos().toShortString());
+            return Component.translatable("commands.ametrin_structures.check.at", jigsaw.pos().toShortString());
         }
     }
 
@@ -202,7 +202,7 @@ final class StructureCheck {
 
         var start = jigsaws(structure, startPool, jigsaws);
         startJigsawName
-                .filter(name -> start.complete() && start.connectors().stream().noneMatch(connector -> connector.jigsaw().name().equals(name)))
+                .filter(name -> start.complete() && start.connectors().stream().noneMatch(connector -> name.equals(connector.jigsaw().name())))
                 .ifPresent(name -> problem(Problem.Subject.STRUCTURE, structure, "start_jigsaw", poolName(startPool), name.toString()));
 
         var links = new ArrayList<Link>();
@@ -253,7 +253,12 @@ final class StructureCheck {
     private Stream<Connector> candidates(Identifier structure, Link link, Map<Holder<StructureTemplatePool>, PoolJigsaws> jigsaws) {
         return Stream.of(link.target(), link.target().value().getFallback())
                 .flatMap(pool -> jigsaws(structure, pool, jigsaws).connectors().stream())
-                .filter(candidate -> candidate.jigsaw().name().equals(link.source().jigsaw().target()));
+                .filter(candidate -> takes(candidate.jigsaw(), link.source().jigsaw().target()));
+    }
+
+    // As in JigsawBlock#canAttach: a jigsaw without a name, like a feature element's, takes any target.
+    private static boolean takes(StructureTemplate.JigsawBlockInfo jigsaw, Identifier target) {
+        return jigsaw.name() == null || target.equals(jigsaw.name());
     }
 
     private void checkConnection(Identifier structure, Link link, Map<Holder<StructureTemplatePool>, PoolJigsaws> jigsaws) {
@@ -272,8 +277,8 @@ final class StructureCheck {
 
     // Pieces only turn around the vertical axis: a sideways jigsaw can meet any other sideways one, an upward one only a downward one.
     static boolean canFace(StructureTemplate.JigsawBlockInfo source, StructureTemplate.JigsawBlockInfo target) {
-        var from = JigsawBlock.getFrontFacing(source.info().state());
-        var to = JigsawBlock.getFrontFacing(target.info().state());
+        var from = JigsawBlock.getFrontFacing(source.state());
+        var to = JigsawBlock.getFrontFacing(target.state());
         return from.getAxis().isHorizontal() ? to.getAxis().isHorizontal() : to == from.getOpposite();
     }
 

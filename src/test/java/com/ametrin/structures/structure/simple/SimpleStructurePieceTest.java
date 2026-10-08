@@ -1,23 +1,18 @@
 package com.ametrin.structures.structure.simple;
 
+import com.ametrin.structures.structure.GenerationContexts;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
@@ -56,7 +51,7 @@ class SimpleStructurePieceTest {
     void groundLevelAndTerrainAdaptationAreSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0));
         piece.setTerrainAdaptation(TerrainAdjustment.BEARD_THIN);
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
         var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
         assertEquals(4, reloaded.getGroundLevelDelta());
         assertEquals(TerrainAdjustment.BEARD_THIN, reloaded.getTerrainAdjustment());
@@ -93,7 +88,7 @@ class SimpleStructurePieceTest {
     @Test
     void theTerrainBoxIsSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0), Rotation.CLOCKWISE_180, TerrainBox.of(1, 2, 1, 2, 3, 2));
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
         var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
         assertEquals(piece.getBeardifierBox(), reloaded.getBeardifierBox());
         assertEquals(piece.getGroundLevelDelta(), reloaded.getGroundLevelDelta());
@@ -103,7 +98,7 @@ class SimpleStructurePieceTest {
     void theStructuresProcessorsAreSavedByIdAndExpandedOnLoad(MinecraftServer server) {
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
         var piece = createPiece(server, processors(InlineFromStructureProcessor.INSTANCE), Optional.of(mossify));
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
         var tag = piece.createTag(context);
         assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT.identifier().toString()), tag.getString("structure_processors"));
         var reloaded = new SimpleStructurePiece(context, tag);
@@ -114,7 +109,7 @@ class SimpleStructurePieceTest {
     void unusedStructureProcessorsAreNotSaved(MinecraftServer server) {
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
         var piece = createPiece(server, processors(new BlockIgnoreProcessor(List.of(Blocks.STONE))), Optional.of(mossify));
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
         assertFalse(piece.createTag(context).contains("structure_processors"));
     }
 
@@ -144,18 +139,7 @@ class SimpleStructurePieceTest {
     private static SimpleStructurePiece createPiece(
             MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox,
             Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
-        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        var generation = new Structure.GenerationContext(
-                server.registryAccess(),
-                new DebugLevelSource(plains),
-                new FixedBiomeSource(plains),
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
-                server.getStructureManager(),
-                new WorldgenRandom(new LegacyRandomSource(0)),
-                0,
-                new ChunkPos(0, 0),
-                LevelHeightAccessor.create(-64, 384),
-                HolderSet.direct(plains)::contains);
+        var generation = GenerationContexts.overPlains(server, 0, biome -> biome.is(Biomes.PLAINS));
         var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
         var context = new PieceSource.Context(generation, ORIGIN, rotation, structureProcessors);
         return (SimpleStructurePiece) PieceSources.createPiece(entry, context);

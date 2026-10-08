@@ -11,9 +11,9 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.ColorArgument;
 import net.minecraft.commands.arguments.ResourceKeyArgument;
 import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
+import net.minecraft.commands.arguments.TeamColorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
@@ -26,6 +26,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.scores.TeamColor;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
@@ -62,9 +63,8 @@ public final class SpreadCommand {
     /// Slowest first.
     private static final int MAX_TIMINGS = 5;
 
-    private static final List<ChatFormatting> WAYPOINT_COLORS = Arrays.stream(ChatFormatting.values())
-            .filter(ChatFormatting::isColor)
-            .filter(color -> color != ChatFormatting.BLACK && color != ChatFormatting.GRAY && color != ChatFormatting.DARK_GRAY && color != ChatFormatting.WHITE)
+    private static final List<TeamColor> WAYPOINT_COLORS = TeamColor.VALUES.stream()
+            .filter(color -> color != TeamColor.BLACK && color != TeamColor.GRAY && color != TeamColor.DARK_GRAY && color != TeamColor.WHITE)
             .toList();
 
     /// Each player's last report, for `visit`.
@@ -72,7 +72,7 @@ public final class SpreadCommand {
 
     private SpreadCommand() {}
 
-    private record Visits(ResourceKey<Level> dimension, ChatFormatting color, List<StructureSpread.Found> found,
+    private record Visits(ResourceKey<Level> dimension, TeamColor color, List<StructureSpread.Found> found,
                           int index) {
         Visits at(int index) {
             return new Visits(dimension, color, found, index);
@@ -91,8 +91,8 @@ public final class SpreadCommand {
             return new Target(kind, id, set -> set.value().structures().stream().anyMatch(entry -> structures.test(entry.structure())), structures);
         }
 
-        Component name(ChatFormatting color) {
-            return Component.literal(kind == Kind.TAG ? "#" + id : id.toString()).withStyle(color);
+        Component name(TeamColor color) {
+            return Component.literal(kind == Kind.TAG ? "#" + id : id.toString()).withColor(color.textColor());
         }
     }
 
@@ -123,12 +123,12 @@ public final class SpreadCommand {
     private static <T extends ArgumentBuilder<CommandSourceStack, T>> T withOptions(T node, TargetArgument target) {
         return node.executes(context -> spread(context, target.read(context), DEFAULT_RADIUS, null, Rejected.NONE))
                 .then(withRejected(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS)), target, _ -> null)
-                        .then(withRejected(Commands.argument("color", ColorArgument.color()), target, SpreadCommand::color)));
+                        .then(withRejected(Commands.argument("color", TeamColorArgument.teamColor()), target, SpreadCommand::color)));
     }
 
 
     private static <T extends ArgumentBuilder<CommandSourceStack, T>> T withRejected(
-            T node, TargetArgument target, Function<CommandContext<CommandSourceStack>, @Nullable ChatFormatting> color) {
+            T node, TargetArgument target, Function<CommandContext<CommandSourceStack>, @Nullable TeamColor> color) {
         return node.executes(context -> spread(context, target.read(context), radius(context), color.apply(context), Rejected.NONE))
                 .then(Commands.literal("rejected")
                         .executes(context -> spread(context, target.read(context), radius(context), color.apply(context), Rejected.IN_BIOME))
@@ -164,8 +164,8 @@ public final class SpreadCommand {
         return IntegerArgumentType.getInteger(context, "radius");
     }
 
-    private static ChatFormatting color(CommandContext<CommandSourceStack> context) {
-        return ColorArgument.getColor(context, "color");
+    private static TeamColor color(CommandContext<CommandSourceStack> context) {
+        return TeamColorArgument.getTeamColor(context, "color");
     }
 
     enum Rejected {
@@ -179,7 +179,7 @@ public final class SpreadCommand {
         }
     }
 
-    private static int spread(CommandContext<CommandSourceStack> context, Target target, int radius, @Nullable ChatFormatting color, Rejected rejected) {
+    private static int spread(CommandContext<CommandSourceStack> context, Target target, int radius, @Nullable TeamColor color, Rejected rejected) {
         var source = context.getSource();
         var waypointColor = color != null ? color : defaultColor(target.id());
         var name = target.name(waypointColor);
@@ -205,12 +205,12 @@ public final class SpreadCommand {
         return 1;
     }
 
-    static ChatFormatting defaultColor(Identifier id) {
+    static TeamColor defaultColor(Identifier id) {
         return WAYPOINT_COLORS.get(Math.floorMod(id.hashCode(), WAYPOINT_COLORS.size()));
     }
 
     private static void sendWaypoints(
-            ServerPlayer player, Identifier report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
+            ServerPlayer player, Identifier report, ResourceKey<Level> dimension, TeamColor color, Rejected shownRejected,
             StructureSpread.Report spread) {
         if (!player.connection.hasChannel(ASPayloads.SpreadWaypoints.TYPE)) {
             return;
@@ -225,7 +225,7 @@ public final class SpreadCommand {
                 .map(spot -> new ASPayloads.SpreadWaypoints.RejectedSpot(spot.position(), spot.reason().key(), spot.reason().argument()))
                 .toList();
         PacketDistributor.sendToPlayer(player, new ASPayloads.SpreadWaypoints(
-                report, dimension, color.getId(), shownRejected != Rejected.NONE, found, rejected));
+                report, dimension, color, shownRejected != Rejected.NONE, found, rejected));
     }
 
     private static int clear(CommandSourceStack source) throws CommandSyntaxException {
@@ -341,7 +341,7 @@ public final class SpreadCommand {
 
         var box = spot.box();
         source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.visit.arrived",
-                index + 1, visits.found().size(), Component.literal(spot.id().toString()).withStyle(visits.color()), coordinates(spot.origin()),
+                index + 1, visits.found().size(), Component.literal(spot.id().toString()).withColor(visits.color().textColor()), coordinates(spot.origin()),
                 box.getXSpan() + "×" + box.getYSpan() + "×" + box.getZSpan()), false);
         return index + 1;
     }

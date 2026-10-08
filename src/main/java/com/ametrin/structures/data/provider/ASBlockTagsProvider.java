@@ -16,6 +16,6 @@ public class ASBlockTagsProvider extends BlockTagsProvider {
 
     @Override
     protected void addTags(HolderLookup.Provider lookupProvider) {
-        tag(ASTags.Blocks.FOAM).add(ASBlocks.FOAM.get());
+        tag(ASTags.Blocks.FOAM).add(ASBlocks.FOAM.key());
     }
 }

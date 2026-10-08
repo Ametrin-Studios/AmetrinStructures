@@ -1,6 +1,5 @@
 package com.ametrin.structures.structure.simple;
 
-import com.ametrin.structures.registry.ASProcessors;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -14,7 +13,7 @@ import java.util.Optional;
 
 /// Processors on a template replace the structure's processors.
 /// In a [SimpleStructurePiece] this marker pulls them back in. It does nothing anywhere else.
-public final class InlineFromStructureProcessor extends StructureProcessor {
+public final class InlineFromStructureProcessor implements StructureProcessor {
     public static final InlineFromStructureProcessor INSTANCE = new InlineFromStructureProcessor();
     public static final MapCodec<InlineFromStructureProcessor> CODEC = MapCodec.unit(INSTANCE);
 
@@ -57,7 +56,7 @@ public final class InlineFromStructureProcessor extends StructureProcessor {
     }
 
     @Override
-    protected StructureProcessorType<?> getType() {
-        return ASProcessors.INLINE_FROM_STRUCTURE.get();
+    public MapCodec<InlineFromStructureProcessor> codec() {
+        return CODEC;
     }
 }

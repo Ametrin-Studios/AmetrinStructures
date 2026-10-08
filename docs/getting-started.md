@@ -85,16 +85,10 @@ Two calls connect the register to the game:
 ExampleStructures.REGISTER.register(modBus);
 
 // Datagen
-modBus.
-
-addListener(GatherDataEvent.Client .class, event ->{
-var registries = new RegistrySetBuilder();
-    ExampleStructures.REGISTER.
-
-bootstrap(registries);
-    event.
-
-createDatapackRegistryObjects(registries);
+modBus.addListener(GatherDataEvent.Client.class, event -> {
+    var registries = new RegistrySetBuilder();
+    ExampleStructures.REGISTER.bootstrap(registries);
+    event.createWorldRegistryObjects(registries);
 });
 ```
 

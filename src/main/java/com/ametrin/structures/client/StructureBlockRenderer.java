@@ -27,7 +27,7 @@ public class StructureBlockRenderer extends BlockEntityWithBoundingBoxRenderer<S
             StructureBlockEntity structureBlock, BlockEntityWithBoundingBoxRenderState state, float partialTicks, Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         super.extractRenderState(structureBlock, state, partialTicks, cameraPosition, breakProgress);
         if (state instanceof State named) {
-            named.nameTag = state.isVisible ? BlockNameTag.of(structureBlock, Items.STRUCTURE_BLOCK, () -> name(structureBlock), cameraPosition) : null;
+            named.nameTag = state.isVisible ? BlockNameTag.of(structureBlock, Items.STRUCTURE_BLOCK, () -> name(structureBlock)) : null;
         }
     }
 

@@ -11,7 +11,7 @@ import com.ametrin.structures.structure.filter.PlacementFilterType;
 import com.ametrin.structures.structure.simple.PieceSourceType;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-import net.neoforged.neoforge.registries.DataPackRegistryEvent;
+import net.neoforged.neoforge.registries.NewDatapackRegistryEvent;
 import net.neoforged.neoforge.registries.NewRegistryEvent;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 
@@ -43,9 +43,9 @@ public final class ASRegistries {
         event.register(PLACEMENT_FILTER_TYPES);
     }
 
-    public static void registerDatapackRegistries(DataPackRegistryEvent.NewRegistry event) {
-        event.dataPackRegistry(FIXTURE_PRESET, FixturePreset.CODEC);
-        event.dataPackRegistry(SPAWNER_PROFILE, SpawnerProfile.CODEC);
+    public static void registerDatapackRegistries(NewDatapackRegistryEvent event) {
+        event.worldRegistry(FIXTURE_PRESET, FixturePreset.CODEC);
+        event.worldRegistry(SPAWNER_PROFILE, SpawnerProfile.CODEC);
     }
 
     private static <T> ResourceKey<Registry<T>> key(String name) {

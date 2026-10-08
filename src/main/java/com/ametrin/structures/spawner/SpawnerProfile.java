@@ -20,8 +20,8 @@ import java.util.Optional;
 /// ```
 /// context.register(CRYPT, SpawnerProfile.builder()
 ///         .spawnCount(2)
-///         .add(EntityType.ZOMBIE, 3)
-///         .add(new SpawnDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON), 1)
+///         .add(EntityTypes.ZOMBIE, 3)
+///         .add(new SpawnDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON), 1)
 ///         .build());
 /// ```
 public record SpawnerProfile(

@@ -1,6 +1,5 @@
 package com.ametrin.structures.placement;
 
-import com.ametrin.structures.registry.ASPlacementTypes;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -17,7 +16,6 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
-import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
@@ -131,9 +129,11 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         }
     }
 
+    // RandomSpreadStructurePlacement declares its codec with its own type, so this one has to be cast to it.
     @Override
-    public StructurePlacementType<?> type() {
-        return ASPlacementTypes.GRID.get();
+    @SuppressWarnings("unchecked")
+    public MapCodec<RandomSpreadStructurePlacement> codec() {
+        return (MapCodec<RandomSpreadStructurePlacement>) (MapCodec<?>) CODEC;
     }
 
     public record GridOffset(int x, int z) {

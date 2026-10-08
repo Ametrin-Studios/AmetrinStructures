@@ -1,7 +1,6 @@
 package com.ametrin.structures.foam;
 
 import com.ametrin.structures.registry.ASBlockEntities;
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -22,8 +21,6 @@ import org.jspecify.annotations.Nullable;
 /// It becomes plain foam once the fill is done, and otherwise behaves like foam, dissolving included.
 @ApiStatus.Internal
 public class FoamSpreaderBlock extends FoamBlock implements EntityBlock {
-    public static final MapCodec<FoamSpreaderBlock> CODEC = simpleCodec(FoamSpreaderBlock::new);
-
     /// The axis the builder looked along, which planar spreads fill across.
     public static final EnumProperty<Direction.Axis> AXIS = BlockStateProperties.AXIS;
 
@@ -49,10 +46,5 @@ public class FoamSpreaderBlock extends FoamBlock implements EntityBlock {
             return null;
         }
         return (BlockEntityTicker<T>) (BlockEntityTicker<FoamSpreaderBlockEntity>) (tickLevel, pos, tickState, spreader) -> spreader.tick((ServerLevel) tickLevel, tickState);
-    }
-
-    @Override
-    public MapCodec<FoamSpreaderBlock> codec() {
-        return CODEC;
     }
 }

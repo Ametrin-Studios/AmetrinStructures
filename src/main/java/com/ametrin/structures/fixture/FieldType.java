@@ -208,13 +208,14 @@ public record FieldType<T>(
         var text = new StringBuilder(item.typeHolder().getRegisteredName());
         var components = new ArrayList<String>();
         DynamicOps<Tag> ops = registries.createSerializationContext(NbtOps.INSTANCE);
-        for (Map.Entry<DataComponentType<?>, Optional<?>> entry : item.components().entrySet()) {
-            var id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(entry.getKey());
-            if (entry.getValue().isEmpty()) {
+        var patch = item.components();
+        for (var type : patch.keySet()) {
+            var id = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
+            var patched = patch.getPatch(type);
+            if (patched == null) {
                 components.add("!" + id);
             } else {
-                encodeComponent(entry.getKey(), entry.getValue().get(), ops)
-                        .ifPresent(value -> components.add(id + "=" + value));
+                encodeComponent(type, patched, ops).ifPresent(value -> components.add(id + "=" + value));
             }
         }
         if (!components.isEmpty()) {

@@ -25,7 +25,7 @@ public class FixtureRenderer implements BlockEntityRenderer<FixtureBlockEntity, 
     public void extractRenderState(
             FixtureBlockEntity marker, State state, float partialTicks, Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(marker, state, partialTicks, cameraPosition, breakProgress);
-        state.nameTag = BlockNameTag.of(marker, ASItems.FIXTURE.get(), marker::customName, cameraPosition);
+        state.nameTag = BlockNameTag.of(marker, ASItems.FIXTURE.get(), marker::customName);
     }
 
     @Override

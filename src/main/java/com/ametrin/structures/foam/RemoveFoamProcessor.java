@@ -1,6 +1,5 @@
 package com.ametrin.structures.foam;
 
-import com.ametrin.structures.registry.ASProcessors;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
@@ -10,7 +9,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.material.Fluids;
 import org.jspecify.annotations.Nullable;
@@ -18,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 /// Replaces foam, with its [FoamBlock#replacementState()], or `fill`, and treats air the template saved like structure void.
 ///
 /// Pieces of this library and [com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement]s add [#AIR] by default unless they already declare one.
-public class RemoveFoamProcessor extends StructureProcessor {
+public class RemoveFoamProcessor implements StructureProcessor {
     public static final RemoveFoamProcessor AIR = new RemoveFoamProcessor(Blocks.AIR.defaultBlockState());
     public static final RemoveFoamProcessor WATER = new RemoveFoamProcessor(Fluids.WATER.defaultFluidState().createLegacyBlock());
     public static final MapCodec<RemoveFoamProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -67,7 +65,7 @@ public class RemoveFoamProcessor extends StructureProcessor {
     }
 
     @Override
-    protected StructureProcessorType<?> getType() {
-        return ASProcessors.REMOVE_FOAM.get();
+    public MapCodec<RemoveFoamProcessor> codec() {
+        return CODEC;
     }
 }

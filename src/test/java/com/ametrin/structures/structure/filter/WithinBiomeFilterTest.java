@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure.filter;
 
+import com.ametrin.structures.structure.GenerationContexts;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
@@ -10,12 +11,10 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.*;
-import net.minecraft.world.level.levelgen.*;
+import net.minecraft.world.level.levelgen.DebugLevelSource;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -72,7 +71,7 @@ class WithinBiomeFilterTest {
     }
 
     /// Plains everywhere except `pocket`, a quart cell of desert; remembers every cell asked for.
-    private static final class RecordingSource extends BiomeSource {
+    private static final class RecordingSource extends BiomeSource implements BiomeResolver {
         private final Holder<Biome> plains;
         private final Holder<Biome> desert;
         private final @Nullable BlockPos pocket;
@@ -95,7 +94,12 @@ class WithinBiomeFilterTest {
         }
 
         @Override
-        public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
+        public BiomeResolver createResolver(Climate.Sampler sampler) {
+            return this;
+        }
+
+        @Override
+        public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ) {
             var cell = new BlockPos(quartX, quartY, quartZ);
             sampled.add(cell);
             return cell.equals(pocket) ? desert : plains;
@@ -120,18 +124,7 @@ class WithinBiomeFilterTest {
     }
 
     private static boolean test(MinecraftServer server, PlacementFilter filter, BoundingBox footprint, BiomeSource source) {
-        var plains = biome(server, Biomes.PLAINS);
-        var generation = new Structure.GenerationContext(
-                server.registryAccess(),
-                new DebugLevelSource(plains),
-                source,
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
-                server.getStructureManager(),
-                new WorldgenRandom(new LegacyRandomSource(0)),
-                0,
-                new ChunkPos(0, 0),
-                LevelHeightAccessor.create(-64, 384),
-                biome -> biome.is(Biomes.PLAINS));
+        var generation = GenerationContexts.create(server, new DebugLevelSource(biome(server, Biomes.PLAINS)), source, 0, biome -> biome.is(Biomes.PLAINS));
         var context = new PlacementFilter.Context(
                 generation, new BlockPos(footprint.minX(), footprint.minY(), footprint.minZ()), footprint,
                 new TerrainSampler(generation, Heightmap.Types.WORLD_SURFACE_WG));

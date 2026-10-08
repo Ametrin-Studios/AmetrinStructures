@@ -19,6 +19,7 @@ import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.TeamColor;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.List;
@@ -27,7 +28,7 @@ import java.util.Optional;
 // Bump [#PROTOCOL_VERSION] whenever a wire shape changes.
 @ApiStatus.Internal
 public final class ASPayloads {
-    public static final String PROTOCOL_VERSION = "5";
+    public static final String PROTOCOL_VERSION = "6";
 
     private ASPayloads() {}
 
@@ -124,7 +125,7 @@ public final class ASPayloads {
     public record SpreadWaypoints(
             Identifier report,
             ResourceKey<Level> dimension,
-            int color,
+            TeamColor color,
             boolean replaceAll,
             List<FoundSpot> found,
             List<RejectedSpot> rejected)
@@ -135,7 +136,7 @@ public final class ASPayloads {
         public static final StreamCodec<ByteBuf, SpreadWaypoints> STREAM_CODEC = StreamCodec.composite(
                 Identifier.STREAM_CODEC, SpreadWaypoints::report,
                 ResourceKey.streamCodec(Registries.DIMENSION), SpreadWaypoints::dimension,
-                ByteBufCodecs.VAR_INT, SpreadWaypoints::color,
+                TeamColor.STREAM_CODEC, SpreadWaypoints::color,
                 ByteBufCodecs.BOOL, SpreadWaypoints::replaceAll,
                 FoundSpot.STREAM_CODEC.apply(ByteBufCodecs.list()), SpreadWaypoints::found,
                 RejectedSpot.STREAM_CODEC.apply(ByteBufCodecs.list()), SpreadWaypoints::rejected,

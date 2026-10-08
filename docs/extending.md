@@ -232,7 +232,7 @@ fixture does nothing.
 {"fixtures": [
   {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/snowy",
    "conditions": [{"type": "ametrin_structures:biome", "biomes": "#minecraft:spawns_snow_foxes"}]},
-  {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/crate", "block": {"Name": "othermod:crate"},
+  {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/crate", "block": "othermod:crate",
    "conditions": [{"type": "neoforge:mod_loaded", "modid": "othermod"}]},
   {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/default"}
 ]}

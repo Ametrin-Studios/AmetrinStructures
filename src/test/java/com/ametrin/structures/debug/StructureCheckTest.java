@@ -69,7 +69,7 @@ class StructureCheckTest {
     void brokenReferencesInATemplateAreReported(MinecraftServer server) throws CommandSyntaxException {
         var template = template(server, "references", """
                 {size: [2, 1, 1], entities: [],
-                 palette: [{Name: "minecraft:chest"}, {Name: "ametrin_structures:fixture"}],
+                 palette: [{id: "minecraft:chest"}, {id: "ametrin_structures:fixture"}],
                  blocks: [
                    {pos: [0, 0, 0], state: 0, nbt: {id: "minecraft:chest", LootTable: "test:missing"}},
                    {pos: [1, 0, 0], state: 1, nbt: {id: "ametrin_structures:fixture", offset: [0.0d, 0.0d, 16.5d], fixtures: [
@@ -90,7 +90,7 @@ class StructureCheckTest {
     void jigsawsThatCantConnectAreReported(MinecraftServer server) throws CommandSyntaxException {
         var template = template(server, "jigsaws", """
                 {size: [3, 1, 1], entities: [],
-                 palette: [{Name: "minecraft:jigsaw", Properties: {orientation: "west_up"}}],
+                 palette: [{id: "minecraft:jigsaw", properties: {orientation: "west_up"}}],
                  blocks: [
                    {pos: [0, 0, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "test:missing", name: "minecraft:empty", target: "test:a", joint: "rollable", final_state: "minecraft:air"}},
                    {pos: [1, 0, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "minecraft:village/plains/terminators", name: "minecraft:empty", target: "test:nothing", joint: "rollable", final_state: "minecraft:air"}},
@@ -117,12 +117,11 @@ class StructureCheckTest {
     private static StructureTemplate.JigsawBlockInfo jigsaw(FrontAndTop orientation) {
         var state = Blocks.JIGSAW.defaultBlockState().setValue(JigsawBlock.ORIENTATION, orientation);
         return new StructureTemplate.JigsawBlockInfo(
-                new StructureTemplate.StructureBlockInfo(BlockPos.ZERO, state, null),
-                JigsawBlockEntity.JointType.ROLLABLE, JigsawBlockEntity.EMPTY_ID, Pools.EMPTY, JigsawBlockEntity.EMPTY_ID, 0, 0);
+                BlockPos.ZERO, state, JigsawBlockEntity.JointType.ROLLABLE, JigsawBlockEntity.EMPTY_ID, Pools.EMPTY, JigsawBlockEntity.EMPTY_ID, 0, 0);
     }
 
     private static StructureCheck.Report check(MinecraftServer server, Structure structure) {
-        return new StructureCheck(server.getStructureManager(), server.registryAccess(), server.reloadableRegistries().lookup())
+        return new StructureCheck(server.getStructureTemplateManager(), server.registryAccess(), server.reloadableRegistries().lookup())
                 .check(Map.of(STRUCTURE, structure));
     }
 
@@ -142,7 +141,7 @@ class StructureCheckTest {
     /// Makes a template the server's template manager holds, from SNBT.
     private static Identifier template(MinecraftServer server, String path, String snbt) throws CommandSyntaxException {
         var id = Identifier.fromNamespaceAndPath("test", path);
-        server.getStructureManager().getOrCreate(id).load(server.registryAccess().lookupOrThrow(Registries.BLOCK), TagParser.parseCompoundFully(snbt));
+        server.getStructureTemplateManager().getOrCreate(id).load(server.registryAccess().lookupOrThrow(Registries.BLOCK), TagParser.parseCompoundFully(snbt));
         return id;
     }
 

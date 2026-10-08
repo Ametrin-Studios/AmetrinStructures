@@ -113,9 +113,8 @@ public abstract class ExtendedStructure extends Structure {
     }
 
     public static boolean isValidBiome(GenerationContext context, BlockPos start) {
-        // based on Structure#isValidBiome.
-        return context.validBiome().test(context.biomeSource().getNoiseBiome(
-                QuartPos.fromBlock(start.getX()), QuartPos.fromBlock(start.getY()), QuartPos.fromBlock(start.getZ()),
-                context.randomState().sampler()));
+        // based on GenerationContext#isValidBiome, which takes a finished stub.
+        return context.validBiome().test(context.biomeResolver().getNoiseBiome(
+                QuartPos.fromBlock(start.getX()), QuartPos.fromBlock(start.getY()), QuartPos.fromBlock(start.getZ())));
     }
 }

@@ -1,6 +1,5 @@
 package com.ametrin.structures.processor;
 
-import com.ametrin.structures.registry.ASProcessors;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -15,7 +14,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import org.jspecify.annotations.Nullable;
 
@@ -24,7 +22,7 @@ import java.util.function.Predicate;
 /// Replaces every block matching `condition` with `change_to` at probability `chance`, rolled once per
 /// position. With `preserve_state`, properties both blocks share carry over, and so does block entity
 /// data, which is otherwise only kept when the block stays the same.
-public class ReplaceBlockProcessor extends StructureProcessor {
+public class ReplaceBlockProcessor implements StructureProcessor {
     public static final MapCodec<ReplaceBlockProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     Condition.CODEC.fieldOf("condition").forGetter(p -> p.condition),
                     Codec.floatRange(0.0F, 1.0F).fieldOf("chance").forGetter(p -> p.chance),
@@ -80,8 +78,8 @@ public class ReplaceBlockProcessor extends StructureProcessor {
     }
 
     @Override
-    protected StructureProcessorType<?> getType() {
-        return ASProcessors.REPLACE_BLOCK.get();
+    public MapCodec<ReplaceBlockProcessor> codec() {
+        return CODEC;
     }
 
     public sealed interface Condition extends Predicate<BlockState> {

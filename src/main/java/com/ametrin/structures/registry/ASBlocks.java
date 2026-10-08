@@ -37,12 +37,12 @@ public final class ASBlocks {
                     .noLootTable()
                     .noOcclusion()
                     .dynamicShape() // The support shape follows the block entity's becomes state, so it can't be cached per state.
-                    .pushReaction(PushReaction.BLOCK));
+                    .pushReaction(PushReaction.IMMOVEABLE));
 
     private static BlockBehaviour.Properties foamProperties(BlockBehaviour.Properties properties) {
         return properties
                 .mapColor(MapColor.NONE)
-                .pushReaction(PushReaction.DESTROY)
+                .pushReaction(PushReaction.POPPED)
                 .noCollision()
                 .strength(0.0F)
                 .noLootTable()
@@ -50,7 +50,7 @@ public final class ASBlocks {
                 .sound(SoundType.BAMBOO)
                 .isValidSpawn((_, _, _, _) -> false)
                 .isSuffocating((_, _, _) -> false)
-                .isViewBlocking((_, _, _) -> false)
+                .isViewBlocking((_, _, _, _) -> false)
                 .isRedstoneConductor((_, _, _) -> false);
     }
 }

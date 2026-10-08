@@ -2,21 +2,15 @@ package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.GenerationContexts;
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.PlacementFilters;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.biome.FixedBiomeSource;
-import net.minecraft.world.level.levelgen.DebugLevelSource;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
-import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
@@ -117,16 +111,6 @@ class SimpleStructureEvaluateTest {
     }
 
     private static Structure.GenerationContext context(MinecraftServer server, Predicate<Holder<Biome>> validBiome) {
-        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        return new Structure.GenerationContext(
-                server.registryAccess(),
-                new DebugLevelSource(plains),
-                new FixedBiomeSource(plains),
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
-                server.getStructureManager(),
-                0,
-                new ChunkPos(0, 0),
-                LevelHeightAccessor.create(-64, 384),
-                validBiome);
+        return GenerationContexts.overPlains(server, 0, validBiome);
     }
 }

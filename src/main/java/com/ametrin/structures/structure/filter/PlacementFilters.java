@@ -194,8 +194,7 @@ public final class PlacementFilters {
         public boolean test(Context context) {
             var allowedBiomePredicate = biomes.<Predicate<Holder<Biome>>>map(set -> set::contains).orElse(context.generation().validBiome());
             var box = context.footprint().inflatedBy(margin, 0, margin);
-            var source = context.generation().biomeSource();
-            var sampler = context.generation().randomState().sampler();
+            var resolver = context.generation().biomeResolver();
             var minX = QuartPos.fromBlock(box.minX());
             var maxX = QuartPos.fromBlock(box.maxX());
             var minZ = QuartPos.fromBlock(box.minZ());
@@ -211,8 +210,8 @@ public final class PlacementFilters {
                     var edgeColumn = x == ringMinX || x == ringMaxX;
                     var step = edgeColumn ? 1 : Math.max(1, ringMaxZ - ringMinZ);
                     for (int z = ringMinZ; z <= ringMaxZ; z += step) {
-                        if (!allowedBiomePredicate.test(source.getNoiseBiome(x, bottom, z, sampler))
-                                || top != bottom && !allowedBiomePredicate.test(source.getNoiseBiome(x, top, z, sampler))) {
+                        if (!allowedBiomePredicate.test(resolver.getNoiseBiome(x, bottom, z))
+                                || top != bottom && !allowedBiomePredicate.test(resolver.getNoiseBiome(x, top, z))) {
                             return false;
                         }
                     }

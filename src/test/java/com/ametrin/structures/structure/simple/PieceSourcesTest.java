@@ -1,21 +1,15 @@
 package com.ametrin.structures.structure.simple;
 
+import com.ametrin.structures.structure.GenerationContexts;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderSet;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.levelgen.*;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -94,18 +88,7 @@ class PieceSourcesTest {
     }
 
     private static List<StructurePiece> appendPieces(MinecraftServer server, PieceSource source, long seed) {
-        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        var generation = new Structure.GenerationContext(
-                server.registryAccess(),
-                new DebugLevelSource(plains),
-                new FixedBiomeSource(plains),
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
-                server.getStructureManager(),
-                new WorldgenRandom(new LegacyRandomSource(seed)),
-                seed,
-                new ChunkPos(0, 0),
-                LevelHeightAccessor.create(-64, 384),
-                HolderSet.direct(plains)::contains);
+        var generation = GenerationContexts.overPlains(server, seed, biome -> biome.is(Biomes.PLAINS));
         var pieces = new ArrayList<StructurePiece>();
         source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, Optional.empty()));
         return pieces;

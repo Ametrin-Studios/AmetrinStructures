@@ -13,6 +13,7 @@ import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
+import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
@@ -277,12 +278,14 @@ final class StructureSpread {
 
     private static Structure.GenerationContext context(ServerLevel level, ChunkGeneratorStructureState state, Structure structure, ChunkPos chunk) {
         var generator = level.getChunkSource().getGenerator();
+        var randomState = level.getChunkSource().randomState();
         return new Structure.GenerationContext(
                 level.registryAccess(),
                 generator,
                 generator.getBiomeSource(),
-                level.getChunkSource().randomState(),
-                level.getServer().getStructureManager(),
+                randomState.createClimateSampler(SamplerContext.builder().enableCaches().build()),
+                randomState,
+                level.getServer().getStructureTemplateManager(),
                 state.getLevelSeed(),
                 chunk,
                 level,

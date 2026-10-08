@@ -26,8 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class ExampleStructuresTest {
     @Test
     void examplesBootstrapAndEncode() {
-        var registries = RegistryPatchGenerator.createLookup(
-                        CompletableFuture.completedFuture(VanillaRegistries.createLookup()), ExampleStructures.registries())
+        var registries = RegistryPatchGenerator.createWorldLookup(
+                        CompletableFuture.completedFuture(VanillaRegistries.createWorldLookup()), ExampleStructures.registries())
                 .join()
                 .full();
         var ops = registries.createSerializationContext(JsonOps.INSTANCE);

@@ -42,7 +42,8 @@ final class XaeroSpreadWaypoints {
         manager.clearOrigin(foundOrigin);
         manager.clearOrigin(rejectedOrigin);
 
-        var color = WaypointColor.fromIndex(payload.color());
+        // Xaero's first 16 colors are the team colors, in the same order.
+        var color = WaypointColor.fromIndex(payload.color().ordinal());
         var found = manager.get(foundOrigin);
         for (int i = 0; i < payload.found().size(); i++) {
             var spot = payload.found().get(i);

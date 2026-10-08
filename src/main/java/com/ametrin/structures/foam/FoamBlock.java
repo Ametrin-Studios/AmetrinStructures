@@ -1,8 +1,6 @@
 package com.ametrin.structures.foam;
 
 import com.ametrin.structures.registry.ASTags;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -31,11 +29,6 @@ import java.util.Optional;
 ///
 /// replacement state overwrites what the [RemoveFoamProcessor] specifies.
 public class FoamBlock extends Block {
-    public static final MapCodec<FoamBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                    BlockState.CODEC.optionalFieldOf("replacement_state").forGetter(FoamBlock::replacementState),
-                    propertiesCodec())
-            .apply(instance, FoamBlock::new));
-
     private final Optional<BlockState> replacementState;
 
     public FoamBlock(Optional<BlockState> replacementState, Properties properties) {
@@ -166,10 +159,5 @@ public class FoamBlock extends Block {
     @Override
     protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
         return 1.0F;
-    }
-
-    @Override
-    public MapCodec<? extends FoamBlock> codec() {
-        return CODEC;
     }
 }

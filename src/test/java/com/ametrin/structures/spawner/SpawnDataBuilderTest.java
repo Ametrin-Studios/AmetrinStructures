@@ -32,7 +32,7 @@ class SpawnDataBuilderTest {
         var helmet = new ItemStackTemplate(Items.LEATHER_HELMET, DataComponentPatch.builder()
                 .set(DataComponents.DYED_COLOR, new DyedItemColor(0xB02E26))
                 .build());
-        var tag = new SpawnDataBuilder(EntityType.ZOMBIE)
+        var tag = new SpawnDataBuilder(EntityTypes.ZOMBIE)
                 .name(Component.literal("Gravedigger"))
                 .nameVisible()
                 .maxHealth(40)
@@ -45,7 +45,7 @@ class SpawnDataBuilderTest {
                 .equip(EquipmentSlot.MAINHAND, Items.IRON_SHOVEL)
                 .equip(EquipmentSlot.HEAD, helmet)
                 .dropChance(EquipmentSlot.MAINHAND, 1.0F)
-                .passenger(new SpawnDataBuilder(EntityType.CHICKEN).name(Component.literal("Clucky")))
+                .passenger(new SpawnDataBuilder(EntityTypes.CHICKEN).name(Component.literal("Clucky")))
                 .build()
                 .entityToSpawn();
 
