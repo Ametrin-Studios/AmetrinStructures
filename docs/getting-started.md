@@ -73,9 +73,9 @@ Two calls connect the register to the game:
 ExampleStructures.REGISTER.register(modBus);
 
 // Datagen
-var registries = new RegistrySetBuilder();
-ExampleStructures.REGISTER.bootstrap(registries);
-event.createWorldRegistryObjects(registries);
+modBus.addListener(GatherDataRegistryEntriesEvent.class, event -> {
+    ExampleStructures.REGISTER.bootstrap(event);
+});
 ```
 
 Run datagen, then start the game. `/locate structure examplemod:ruined_tower` finds your structure.

@@ -181,13 +181,13 @@ static void bootstrap(BootstrapContext<FixturePreset> context) {
             .add(new WeightedFixture(1, 0.5F, new Fixtures.LootContainer(BuiltInLootTables.BURIED_TREASURE)))
             .build());
     context.register(GUARD, FixturePreset.builder()
-            .entity(1, new SpawnDataBuilder(EntityType.SKELETON).equipment(GUARD_EQUIPMENT))
-            .entity(1, new SpawnDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON))
+            .entity(1, new SpawnDataBuilder(EntityTypes.SKELETON).equipment(GUARD_EQUIPMENT))
+            .entity(1, new SpawnDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON))
             .build());
 }
 
-// Datagen
-registries.add(ASRegistries.FIXTURE_PRESET, ExamplePresets::bootstrap);
+// Datagen, in the GatherDataRegistryEntriesEvent listener
+event.add(ASRegistries.FIXTURE_PRESET, ExamplePresets::bootstrap);
 ```
 
 In a fixture's screen, pick the `preset` type and enter the preset's id. It's one alternative like
@@ -253,8 +253,8 @@ in deserts and a zombie spawner elsewhere:
 ```java
 var desert = new FixtureConditions.InBiome(context.lookup(Registries.BIOME).getOrThrow(Tags.Biomes.IS_DESERT));
 context.register(CRYPT_SPAWNER, FixturePreset.builder()
-        .add(new WeightedFixture(1, Fixtures.Spawner.of(EntityType.HUSK)).withConditions(desert))
-        .add(new WeightedFixture(1, Fixtures.Spawner.of(EntityType.ZOMBIE)).withConditions(new FixtureConditions.Not(desert)))
+        .add(new WeightedFixture(1, Fixtures.Spawner.of(EntityTypes.HUSK)).withConditions(desert))
+        .add(new WeightedFixture(1, Fixtures.Spawner.of(EntityTypes.ZOMBIE)).withConditions(new FixtureConditions.Not(desert)))
         .build());
 ```
 
@@ -276,13 +276,13 @@ static final ResourceKey<SpawnerProfile> CRYPT = ResourceKey.create(ASRegistries
 static void bootstrap(BootstrapContext<SpawnerProfile> context) {
     context.register(CRYPT, SpawnerProfile.builder()
             .spawnCount(2)
-            .add(EntityType.ZOMBIE, 3)
-            .add(new SpawnDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON), 1)
+            .add(EntityTypes.ZOMBIE, 3)
+            .add(new SpawnDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON), 1)
             .build());
 }
 
-// Datagen
-registries.add(ASRegistries.SPAWNER_PROFILE, ExampleSpawnerProfiles::bootstrap);
+// Datagen, in the GatherDataRegistryEntriesEvent listener
+event.add(ASRegistries.SPAWNER_PROFILE, ExampleSpawnerProfiles::bootstrap);
 ```
 
 Profiles live at `data/<namespace>/ametrin_structures/spawner_profile/<name>.json`. Every field is

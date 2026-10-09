@@ -25,6 +25,7 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.data.event.DatapackRegistryGatherer;
 import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 
 import java.util.List;
@@ -152,9 +153,9 @@ final class ExampleStructures {
         REGISTER.register(modBus);
     }
 
-    /// Datagen: writes the structures, structure sets and pools as JSON.
-    static void gatherRegistryEntries(GatherDataRegistryEntriesEvent event) {
-        event.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
-        REGISTER.bootstrap(event);
+    /// Datagen, on the [GatherDataRegistryEntriesEvent]: writes the structures, structure sets and pools as JSON.
+    static void gatherRegistryEntries(DatapackRegistryGatherer registries) {
+        registries.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
+        REGISTER.bootstrap(registries);
     }
 }

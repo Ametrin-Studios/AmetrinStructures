@@ -3,50 +3,82 @@ package com.ametrin.structures.example;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
+import net.minecraft.core.RegistrySetBuilder;
+import net.minecraft.core.registries.MultiRegistryBootstrap;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.SingleRegistryBootstrap;
+import net.minecraft.data.registries.RegistryPatchGenerator;
+import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.neoforged.neoforge.data.event.DatapackRegistryGatherer;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /// Runs the examples through the same registry bootstrap datagen uses, and encodes every result.
 class ExampleStructuresTest {
-//    @Test
-//    void examplesBootstrapAndEncode() {
-//        var registries = RegistryPatchGenerator.createWorldLookup(
-//                        CompletableFuture.completedFuture(VanillaRegistries.createWorldLookup()), ...)
-//                .join()
-//                .full();
-//        var ops = registries.createSerializationContext(JsonOps.INSTANCE);
-//
-//        for (var simple : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves/small", "graves/large", "castle/ruin"}) {
-//            assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, simple, "ametrin_structures:simple");
-//        }
-//        assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, "castle", "ametrin_structures:extended_jigsaw");
-//        for (var set : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves", "castle"}) {
-//            assertType(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, set, null);
-//        }
-//        // Sets mix structure types and take any placement.
-//        assertEquals(2, structureCount(registries, ops, "castle"));
-//        assertEquals("minecraft:random_spread", encode(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, "graves")
-//                .getAsJsonObject().getAsJsonObject("placement").get("type").getAsString());
-//        for (var pool : new String[]{"castle/start", "castle/walls", "castle/wall_ends", "castle/moat"}) {
-//            encode(registries, ops, Registries.TEMPLATE_POOL, StructureTemplatePool.DIRECT_CODEC, pool);
-//        }
-//
-//        // Every element is the library's; noFoamProcessing() only turns off its foam removal.
-//        var walls = firstElement(registries, ops, "castle/walls");
-//        var wallEnds = firstElement(registries, ops, "castle/wall_ends");
-//        assertEquals("ametrin_structures:single_pool_element", walls.get("element_type").getAsString());
-//        assertEquals("ametrin_structures:single_pool_element", wallEnds.get("element_type").getAsString());
-//        assertFalse(walls.has("process_foam"));
-//        assertFalse(wallEnds.get("process_foam").getAsBoolean());
-//    }
+    @Test
+    void examplesBootstrapAndEncode() {
+        var registries = RegistryPatchGenerator.createWorldLookup(
+                        CompletableFuture.completedFuture(VanillaRegistries.createWorldLookup()), gather(ExampleStructures::gatherRegistryEntries))
+                .join()
+                .full();
+        var ops = registries.createSerializationContext(JsonOps.INSTANCE);
+
+        for (var simple : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves/small", "graves/large", "castle/ruin"}) {
+            assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, simple, "ametrin_structures:simple");
+        }
+        assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, "castle", "ametrin_structures:extended_jigsaw");
+        for (var set : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves", "castle"}) {
+            assertType(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, set, null);
+        }
+        // Sets mix structure types and take any placement.
+        assertEquals(2, structureCount(registries, ops, "castle"));
+        assertEquals("minecraft:random_spread", encode(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, "graves")
+                .getAsJsonObject().getAsJsonObject("placement").get("type").getAsString());
+        for (var pool : new String[]{"castle/start", "castle/walls", "castle/wall_ends", "castle/moat"}) {
+            encode(registries, ops, Registries.TEMPLATE_POOL, StructureTemplatePool.DIRECT_CODEC, pool);
+        }
+
+        // Every element is the library's; noFoamProcessing() only turns off its foam removal.
+        var walls = firstElement(registries, ops, "castle/walls");
+        var wallEnds = firstElement(registries, ops, "castle/wall_ends");
+        assertEquals("ametrin_structures:single_pool_element", walls.get("element_type").getAsString());
+        assertEquals("ametrin_structures:single_pool_element", wallEnds.get("element_type").getAsString());
+        assertFalse(walls.has("process_foam"));
+        assertFalse(wallEnds.get("process_foam").getAsBoolean());
+    }
+
+    // Collects what a mod adds during GatherDataRegistryEntriesEvent, which only datagen fires.
+    private static RegistrySetBuilder gather(Consumer<DatapackRegistryGatherer> gatherRegistryEntries) {
+        var builder = new RegistrySetBuilder();
+        gatherRegistryEntries.accept(new DatapackRegistryGatherer() {
+            @Override
+            public <T> DatapackRegistryGatherer add(ResourceKey<? extends Registry<T>> registryKey, SingleRegistryBootstrap<T> bootstrap) {
+                builder.add(registryKey, bootstrap);
+                return this;
+            }
+
+            @Override
+            public DatapackRegistryGatherer add(MultiRegistryBootstrap bootstrap) {
+                builder.add(bootstrap);
+                return this;
+            }
+        });
+        return builder;
+    }
 
     private static int structureCount(HolderLookup.Provider registries, RegistryOps<JsonElement> ops, String set) {
         return encode(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, set)
