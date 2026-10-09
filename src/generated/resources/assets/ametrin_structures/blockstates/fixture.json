@@ -1,7 +1,57 @@
 {
   "variants": {
-    "": {
-      "model": "minecraft:block/structure_block"
+    "orientation=down_east": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 90,
+      "y": 90
+    },
+    "orientation=down_north": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 90
+    },
+    "orientation=down_south": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 90,
+      "y": 180
+    },
+    "orientation=down_west": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 90,
+      "y": 270
+    },
+    "orientation=east_up": {
+      "model": "ametrin_structures:block/fixture",
+      "y": 90
+    },
+    "orientation=north_up": {
+      "model": "ametrin_structures:block/fixture"
+    },
+    "orientation=south_up": {
+      "model": "ametrin_structures:block/fixture",
+      "y": 180
+    },
+    "orientation=up_east": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 270,
+      "y": 270
+    },
+    "orientation=up_north": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 270,
+      "y": 180
+    },
+    "orientation=up_south": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 270
+    },
+    "orientation=up_west": {
+      "model": "ametrin_structures:block/fixture",
+      "x": 270,
+      "y": 90
+    },
+    "orientation=west_up": {
+      "model": "ametrin_structures:block/fixture",
+      "y": 270
     }
   }
 }
