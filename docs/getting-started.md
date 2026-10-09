@@ -138,8 +138,8 @@ REGISTER.set("graves")
         .build();
 ```
 
-Structures in a set are named `<set>_<suffix>`, here `examplemod:graves_small` and
-`examplemod:graves_large`. `horizontalPlacement(...)` accepts any vanilla placement.
+Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and
+`examplemod:graves/large`. `horizontalPlacement(...)` accepts any vanilla placement.
 
 **Jigsaw and custom structures.** When a structure outgrows the simple type, replace its `simple(...)`
 with `structure(...)` and keep the rest. `ExtendedJigsawStructure.builder(...)` creates a jigsaw
@@ -173,10 +173,10 @@ programArguments.addAll '--input', file('src/main/resources/').getAbsolutePath()
 event.addProvider(new StructureTemplateUpdater(event.getInputs()));
 ```
 
-Commit the rewritten files like any other change.
+Commit the rewritten files like any other change. I recommend you to only do this once after updating minecraft.
 
-For a real-world example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a
-source-available mod using this library.
+For a real-world example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a source-available mod using this library.
 
-See [extending.md](extending.md) to add your own building blocks, and [debugging.md](debugging.md) for the tools that
-help tune a structure.
+See [extending.md](extending.md) to add your own building blocks, and [debugging.md](debugging.md) for the tools that help you tune a structure.
+
+If you have further questions ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).
