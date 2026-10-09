@@ -3,8 +3,6 @@ package com.ametrin.structures.spawner;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.random.Weighted;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.entity.EntityType;
@@ -12,7 +10,6 @@ import net.minecraft.world.level.SpawnData;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /// A spawner placed with a profile applies it every time it loads, so changing the profile updates spawners already generated.
 /// Without spawn potentials the spawner keeps the entity it has.
@@ -21,7 +18,8 @@ import java.util.Optional;
 /// context.register(CRYPT, SpawnerProfile.builder()
 ///         .spawnCount(2)
 ///         .add(EntityType.ZOMBIE, 3)
-///         .add(new SpawnDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON), 1)
+///         .add(new EntityDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON), 1)
+///         .add(SpawnDataBuilder.of(EntityType.HUSK).noLightLimit(), 1)
 ///         .build());
 /// ```
 public record SpawnerProfile(
@@ -109,9 +107,11 @@ public record SpawnerProfile(
         }
 
         public Builder add(EntityType<?> type, int weight) {
-            var tag = new CompoundTag();
-            tag.putString("id", BuiltInRegistries.ENTITY_TYPE.getKey(type).toString());
-            return add(new SpawnData(tag, Optional.empty(), Optional.empty()), weight);
+            return add(SpawnDataBuilder.of(type), weight);
+        }
+
+        public Builder add(EntityDataBuilder entity, int weight) {
+            return add(SpawnDataBuilder.of(entity), weight);
         }
 
         public Builder add(SpawnDataBuilder data, int weight) {

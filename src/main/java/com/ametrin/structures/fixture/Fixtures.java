@@ -15,7 +15,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.InclusiveRange;
@@ -324,39 +323,30 @@ public final class Fixtures {
         }
 
         public static SpawnEntity of(EntityType<?> entity) {
-            return new SpawnEntity(BuiltInRegistries.ENTITY_TYPE.getResourceKey(entity).orElseThrow(), Optional.empty(), Optional.empty(),
-                    DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE, Optional.empty(), Map.of());
+            return of(new EntityDataBuilder(entity));
         }
 
-        /// What `spawnData` describes, such as one from a [SpawnDataBuilder]. Its custom spawn rules
-        /// don't apply: the entity always spawns. The death loot table becomes its own field, so it
-        /// doesn't turn off the entity's randomization.
-        ///
-        /// @throws IllegalArgumentException when the spawn data names no entity, or its equipment
-        ///                                  drop chances differ between slots
-        public static SpawnEntity of(SpawnData spawnData) {
-            var extraData = spawnData.entityToSpawn().copy();
-            var id = extraData.getString("id").map(Identifier::tryParse)
-                    .orElseThrow(() -> new IllegalArgumentException("spawn data names no entity"));
-            var deathLootTable = extraData.read(SpawnDataBuilder.DEATH_LOOT_TABLE_KEY, LootTable.KEY_CODEC);
+        /// death loot table becomes its own field, so it doesn't turn off the entity's randomization.
+        public static SpawnEntity of(EntityDataBuilder entity) {
+            var extraData = entity.build();
+            var deathLootTable = extraData.read(EntityDataBuilder.DEATH_LOOT_TABLE_KEY, LootTable.KEY_CODEC);
             extraData.remove("id");
-            extraData.remove(SpawnDataBuilder.DEATH_LOOT_TABLE_KEY);
-            var equipment = spawnData.equipment();
+            extraData.remove(EntityDataBuilder.DEATH_LOOT_TABLE_KEY);
             return new SpawnEntity(
-                    ResourceKey.create(Registries.ENTITY_TYPE, id),
+                    BuiltInRegistries.ENTITY_TYPE.getResourceKey(entity.type()).orElseThrow(),
                     extraData.isEmpty() ? Optional.empty() : Optional.of(extraData),
-                    equipment.map(EquipmentTable::lootTable),
-                    equipment.map(SpawnEntity::dropChance).orElse(DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE),
+                    Optional.empty(),
+                    DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE,
                     deathLootTable,
                     Map.of());
         }
 
-        private static float dropChance(EquipmentTable equipment) {
-            var chances = equipment.slotDropChances().values().stream().distinct().toList();
-            if (chances.size() > 1) {
-                throw new IllegalArgumentException("equipment drop chances must be the same for every slot");
-            }
-            return chances.isEmpty() ? 0.0F : chances.getFirst();
+        public SpawnEntity withEquipment(ResourceKey<LootTable> lootTable) {
+            return withEquipment(lootTable, equipmentDropChance);
+        }
+
+        public SpawnEntity withEquipment(ResourceKey<LootTable> lootTable, float dropChance) {
+            return new SpawnEntity(entity, nbt, Optional.of(lootTable), dropChance, deathLootTable, items);
         }
 
         @Override
