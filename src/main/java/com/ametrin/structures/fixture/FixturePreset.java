@@ -1,12 +1,11 @@
 package com.ametrin.structures.fixture;
 
-import com.ametrin.structures.spawner.SpawnDataBuilder;
+import com.ametrin.structures.spawner.EntityDataBuilder;
 import com.ametrin.structures.spawner.SpawnerProfile;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.SpawnData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,14 +58,8 @@ public record FixturePreset(List<WeightedFixture> fixtures) {
             return add(weight, Fixtures.SpawnEntity.of(entity));
         }
 
-        /// Spawns what `spawnData` describes, see [Fixtures.SpawnEntity#of(SpawnData)].
-        public Builder entity(int weight, SpawnData spawnData) {
-            return add(weight, Fixtures.SpawnEntity.of(spawnData));
-        }
-
-        /// Spawns what `spawnData` describes, see [Fixtures.SpawnEntity#of(SpawnData)].
-        public Builder entity(int weight, SpawnDataBuilder spawnData) {
-            return entity(weight, spawnData.build());
+        public Builder entity(int weight, EntityDataBuilder entity) {
+            return add(weight, Fixtures.SpawnEntity.of(entity));
         }
 
         /// A spawner block for `entity` with vanilla's settings, see [Fixtures.Spawner#of(EntityType)].

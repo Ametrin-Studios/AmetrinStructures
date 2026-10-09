@@ -181,8 +181,8 @@ static void bootstrap(BootstrapContext<FixturePreset> context) {
             .add(new WeightedFixture(1, 0.5F, new Fixtures.LootContainer(BuiltInLootTables.BURIED_TREASURE)))
             .build());
     context.register(GUARD, FixturePreset.builder()
-            .entity(1, new SpawnDataBuilder(EntityTypes.SKELETON).equipment(GUARD_EQUIPMENT))
-            .entity(1, new SpawnDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON))
+            .add(1, Fixtures.SpawnEntity.of(EntityTypes.SKELETON).withEquipment(GUARD_EQUIPMENT))
+            .entity(1, new EntityDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON))
             .build());
 }
 
@@ -277,7 +277,8 @@ static void bootstrap(BootstrapContext<SpawnerProfile> context) {
     context.register(CRYPT, SpawnerProfile.builder()
             .spawnCount(2)
             .add(EntityTypes.ZOMBIE, 3)
-            .add(new SpawnDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON), 1)
+            .add(new EntityDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON), 1)
+            .add(SpawnDataBuilder.of(EntityTypes.HUSK).noLightLimit(), 1)
             .build());
 }
 
@@ -288,11 +289,13 @@ event.add(ASRegistries.SPAWNER_PROFILE, ExampleSpawnerProfiles::bootstrap);
 Profiles live at `data/<namespace>/ametrin_structures/spawner_profile/<name>.json`. Every field is
 optional and defaults to vanilla's value; without `spawn_potentials` the spawner keeps its entity.
 
-`SpawnDataBuilder` describes the entity for spawners and entity fixtures alike: name, health and
-other attributes, effects, gear per slot or from a loot table, death loot, left-handedness, babies,
-riders and more. Setting anything besides an equipment loot table makes the entity skip its own
-spawn randomization, such as random armor, as vanilla spawners do; entity fixtures also keep it with
-a death loot table.
+`EntityDataBuilder` describes an entity for spawners, entity fixtures and riders alike: name, health
+and other attributes, effects, gear per slot, death loot, left-handedness, babies, riders and more.
+Setting any of it makes the entity skip its own spawn randomization, such as random armor, as vanilla
+spawners do; entity fixtures also keep it with a death loot table.
+
+`SpawnDataBuilder` adds what only spawners use: an equipment loot table and spawn rules, such as
+`noLightLimit()` for spawning in daylight. Entity fixtures take their equipment loot table with `withEquipment(...)`.
 
 Reference: [`SpawnerProfile`](../src/main/java/com/ametrin/structures/spawner/SpawnerProfile.java) and [
 `ASSpawnerProfiles`](../src/main/java/com/ametrin/structures/registry/ASSpawnerProfiles.java).

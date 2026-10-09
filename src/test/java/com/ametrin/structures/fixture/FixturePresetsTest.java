@@ -1,7 +1,7 @@
 package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASRegistries;
-import com.ametrin.structures.spawner.SpawnDataBuilder;
+import com.ametrin.structures.spawner.EntityDataBuilder;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
@@ -98,24 +98,26 @@ class FixturePresetsTest {
     }
 
     @Test
-    void anEntityTakesItsSpawnData() {
-        var spawnData = new SpawnDataBuilder(EntityTypes.ZOMBIE)
-                .equipment(BuiltInLootTables.SIMPLE_DUNGEON)
-                .passenger(EntityTypes.CHICKEN)
-                .build();
-        var alternative = FixturePreset.builder().entity(2, spawnData).build().fixtures().getFirst();
+    void anEntityTakesItsEntityData() {
+        var alternative = FixturePreset.builder().entity(2, new EntityDataBuilder(EntityTypes.ZOMBIE).passenger(EntityTypes.CHICKEN))
+                .build().fixtures().getFirst();
         assertEquals(2, alternative.weight());
         var entity = assertInstanceOf(Fixtures.SpawnEntity.class, alternative.fixture());
         assertEquals(Identifier.withDefaultNamespace("zombie"), entity.entity().identifier());
+        assertTrue(entity.nbt().orElseThrow().toString().contains("minecraft:chicken"));
+        assertFalse(entity.nbt().orElseThrow().contains("id"));
+    }
+
+    @Test
+    void equipmentKeepsTheDefaultDropChance() {
+        var entity = Fixtures.SpawnEntity.of(EntityTypes.ZOMBIE).withEquipment(BuiltInLootTables.SIMPLE_DUNGEON);
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.equipment());
         assertEquals(0.085F, entity.equipmentDropChance());
-        assertTrue(entity.nbt().orElseThrow().toString().contains("minecraft:chicken"));
     }
 
     @Test
     void deathLootIsItsOwnFieldNotExtraData() {
-        var spawnData = new SpawnDataBuilder(EntityTypes.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON).build();
-        var entity = (Fixtures.SpawnEntity) FixturePreset.builder().entity(1, spawnData).build().fixtures().getFirst().fixture();
+        var entity = Fixtures.SpawnEntity.of(new EntityDataBuilder(EntityTypes.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON));
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.deathLootTable());
         assertEquals(Optional.empty(), entity.nbt(), "extra data would turn off the entity's randomization");
     }
