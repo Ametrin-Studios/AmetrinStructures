@@ -54,6 +54,8 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Where export_templates puts templates (by namespace)
+            systemProperty 'ametrin_structures.template_sources', files('src/main/resources', 'src/gametest/resources').asPath
         }
 
         server {
