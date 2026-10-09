@@ -9,11 +9,10 @@ updateJSONURL = "https://raw.githubusercontent.com/Ametrin-Studios/AmetrinStruct
 displayURL = "https://www.curseforge.com/minecraft/mc-mods/ametrin-structures" #optional
 #logoFile="examplemod.png" #optional
 #credits="" #optional
-authors = "Ametrin Studios"
+authors = "Ametrin Studios (BarionLP)"
 
 description = '''
-A library for structure and worldgen developers: authoring foam, structure and simple-structure
-builders, grid placement, lake-proofing, fixture blocks and spawner profiles.
+A library mod for structure developers: foam, structure builders, grid placement, fixtures and spawner profiles.
 '''
 
 [[mixins]]
