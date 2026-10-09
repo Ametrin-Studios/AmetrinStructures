@@ -77,7 +77,7 @@ class SpawnDataBuilderTest {
     // The rules sit next to the entity, so it keeps its own spawn randomization.
     @Test
     void spawnRulesLeaveTheEntityAlone() {
-        var data = new SpawnDataBuilder(EntityType.ZOMBIE).anyLight().build();
+        var data = new SpawnDataBuilder(EntityType.ZOMBIE).noLightLimit().build();
 
         var any = new InclusiveRange<>(0, 15);
         assertEquals(Optional.of(new SpawnData.CustomSpawnRules(any, any)), data.customSpawnRules());

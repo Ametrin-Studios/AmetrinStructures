@@ -165,8 +165,8 @@ public final class SpawnDataBuilder {
 
     /// Replaces the entity's own spawn rules with light ranges from 0 to 15.
     /// Spawners only.
-    public SpawnDataBuilder spawnRules(InclusiveRange<Integer> blockLight, InclusiveRange<Integer> skyLight) {
-        return spawnRules(new SpawnData.CustomSpawnRules(blockLight, skyLight));
+    public SpawnDataBuilder spawnRules(InclusiveRange<Integer> blockLightLimit, InclusiveRange<Integer> skyLightLimit) {
+        return spawnRules(new SpawnData.CustomSpawnRules(blockLightLimit, skyLightLimit));
     }
 
     /// Replaces the entity's own spawn rules with light ranges from 0 to 15.
@@ -177,7 +177,7 @@ public final class SpawnDataBuilder {
     }
 
     /// Spawners only.
-    public SpawnDataBuilder anyLight() {
+    public SpawnDataBuilder noLightLimit() {
         var any = new InclusiveRange<>(0, 15);
         return spawnRules(any, any);
     }
