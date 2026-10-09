@@ -48,24 +48,21 @@ public final class ExampleStructures {
     public static final DeferredStructureRegister REGISTER = new DeferredStructureRegister("examplemod");
 
     public static final DeferredStructureHolder RUINED_TOWER = REGISTER.set("ruined_tower") // create the structure set
-            .scatteredGridPlacement(24, 0.6F)
+            .scatteredGridPlacement(p -> p.spacing(24).probability(0.6F))
             .simple(tower -> tower // a single simple structure in the set
                     .surface() // place on the worlds surface
-                    .single("ruined_tower") // a single template is placed
+                    .single(t -> t.template("ruined_tower")) // a single template is placed
                     .filterFlatness(3)
                     .biomes(BiomeTags.IS_FOREST))
             .build();
 }
 ```
 
-- `scatteredGridPlacement(24, 0.6F)`: one attempt per 24 by 24 chunk cell, 60% of which go ahead.
-- `single("ruined_tower")`: places the template `examplemod:ruined_tower`.
+- `scatteredGridPlacement(...)`: one attempt per 24 by 24 chunk cell, 60% of which go ahead.
+- `single(...)`: places the template `examplemod:ruined_tower`.
 - `surface()`: the structure's origin sits on the terrain.
-- `filterFlatness(3)`: skips spots where the terrain under it varies by more than 3 blocks.
+- `filterFlatness(3)`: skips spots where the terrain under it varies by more than 3 blocks. Use sparingly.
 - `biomes(...)`: where it may generate. Defaults to every overworld biome.
-
-`build()` checks everything right away, so a mistake shows up when datagen runs, not while you
-explore a world.
 
 ## 4. Wire it up
 
@@ -76,11 +73,9 @@ Two calls connect the register to the game:
 ExampleStructures.REGISTER.register(modBus);
 
 // Datagen
-modBus.addListener(GatherDataEvent.Client.class, event -> {
-    var registries = new RegistrySetBuilder();
-    ExampleStructures.REGISTER.bootstrap(registries);
-    event.createWorldRegistryObjects(registries);
-});
+var registries = new RegistrySetBuilder();
+ExampleStructures.REGISTER.bootstrap(registries);
+event.createWorldRegistryObjects(registries);
 ```
 
 Run datagen, then start the game. `/locate structure examplemod:ruined_tower` finds your structure.
@@ -100,14 +95,11 @@ HeightAnchor.surface(-24))` picks a random height, e.g. for something buried.
 `verticalPlacementMode(...)` sets where the terrain is measured: at the origin corner, averaged
 over the corners, or at the lowest corner.
 
-**Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't
-float on uneven terrain.
+**Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't float on uneven terrain.
 
-**Filters.** Besides flatness, filters check height ranges, the ground block, water depth, being
-submerged, or that the whole structure stays inside its biomes.
+**Filters.** Besides flatness, filters check height ranges, water depth, being submerged, or that the whole structure stays inside its biomes.
 
-**Structure settings.** `terrainAdaptation(...)`, `step(...)` and `noSpawns(...)` work like on any
-vanilla structure.
+**Structure settings.** `terrainAdaptation(...)`, `step(...)` and `noSpawns(...)` work like on any vanilla structure.
 
 **Overhangs.** Terrain adaptation fits the terrain to the whole template, so a wide roof or a
 balcony gets a hill raised under it. Give the template a smaller box to fit to:
@@ -127,7 +119,7 @@ order, and falls back to the next when one doesn't fit:
 
 ```java
 REGISTER.set("graves")
-        .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
+        .horizontalPlacement(new YourCustomPlacement(...)) // you can of keep using scatteredGridPlacement
         .simple("small", grave -> grave
                 .single("graves/small")
                 .surface()
@@ -142,11 +134,11 @@ Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` a
 `examplemod:graves/large`. `horizontalPlacement(...)` accepts any vanilla placement.
 
 **Jigsaw and custom structures.** When a structure outgrows the simple type, replace its `simple(...)`
-with `structure(...)` and keep the rest. `ExtendedJigsawStructure.builder(...)` creates a jigsaw
-structure, and `JigsawPools` declares its template pools in datagen with far less boilerplate. Its
-elements run fixtures and remove foam like simple structures do, and `foundation()` on an element
-extends that piece to the ground. Pools written by hand need `ametrin_structures:single_pool_element`
-for that; vanilla's element places fixture blocks as they were saved.
+with `structure(...)` or `jigsaw(...)` and keep the rest.  
+`JigsawPools` declares jigsaw template pools in datagen with far less boilerplate.
+Its elements place fixtures and remove foam like simple structures do, and `foundation()` on an element
+extends that piece to the ground. Pools written by hand need `ametrin_structures:single_pool_element` for that.
+Vanilla's element places fixture blocks as they were saved.
 Simple, jigsaw and custom structures can share one set.
 
 **Fixtures.** A fixture block inside a template fills a container with loot, spawns an entity, places a
