@@ -13,7 +13,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -21,7 +23,10 @@ import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.storage.loot.LootTable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /// An entity's data, for spawners, entity fixtures and passengers.
 ///
@@ -41,6 +46,10 @@ public final class EntityDataBuilder {
 
     public EntityDataBuilder(EntityType<?> entity) {
         this.entity = entity;
+    }
+
+    public static EntityDataBuilder of(EntityType<?> entity) {
+        return new EntityDataBuilder(entity);
     }
 
     public EntityDataBuilder name(Component name) {

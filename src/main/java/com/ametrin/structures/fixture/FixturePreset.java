@@ -58,7 +58,6 @@ public record FixturePreset(List<WeightedFixture> fixtures) {
             return add(weight, Fixtures.SpawnEntity.of(entity));
         }
 
-        /// See [Fixtures.SpawnEntity#of(EntityDataBuilder)].
         public Builder entity(int weight, EntityDataBuilder entity) {
             return add(weight, Fixtures.SpawnEntity.of(entity));
         }
