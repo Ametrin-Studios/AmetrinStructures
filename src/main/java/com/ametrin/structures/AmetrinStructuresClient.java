@@ -27,9 +27,9 @@ public class AmetrinStructuresClient {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
     }
 
-    @EventBusSubscriber(modid = AmetrinStructures.MOD_ID, value = Dist.CLIENT)
-    public static final class ModBus {
-        private ModBus() {}
+    @EventBusSubscriber(value = Dist.CLIENT)
+    public static final class EventBus {
+        private EventBus() {}
 
         @SubscribeEvent
         static void registerPayloadHandlers(RegisterClientPayloadHandlersEvent event) {
@@ -47,11 +47,6 @@ public class AmetrinStructuresClient {
                 event.registerBlockEntityRenderer(BlockEntityTypes.STRUCTURE_BLOCK, _ -> new StructureBlockRenderer());
             }
         }
-    }
-
-    @EventBusSubscriber(modid = AmetrinStructures.MOD_ID, value = Dist.CLIENT)
-    public static final class GameBus {
-        private GameBus() {}
 
         @SubscribeEvent
         static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {

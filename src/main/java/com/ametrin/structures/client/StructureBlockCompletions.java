@@ -1,6 +1,5 @@
 package com.ametrin.structures.client;
 
-import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.network.ASPayloads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
@@ -15,9 +14,8 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-/// Completes template ids in the structure block's name box, from every template the server can load.
 @ApiStatus.Internal
-@EventBusSubscriber(modid = AmetrinStructures.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(value = Dist.CLIENT)
 public final class StructureBlockCompletions {
     private static final String NAME_BOX_KEY = "structure_block.structure_name";
 

@@ -1,6 +1,5 @@
 package com.ametrin.structures.spawner;
 
-import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.registry.ASAttachments;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
@@ -13,7 +12,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import org.jetbrains.annotations.ApiStatus;
 
-@EventBusSubscriber(modid = AmetrinStructures.MOD_ID)
+@EventBusSubscriber
 @ApiStatus.Internal
 public final class SpawnerEvents {
     private SpawnerEvents() {}
