@@ -24,7 +24,6 @@ import java.util.Optional;
 ///
 /// - `grid_offset` shifts the whole grid. Left out, it is derived from the world seed and the salt, so structures sharing a spacing don't cluster at the same cell corners.
 /// - `random_offset` moves each structure up to that many chunks from its cell corner (0 is a strict grid)
-/// - `spread_type` picks how that move is rolled. `triangular`, the default, favors the middle of the range, so neighbors rarely end up next to each other; `linear` is uniform, as in vanilla's random spread
 ///
 /// Also has an exclusion zone for a structure tag and a minimum distance from the world origin.
 public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // extends RandomSpreadStructurePlacement because /locate and similar have no generic case
@@ -43,7 +42,6 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
                     Codec.intRange(1, MAX_SPACING).fieldOf("spacing").forGetter(ScatteredGridPlacement::spacing),
                     GridOffset.CODEC.optionalFieldOf("grid_offset").forGetter(ScatteredGridPlacement::declaredGridOffset),
                     Codec.intRange(0, MAX_SPACING).fieldOf("random_offset").forGetter(ScatteredGridPlacement::randomOffset),
-                    RandomSpreadType.CODEC.optionalFieldOf("spread_type", RandomSpreadType.TRIANGULAR).forGetter(ScatteredGridPlacement::spreadType),
                     ExtraCodecs.NON_NEGATIVE_INT.optionalFieldOf("min_chunks_from_center", 0).forGetter(ScatteredGridPlacement::minChunksFromCenter))
             .apply(instance, ScatteredGridPlacement::new));
 
@@ -60,7 +58,6 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
             int spacing,
             Optional<GridOffset> gridOffset,
             int randomOffset,
-            RandomSpreadType spreadType,
             int minChunksFromCenter) {
         randomOffset = Mth.clamp(randomOffset, 0, spacing - 1);
         super(
@@ -71,7 +68,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
                 Optional.empty(),
                 spacing,
                 spacing - 1 - randomOffset,
-                spreadType);
+                RandomSpreadType.LINEAR);
         this.tagExclusionZone = exclusionZone;
         this.gridOffset = gridOffset.map(offset -> offset.within(spacing));
         this.randomOffset = randomOffset;
@@ -192,7 +189,6 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         private Optional<GridOffset> gridOffset = Optional.empty();
         @Nullable
         private Integer randomOffset;
-        private RandomSpreadType spreadType = RandomSpreadType.TRIANGULAR;
         private int minChunksFromCenter = 0;
 
         public Builder locateOffset(Vec3i locateOffset) {
@@ -241,12 +237,6 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
             return this;
         }
 
-        /// Defaults to triangular, which favors the middle of the offset range. Linear is uniform, as in vanilla.
-        public Builder spreadType(RandomSpreadType spreadType) {
-            this.spreadType = spreadType;
-            return this;
-        }
-
         /// Keeps the structure at least this many chunks, in a straight line, from the world origin.
         public Builder minChunksFromCenter(int minChunksFromCenter) {
             this.minChunksFromCenter = minChunksFromCenter;
@@ -271,7 +261,6 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
                     spacing,
                     gridOffset,
                     randomOffset == null ? (int) (spacing * 0.7) : randomOffset,
-                    spreadType,
                     minChunksFromCenter);
         }
     }
