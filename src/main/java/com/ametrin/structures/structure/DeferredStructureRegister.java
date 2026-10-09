@@ -10,6 +10,7 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -69,9 +70,16 @@ public final class DeferredStructureRegister {
         structures.forEach((key, factory) -> context.register(key, factory.apply(context)));
     }
 
-    /// Adds every declared structure and structure set. Call in datagen.
+    /// use [#bootstrap(net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent)] instead
+    @Deprecated
     public void bootstrap(RegistrySetBuilder builder) {
         builder.add(Registries.STRUCTURE_SET, this::bootstrapStructureSets)
+                .add(Registries.STRUCTURE, this::bootstrapStructures);
+    }
+
+    /// Adds every declared structure and structure set. Call in datagen.
+    public void bootstrap(GatherDataRegistryEntriesEvent event) {
+        event.add(Registries.STRUCTURE_SET, this::bootstrapStructureSets)
                 .add(Registries.STRUCTURE, this::bootstrapStructures);
     }
 

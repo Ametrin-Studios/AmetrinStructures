@@ -11,7 +11,6 @@ import com.ametrin.structures.foam.FoamPresets;
 import com.ametrin.structures.network.ASPayloads;
 import com.ametrin.structures.network.ServerPayloadHandlers;
 import com.ametrin.structures.registry.*;
-import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Items;
@@ -20,6 +19,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -34,6 +34,7 @@ public class AmetrinStructures {
         modBus.addListener(AmetrinStructures::registerPayloads);
         modBus.addListener(ASDataComponents::registerTooltips);
         modBus.addListener(AmetrinStructures::addToCreativeTabs);
+        modBus.addListener(AmetrinStructures::gatherRegistryEntries);
         modBus.addListener(AmetrinStructures::gatherData);
         NeoForge.EVENT_BUS.addListener(StructuresCommand::register);
         NeoForge.EVENT_BUS.addListener(SpreadCommand::forget);
@@ -93,8 +94,11 @@ public class AmetrinStructures {
         registrar.playToClient(ASPayloads.ClearSpreadWaypoints.TYPE, ASPayloads.ClearSpreadWaypoints.STREAM_CODEC);
     }
 
+    private static void gatherRegistryEntries(GatherDataRegistryEntriesEvent event) {
+        event.add(ASRegistries.SPAWNER_PROFILE, ASSpawnerProfiles::bootstrap);
+    }
+
     private static void gatherData(GatherDataEvent.Client event) {
-        event.createWorldRegistryObjects(new RegistrySetBuilder().add(ASRegistries.SPAWNER_PROFILE, ASSpawnerProfiles::bootstrap));
         event.createProvider(ASModelProvider::new);
         event.createBlockAndItemTags(ASBlockTagsProvider::new, ASItemTagsProvider::new);
     }

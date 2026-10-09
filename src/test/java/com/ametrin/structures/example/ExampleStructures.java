@@ -10,7 +10,6 @@ import com.ametrin.structures.structure.jigsaw.JigsawPools;
 import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.HeightMode;
 import com.ametrin.structures.structure.simple.InlineFromStructureProcessor;
-import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.ProcessorLists;
@@ -26,7 +25,7 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 
 import java.util.List;
 
@@ -153,15 +152,9 @@ final class ExampleStructures {
         REGISTER.register(modBus);
     }
 
-    /// Every datapack entry the examples declare, one `add` per registry.
-    static RegistrySetBuilder registries() {
-        RegistrySetBuilder registries = new RegistrySetBuilder().add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
-        REGISTER.bootstrap(registries);
-        return registries;
-    }
-
     /// Datagen: writes the structures, structure sets and pools as JSON.
-    static void gatherData(GatherDataEvent.Client event) {
-        event.createWorldRegistryObjects(registries());
+    static void gatherRegistryEntries(GatherDataRegistryEntriesEvent event) {
+        event.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
+        REGISTER.bootstrap(event);
     }
 }
