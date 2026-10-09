@@ -9,8 +9,8 @@ An open source library mod for Minecraft structure mod developers.
 - **Fixtures** - a block that gets replaced with whatever it specifies when a structure is generated.
 - **Spawner profiles** - data driven spawner settings that resolve at load time so spawners can be adjusted from data packs
 
-Using the library: [getting started](docs/getting-started.md), [extending it](docs/extending.md) and
-[debugging helpers](docs/debugging.md).  
-[Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced) is a source-available mod using it.
+Using the library: [getting started](docs/getting-started.md), [extending it](docs/extending.md) and [debugging helpers](docs/debugging.md).  
+[Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced) is a source-available mod using it.  
+If you have further questions ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).  
 
 Disclaimer: This mod is inspired by [Structure Gel API](https://www.curseforge.com/minecraft/mc-mods/structure-gel-api)
