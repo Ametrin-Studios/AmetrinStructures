@@ -1,8 +1,11 @@
 package com.ametrin.structures.placement;
 
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -75,6 +78,39 @@ class ScatteredGridPlacementTest {
         assertNotEquals(first.gridOffset(SEED), second.gridOffset(SEED));
         assertNotEquals(first.gridOffset(SEED), first.gridOffset(SEED + 1), "a new world, a new grid");
         assertEquals(first.gridOffset(SEED), first.gridOffset(SEED), "the same world, the same grid");
+    }
+
+    @Test
+    void spreadIsTriangularUnlessLinearIsAsked() {
+        assertEquals(RandomSpreadType.TRIANGULAR, grid(16).build().spreadType());
+        assertEquals(RandomSpreadType.LINEAR, grid(16).spreadType(RandomSpreadType.LINEAR).build().spreadType());
+        assertEquals(RandomSpreadType.TRIANGULAR, decode("{\"salt\": 1, \"spacing\": 16, \"random_offset\": 8}").spreadType());
+        assertEquals(RandomSpreadType.LINEAR, decode("{\"salt\": 1, \"spacing\": 16, \"random_offset\": 8, \"spread_type\": \"linear\"}").spreadType());
+    }
+
+    private static ScatteredGridPlacement decode(String json) {
+        return ScatteredGridPlacement.CODEC.codec().parse(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow();
+    }
+
+    /// The reason for the triangular default: neighbors meet at a shared cell edge less often than with a uniform roll.
+    @Test
+    void triangularSpreadFavorsTheMiddleOfTheOffset() {
+        double triangular = meanDistanceFromTheMiddle(grid(32).gridOffset(0, 0).randomOffset(30).build());
+        double linear = meanDistanceFromTheMiddle(grid(32).gridOffset(0, 0).randomOffset(30).spreadType(RandomSpreadType.LINEAR).build());
+        assertTrue(triangular < linear * 0.8, "triangular " + triangular + ", linear " + linear);
+    }
+
+    private static double meanDistanceFromTheMiddle(ScatteredGridPlacement placement) {
+        double total = 0;
+        int count = 0;
+        for (int cellX = -16; cellX < 16; cellX++) {
+            for (int cellZ = -16; cellZ < 16; cellZ++) {
+                ChunkPos chunk = placement.getPotentialStructureChunk(SEED, cellX * 32, cellZ * 32);
+                total += Math.abs(chunk.x() - cellX * 32 - 15) + Math.abs(chunk.z() - cellZ * 32 - 15);
+                count++;
+            }
+        }
+        return total / count;
     }
 
     /// Vanilla's structure search only walks random spread placements, asking each for its chunk per cell.
