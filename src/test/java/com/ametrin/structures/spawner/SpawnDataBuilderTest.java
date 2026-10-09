@@ -6,6 +6,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.InclusiveRange;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.*;
@@ -14,11 +15,13 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.DyedItemColor;
+import net.minecraft.world.level.SpawnData;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,5 +72,15 @@ class SpawnDataBuilderTest {
         var passenger = tag.getListOrEmpty("Passengers").getCompoundOrEmpty(0);
         assertEquals("minecraft:chicken", passenger.getStringOr("id", ""));
         assertEquals("Clucky", passenger.read("CustomName", ComponentSerialization.CODEC).orElseThrow().getString());
+    }
+
+    // The rules sit next to the entity, so it keeps its own spawn randomization.
+    @Test
+    void spawnRulesLeaveTheEntityAlone() {
+        var data = new SpawnDataBuilder(EntityType.ZOMBIE).anyLight().build();
+
+        var any = new InclusiveRange<>(0, 15);
+        assertEquals(Optional.of(new SpawnData.CustomSpawnRules(any, any)), data.customSpawnRules());
+        assertEquals(1, data.entityToSpawn().size());
     }
 }

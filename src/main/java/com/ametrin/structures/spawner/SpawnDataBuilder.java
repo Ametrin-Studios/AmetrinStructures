@@ -12,6 +12,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.InclusiveRange;
 import net.minecraft.util.random.Weighted;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.*;
@@ -26,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
-/// Setting anything but [#equipment] makes the entity skip its own spawn randomization, such as random armor and handedness, as vanilla spawners do.
+/// Setting anything but [#equipment] and [#spawnRules] makes the entity skip its own spawn randomization, such as random armor and handedness, as vanilla spawners do.
 /// An entity fixture also keeps it with a [#deathLootTable].
 public final class SpawnDataBuilder {
     public static final String DEATH_LOOT_TABLE_KEY = "DeathLootTable";
@@ -40,6 +41,7 @@ public final class SpawnDataBuilder {
     private final List<String> tags = new ArrayList<>();
     private final ListTag passengers = new ListTag();
     private @Nullable EquipmentTable equipmentTable;
+    private SpawnData.@Nullable CustomSpawnRules spawnRules;
 
     public SpawnDataBuilder(EntityType<?> entity) {
         this.entity = entity;
@@ -161,6 +163,25 @@ public final class SpawnDataBuilder {
         return this;
     }
 
+    /// Replaces the entity's own spawn rules with light ranges from 0 to 15.
+    /// Spawners only.
+    public SpawnDataBuilder spawnRules(InclusiveRange<Integer> blockLight, InclusiveRange<Integer> skyLight) {
+        return spawnRules(new SpawnData.CustomSpawnRules(blockLight, skyLight));
+    }
+
+    /// Replaces the entity's own spawn rules with light ranges from 0 to 15.
+    /// Spawners only.
+    public SpawnDataBuilder spawnRules(SpawnData.CustomSpawnRules spawnRules) {
+        this.spawnRules = spawnRules;
+        return this;
+    }
+
+    /// Spawners only.
+    public SpawnDataBuilder anyLight() {
+        var any = new InclusiveRange<>(0, 15);
+        return spawnRules(any, any);
+    }
+
     public SpawnDataBuilder passenger(EntityType<?> passenger) {
         return passenger(new SpawnDataBuilder(passenger));
     }
@@ -176,7 +197,7 @@ public final class SpawnDataBuilder {
     }
 
     public SpawnData build() {
-        return new SpawnData(entityTag(), Optional.empty(), Optional.ofNullable(equipmentTable));
+        return new SpawnData(entityTag(), Optional.ofNullable(spawnRules), Optional.ofNullable(equipmentTable));
     }
 
     public Weighted<SpawnData> build(int weight) {

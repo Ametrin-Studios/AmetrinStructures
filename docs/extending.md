@@ -290,9 +290,9 @@ optional and defaults to vanilla's value; without `spawn_potentials` the spawner
 
 `SpawnDataBuilder` describes the entity for spawners and entity fixtures alike: name, health and
 other attributes, effects, gear per slot or from a loot table, death loot, left-handedness, babies,
-riders and more. Setting anything besides an equipment loot table makes the entity skip its own
-spawn randomization, such as random armor, as vanilla spawners do; entity fixtures also keep it with
-a death loot table.
+riders, spawn rules for spawners and more. Setting anything besides an equipment loot table or spawn
+rules makes the entity skip its own spawn randomization, such as random armor, as vanilla spawners
+do; entity fixtures also keep it with a death loot table.
 
 Reference: [`SpawnerProfile`](../src/main/java/com/ametrin/structures/spawner/SpawnerProfile.java) and [
 `ASSpawnerProfiles`](../src/main/java/com/ametrin/structures/registry/ASSpawnerProfiles.java).
