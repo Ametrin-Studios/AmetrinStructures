@@ -55,7 +55,6 @@ class SimpleStructurePieceTest {
     @Test
     void groundLevelAndTerrainAdaptationAreSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0));
-        piece.setTerrainAdaptation(TerrainAdjustment.BEARD_THIN);
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
         var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
         assertEquals(4, reloaded.getGroundLevelDelta());
@@ -157,7 +156,7 @@ class SimpleStructurePieceTest {
                 LevelHeightAccessor.create(-64, 384),
                 HolderSet.direct(plains)::contains);
         var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, structureProcessors);
+        var context = new PieceSource.Context(generation, ORIGIN, rotation, structureProcessors, TerrainAdjustment.BEARD_THIN);
         return (SimpleStructurePiece) PieceSources.createPiece(entry, context);
     }
 

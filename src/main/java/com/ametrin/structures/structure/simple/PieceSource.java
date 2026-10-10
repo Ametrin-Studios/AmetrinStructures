@@ -9,6 +9,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import java.util.List;
@@ -36,7 +37,8 @@ public interface PieceSource {
     Stream<TemplateEntry> templates();
 
     /// @param structureProcessors the structure's processors, for templates without their own and to expand [InlineFromStructureProcessor] markers
+    /// @param terrainAdaptation   the structure's, for [com.ametrin.structures.structure.ExtendedTemplateStructurePiece]s
     record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation,
-                   Optional<Holder<StructureProcessorList>> structureProcessors) {
+                   Optional<Holder<StructureProcessorList>> structureProcessors, TerrainAdjustment terrainAdaptation) {
     }
 }

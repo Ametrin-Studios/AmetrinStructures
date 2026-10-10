@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure;
 
+import com.ametrin.structures.structure.filter.PlacementFilter;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
@@ -15,13 +16,15 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSpawnOverride;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
 /// Settings shared by every kind of structure in a set
-public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> {
+public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> implements ExtendedStructureBuilder<B> {
     protected final String id;
 
     private Function<HolderGetter<Biome>, HolderSet<Biome>> biomes = lookup -> lookup.getOrThrow(BiomeTags.IS_OVERWORLD);
@@ -29,6 +32,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
     private GenerationStep.Decoration step = GenerationStep.Decoration.SURFACE_STRUCTURES;
     private TerrainAdjustment terrainAdaptation = TerrainAdjustment.NONE;
     private int weight = 1;
+    private final List<PlacementFilter> filters = new ArrayList<>();
 
     protected StructureEntryBuilder(String id) {
         this.id = id;
@@ -81,8 +85,19 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return self();
     }
 
+    /// Checked in order once the structure has a start position. Only an [ExtendedStructure] runs them.
+    @Override
+    public B filter(PlacementFilter filter) {
+        filters.add(filter);
+        return self();
+    }
+
     int weight() {
         return weight;
+    }
+
+    protected boolean hasFilters() {
+        return !filters.isEmpty();
     }
 
     protected void validate() {
@@ -91,7 +106,13 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         }
     }
 
-    protected abstract Structure create(Structure.StructureSettings settings, BootstrapContext<Structure> context);
+    /// Validates and creates the structure, for one registered outside a [DeferredStructureHolder].
+    public Structure build(BootstrapContext<Structure> context) {
+        validate();
+        return bootstrap(context);
+    }
+
+    protected abstract Structure create(Structure.StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context);
 
     protected IllegalStateException fail(String message) {
         return new IllegalStateException("structure " + id + ": " + message);
@@ -103,6 +124,6 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
 
     Structure bootstrap(BootstrapContext<Structure> context) {
         var settings = new Structure.StructureSettings(biomes.apply(context.lookup(Registries.BIOME)), Map.copyOf(spawnOverrides), step, terrainAdaptation);
-        return create(settings, context);
+        return create(settings, new ExtendedStructureSettings(filters), context);
     }
 }

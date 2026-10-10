@@ -2,7 +2,6 @@ package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.*;
-import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.TerrainSampler;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.MapCodec;
@@ -49,13 +48,13 @@ public class SimpleStructure extends ExtendedStructure {
     public static final MapCodec<SimpleStructure> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     settingsCodec(instance),
                     extendedSettingsCodec(instance),
-                    PieceSource.CODEC.fieldOf("pieces").forGetter(s -> s.pieces),
-                    StructureProcessorType.LIST_CODEC.optionalFieldOf("processors").forGetter(s -> s.processors),
-                    StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(s -> s.startHeight),
-                    HeightMode.CODEC.optionalFieldOf("height_mode", HeightMode.CORNER).forGetter(s -> s.heightMode),
-                    LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(s -> s.liquidSettings),
-                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(s -> s.foundation),
-                    Rotation.CODEC.optionalFieldOf("rotation").forGetter(s -> s.rotation))
+                    PieceSource.CODEC.fieldOf("pieces").forGetter(SimpleStructure::pieces),
+                    StructureProcessorType.LIST_CODEC.optionalFieldOf("processors").forGetter(SimpleStructure::processors),
+                    StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(SimpleStructure::startHeight),
+                    HeightMode.CODEC.optionalFieldOf("height_mode", HeightMode.CORNER).forGetter(SimpleStructure::heightMode),
+                    LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(SimpleStructure::liquidSettings),
+                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(SimpleStructure::foundation),
+                    Rotation.CODEC.optionalFieldOf("rotation").forGetter(SimpleStructure::rotation))
             .apply(instance, SimpleStructure::new));
 
     private final PieceSource pieces;
@@ -93,7 +92,8 @@ public class SimpleStructure extends ExtendedStructure {
         var chunkPos = context.chunkPos();
         var unplaced = new BlockPos(chunkPos.getMinBlockX(), 0, chunkPos.getMinBlockZ());
         var created = new ArrayList<StructurePiece>();
-        pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), processors));
+        pieces.appendPieces(created, new PieceSource.Context(
+                context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), processors, terrainAdaptation()));
         var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
         timer.pieces(System.nanoTime() - start);
         if (unplacedFootprint.isEmpty()) {
@@ -123,9 +123,6 @@ public class SimpleStructure extends ExtendedStructure {
                 template.setLiquidSettings(liquidSettings);
                 template.setFoundation(foundation);
             }
-            if (piece instanceof SimpleStructurePiece simple) {
-                simple.setTerrainAdaptation(terrainAdaptation());
-            }
             builder.addPiece(piece);
         }
         return new GenerationStub(origin, Either.right(builder));
@@ -150,12 +147,44 @@ public class SimpleStructure extends ExtendedStructure {
         return pieces;
     }
 
+    /// For templates without their own.
+    public Optional<Holder<StructureProcessorList>> processors() {
+        return processors;
+    }
+
+    public StartHeight startHeight() {
+        return startHeight;
+    }
+
+    public HeightMode heightMode() {
+        return heightMode;
+    }
+
+    public LiquidSettings liquidSettings() {
+        return liquidSettings;
+    }
+
+    public Optional<Foundation> foundation() {
+        return foundation;
+    }
+
+    /// Empty for a random rotation.
+    public Optional<Rotation> rotation() {
+        return rotation;
+    }
+
     @Override
     public StructureType<?> type() {
         return ASStructureTypes.SIMPLE.get();
     }
 
-    public static class Builder extends StructureEntryBuilder<Builder> implements ExtendedStructureBuilder<Builder> {
+    /// For a structure outside a [DeferredStructureHolder]; templates default to `id`'s namespace.
+    /// Create it with [Builder#build(BootstrapContext)].
+    public static Builder builder(Identifier id) {
+        return new Builder(id.getNamespace(), id.getPath());
+    }
+
+    public static class Builder extends StructureEntryBuilder<Builder> {
         private final String namespace;
 
         @Nullable
@@ -166,7 +195,6 @@ public class SimpleStructure extends ExtendedStructure {
         private HeightMode heightMode = HeightMode.CORNER;
         private LiquidSettings liquidSettings = LiquidSettings.IGNORE_WATERLOGGING;
         private Optional<Foundation> foundation = Optional.empty();
-        private final List<PlacementFilter> filters = new ArrayList<>();
         private @Nullable Rotation rotation;
 
         @ApiStatus.Internal
@@ -298,12 +326,6 @@ public class SimpleStructure extends ExtendedStructure {
             return this;
         }
 
-        @Override
-        public Builder filter(PlacementFilter filter) {
-            filters.add(filter);
-            return this;
-        }
-
         /// Defaults to a random rotation. Compound structures rotate as one.
         public Builder fixedRotation(Rotation rotation) {
             this.rotation = rotation;
@@ -319,7 +341,12 @@ public class SimpleStructure extends ExtendedStructure {
         }
 
         @Override
-        protected Structure create(StructureSettings settings, BootstrapContext<Structure> context) {
+        public SimpleStructure build(BootstrapContext<Structure> context) {
+            return (SimpleStructure) super.build(context);
+        }
+
+        @Override
+        protected SimpleStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
             var processorLists = context.lookup(Registries.PROCESSOR_LIST);
             PieceSource builtPieces;
             try {
@@ -327,7 +354,7 @@ public class SimpleStructure extends ExtendedStructure {
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);
             }
-            return new SimpleStructure(settings, new ExtendedStructureSettings(filters), builtPieces, processors.apply(processorLists),
+            return new SimpleStructure(settings, extendedSettings, builtPieces, processors.apply(processorLists),
                     startHeight, heightMode, liquidSettings, foundation, Optional.ofNullable(rotation));
         }
     }

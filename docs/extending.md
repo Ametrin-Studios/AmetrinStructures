@@ -77,11 +77,55 @@ REGISTER.set("castle")
 The register also declares what a custom structure needs: `REGISTER.structureType(...)` for its
 type, and `pieceType(...)` on the set for its piece types, named like the set's structures.
 
+Extend `ExtendedStructure` to get the library's filters, biome check and `/ametrin structures spread`
+reasons. Lay the structure out in `layOut` and leave the rest to it:
+
+```java
+public class CastleStructure extends ExtendedStructure {
+    public static final MapCodec<CastleStructure> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+                    settingsCodec(instance),
+                    extendedSettingsCodec(instance))
+            .apply(instance, CastleStructure::new));
+
+    public CastleStructure(StructureSettings settings, ExtendedStructureSettings extendedSettings) {
+        super(settings, extendedSettings);
+    }
+
+    @Override
+    protected Either<Candidate, Evaluation> layOut(GenerationContext context, Timer timer) {
+        var origin = context.chunkPos().getMiddleBlockPosition(64);
+        var pieces = new StructurePiecesBuilder();
+        // add the pieces
+        return Either.left(new Candidate(origin, new TerrainSampler(context, Heightmap.Types.WORLD_SURFACE_WG),
+                pieces::getBoundingBox, () -> new GenerationStub(origin, Either.right(pieces))));
+    }
+
+    @Override
+    public StructureType<?> type() {
+        return ExampleStructures.CASTLE_TYPE.get();
+    }
+}
+```
+
+Give its factory the extended settings, and the builder takes filters like a simple structure's:
+
+```java
+.structure((settings, extendedSettings, context) -> new CastleStructure(settings, extendedSettings),
+        castle -> castle.biomes(BiomeTags.IS_TAIGA).filterFlatness(4))
+```
+
+`SimpleStructure` and `ExtendedJigsawStructure` can be subclassed too: every setting has a getter for
+the subclass's codec. Outside a set, `SimpleStructure.builder(id)...build(context)` and
+`ExtendedJigsawStructure.builder(settings, pool)...build()` create them for your own registry bootstrap.
+
 To place pieces from saved templates, extend `ExtendedTemplateStructurePiece`. Like the simple
-structure's pieces, it runs fixtures, removes foam, and saves its liquid settings and foundation with
-the piece. Other template pieces place fixture blocks as they were saved.
+structure's pieces, it runs fixtures, removes foam, extends down to a foundation, and fits the terrain
+to a `TerrainBox`. It replaces the structure's terrain adaptation with its own, so pass it the
+structure's `terrainAdaptation()`. Other template pieces place fixture blocks as they were saved.
 
 Reference:
+[`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java),
+[`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java),
 [`ExtendedJigsawStructure`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedJigsawStructure.java),
 [`SimpleStructurePiece`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructurePiece.java),
 [`ASStructureTypes`](../src/main/java/com/ametrin/structures/registry/ASStructureTypes.java) and

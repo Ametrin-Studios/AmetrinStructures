@@ -1,8 +1,15 @@
 package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.structure.DeferredStructureRegister;
+import net.minecraft.core.RegistrySetBuilder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.data.registries.RegistryPatchGenerator;
+import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -59,6 +66,23 @@ class SimpleStructureBuilderTest {
     @Test
     void anInvalidFilterFails() {
         assertNamedFailure(() -> REGISTER.set(ID).simple(tower -> tower.single(b -> b.template(TEMPLATE)).filterFlatness(-1)));
+    }
+
+    @Test
+    void filtersOnAPlainCustomStructureFail() {
+        assertNamedFailure(() -> REGISTER.set(ID).structure((settings, context) -> null, custom -> custom.filterFlatness(2)).build());
+    }
+
+    @Test
+    void aStructureBuildsOutsideASet() {
+        var key = ResourceKey.create(Registries.STRUCTURE, TEMPLATE);
+        var standalone = new RegistrySetBuilder().add(Registries.STRUCTURE, context ->
+                context.register(key, SimpleStructure.builder(TEMPLATE).single("tower").filterFlatness(2).build(context)));
+        var registries = RegistryPatchGenerator.createLookup(CompletableFuture.completedFuture(VanillaRegistries.createLookup()), standalone)
+                .join()
+                .full();
+        var structure = (SimpleStructure) registries.lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
+        assertEquals(1, structure.filters().size());
     }
 
     @Test

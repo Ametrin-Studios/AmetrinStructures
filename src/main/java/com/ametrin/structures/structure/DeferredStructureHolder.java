@@ -4,6 +4,7 @@ import com.ametrin.structures.placement.ScatteredGridPlacement;
 import com.ametrin.structures.placement.EvenSpreadPlacement;
 import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.simple.SimpleStructure;
+import com.mojang.datafixers.util.Function3;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
@@ -99,6 +100,12 @@ public class DeferredStructureHolder {
         Structure create(Structure.StructureSettings settings, BootstrapContext<Structure> context);
     }
 
+    /// For an [ExtendedStructure], which takes the filters set on the builder.
+    @FunctionalInterface
+    public interface ExtendedStructureFactory {
+        ExtendedStructure create(Structure.StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context);
+    }
+
     public static class Builder {
         private final DeferredStructureRegister register;
         private final String name;
@@ -140,8 +147,8 @@ public class DeferredStructureHolder {
 
         public Builder jigsaw(String suffix, ResourceKey<StructureTemplatePool> pool, Consumer<ExtendedJigsawStructure.Builder> factory, Consumer<CustomStructureBuilder> configure) {
             var id = compose(name, suffix);
-            return structure(suffix, (settings, context) -> {
-                var builder = ExtendedJigsawStructure.builder(settings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(pool));
+            return structure(suffix, (settings, extendedSettings, context) -> {
+                var builder = ExtendedJigsawStructure.builder(settings, extendedSettings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(pool));
                 try {
                     factory.accept(builder);
                 } catch (IllegalArgumentException exception) {
@@ -155,14 +162,26 @@ public class DeferredStructureHolder {
             return jigsaw("", pool, factory, configure);
         }
 
+        /// For a structure without filters; see [#structure(String, ExtendedStructureFactory, Consumer)].
         public Builder structure(String suffix, StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-            var structure = new CustomStructureBuilder(compose(name, suffix), factory);
-            configure.accept(structure);
-            return add(suffix, structure);
+            return addCustom(suffix, configure, new CustomStructureBuilder(compose(name, suffix), (settings, _, context) -> factory.create(settings, context), false));
         }
 
         public Builder structure(StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
             return structure("", factory, configure);
+        }
+
+        public Builder structure(String suffix, ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
+            return addCustom(suffix, configure, new CustomStructureBuilder(compose(name, suffix), factory::create, true));
+        }
+
+        public Builder structure(ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
+            return structure("", factory, configure);
+        }
+
+        private Builder addCustom(String suffix, Consumer<CustomStructureBuilder> configure, CustomStructureBuilder structure) {
+            configure.accept(structure);
+            return add(suffix, structure);
         }
 
         private Builder add(String suffix, StructureEntryBuilder<?> structure) {
@@ -271,11 +290,14 @@ public class DeferredStructureHolder {
     }
 
     public static final class CustomStructureBuilder extends StructureEntryBuilder<CustomStructureBuilder> {
-        private final StructureFactory factory;
+        private final Function3<Structure.StructureSettings, ExtendedStructureSettings, BootstrapContext<Structure>, Structure> factory;
+        private final boolean takesFilters;
 
-        private CustomStructureBuilder(String id, StructureFactory factory) {
+        private CustomStructureBuilder(
+                String id, Function3<Structure.StructureSettings, ExtendedStructureSettings, BootstrapContext<Structure>, Structure> factory, boolean takesFilters) {
             super(id);
             this.factory = factory;
+            this.takesFilters = takesFilters;
         }
 
         @Override
@@ -284,8 +306,16 @@ public class DeferredStructureHolder {
         }
 
         @Override
-        protected Structure create(Structure.StructureSettings settings, BootstrapContext<Structure> context) {
-            return factory.create(settings, context);
+        protected void validate() {
+            super.validate();
+            if (hasFilters() && !takesFilters) {
+                throw fail("filters need a factory that takes ExtendedStructureSettings");
+            }
+        }
+
+        @Override
+        protected Structure create(Structure.StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
+            return factory.apply(settings, extendedSettings, context);
         }
     }
 }
