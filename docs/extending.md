@@ -89,12 +89,13 @@ Reference:
 
 ## Placements
 
-`horizontalPlacement(...)` accepts any `StructurePlacement`, vanilla's or your own. The function
-overload receives the bootstrap context, for placements that reference registry entries.
+`horizontalPlacement(...)` accepts any `StructurePlacement`, vanilla's or your own. The function overload receives the bootstrap context, for placements that reference registry entries.
 
-The library has two: `scatteredGridPlacement(...)` puts one attempt in each grid cell, and
-`evenSpreadPlacement(...)` spreads them evenly with a guaranteed `min_distance` and no grid to spot. Its
-attempts average about 1.3 times `min_distance` apart.
+The library has two built-in `StructurePlacement`s:
+
+- `evenSpreadPlacement(...)`, spreads the attempts evenly with a guaranteed
+  `min_distance` and no visible pattern. They average about 1.3 times `min_distance` apart.
+- `scatteredGridPlacement(...)` puts one attempt in each grid cell. This allows you to interleave sets through a shared `grid_offset` and has a larger radius explorer maps can check. It's faster than `evenSpreadPlacement`.
 
 `StructurePlacements.hasStructureChunkInRange(...)` and `LakeProof` answer "is there a structure
 nearby" and "is this position inside a structure" for a structure, holder set or tag, which is handy

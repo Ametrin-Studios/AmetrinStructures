@@ -151,7 +151,7 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
         @Nullable
         private Integer salt;
         private Optional<TagExclusionZone> exclusionZone = Optional.empty();
-        private int minDistance = 16;
+        private int minDistance = 12;
         private int minChunksFromCenter = 0;
 
         public Builder locateOffset(Vec3i locateOffset) {

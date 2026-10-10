@@ -106,7 +106,7 @@ public class DeferredStructureHolder {
         private final Map<String, Supplier<StructurePieceType>> pieces = new LinkedHashMap<>();
         private final Map<String, StructureEntryBuilder<?>> structures = new LinkedHashMap<>();
         // Takes the mod id and set name, for the default salt.
-        private BiFunction<String, String, StructurePlacement> saltedPlacement = (modId, name) -> ScatteredGridPlacement.builder().saltIfUnset(modId, name).build();
+        private BiFunction<String, String, StructurePlacement> saltedPlacement = (modId, name) -> EvenSpreadPlacement.builder().saltIfUnset(modId, name).build();
         // Replaces the salted placement when set.
         private @Nullable Function<BootstrapContext<StructureSet>, StructurePlacement> placement;
 
