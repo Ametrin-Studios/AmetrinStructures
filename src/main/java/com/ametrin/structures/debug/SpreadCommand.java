@@ -43,6 +43,8 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
@@ -73,7 +75,8 @@ public final class SpreadCommand {
     // The rings are worked out once per world, for the sets' own placements.
     private static final SimpleCommandExceptionType RINGS_PLACEMENT = new SimpleCommandExceptionType(
             Component.translatable("commands.ametrin_structures.spread.rings_placement"));
-    private static final Identifier PLACEMENT_REPORT = Identifier.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement");
+    // Numbered, so each placement report keeps its own waypoints for comparison.
+    private static final AtomicInteger PLACEMENT_REPORTS = new AtomicInteger();
 
     /// Per kind, nearest first, so a map mod is not flooded by a dense structure.
     private static final int MAX_WAYPOINTS = 1000;
@@ -278,12 +281,15 @@ public final class SpreadCommand {
     private static int candidates(CommandContext<CommandSourceStack> context, int radius, @Nullable ChatFormatting color) throws CommandSyntaxException {
         var placement = placement(context);
         var source = context.getSource();
-        var waypointColor = color != null ? color : defaultColor(PLACEMENT_REPORT);
+        int number = PLACEMENT_REPORTS.incrementAndGet();
+        var report = Identifier.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement/" + number);
+        var waypointColor = color != null ? color : WAYPOINT_COLORS.get(ThreadLocalRandom.current().nextInt(WAYPOINT_COLORS.size()));
+        var name = Component.translatable("commands.ametrin_structures.spread.placement", number).withStyle(waypointColor);
         var level = source.getLevel();
         var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
         var player = source.getPlayer();
 
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.placement_started", radius), false);
+        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.placement_started", name, radius), false);
         CompletableFuture.supplyAsync(() -> StructureSpread.candidates(level, placement, center, radius), Util.backgroundExecutor())
                 .whenCompleteAsync((candidates, error) -> {
                     if (error != null) {
@@ -291,12 +297,12 @@ public final class SpreadCommand {
                         source.sendFailure(Component.translatable("commands.ametrin_structures.spread.failed", error.toString()));
                         return;
                     }
-                    var stops = candidates.spots().stream().map(spot -> new Stop(PLACEMENT_REPORT, spot, spot, Optional.<BoundingBox>empty())).toList();
+                    var stops = candidates.spots().stream().map(spot -> new Stop(report, spot, spot, Optional.<BoundingBox>empty())).toList();
                     if (player != null && !player.hasDisconnected()) {
                         VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, stops, -1));
-                        sendWaypoints(player, PLACEMENT_REPORT, level.dimension(), waypointColor, Rejected.NONE, stops, List.of());
+                        sendWaypoints(player, report, level.dimension(), waypointColor, Rejected.NONE, stops, List.of());
                     }
-                    line(source, Component.translatable("commands.ametrin_structures.spread.candidates", candidates.spots().size(), radius));
+                    line(source, Component.translatable("commands.ametrin_structures.spread.candidates", name, candidates.spots().size(), radius));
                     sendSpacing(source, candidates.spacing());
                     if (!candidates.spots().isEmpty()) {
                         sendNearest(source, candidates.spots().getFirst());
