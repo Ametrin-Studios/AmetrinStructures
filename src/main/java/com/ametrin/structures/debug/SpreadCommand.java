@@ -1,5 +1,6 @@
 package com.ametrin.structures.debug;
 
+import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.network.ASPayloads;
 import com.ametrin.structures.util.ASLog;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -8,15 +9,18 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ColorArgument;
+import net.minecraft.commands.arguments.CompoundTagArgument;
 import net.minecraft.commands.arguments.ResourceKeyArgument;
 import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.*;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -25,7 +29,10 @@ import net.minecraft.util.Util;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
@@ -45,6 +52,8 @@ import java.util.stream.Collectors;
 /// show as waypoints, in `color` (picked from the reported id by default), next to earlier reports';
 /// `rejected` adds the failed candidates inside the structures' biomes in gray, `rejected all` every
 /// failed candidate, and either replaces all earlier waypoints. `spread clear` removes them.
+/// `spread set <structure_set> placement <placement>` reports with that placement instead of the set's, and
+/// `spread placement <placement> [radius] [color]` only reports the chunks a placement picks.
 /// `/ametrin structures visit next|previous|<number>` then teleports a player through the spots of
 /// their last report, nearest first.
 public final class SpreadCommand {
@@ -56,6 +65,12 @@ public final class SpreadCommand {
             id -> Component.translatableEscape("commands.locate.structure.invalid", id));
     private static final DynamicCommandExceptionType INVALID_SET = new DynamicCommandExceptionType(
             id -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_set", id));
+    private static final DynamicCommandExceptionType INVALID_PLACEMENT = new DynamicCommandExceptionType(
+            error -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_placement", error));
+    // The rings are worked out once per world, for the sets' own placements.
+    private static final SimpleCommandExceptionType RINGS_PLACEMENT = new SimpleCommandExceptionType(
+            Component.translatable("commands.ametrin_structures.spread.rings_placement"));
+    private static final Identifier PLACEMENT_REPORT = Identifier.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement");
 
     /// Per kind, nearest first, so a map mod is not flooded by a dense structure.
     private static final int MAX_WAYPOINTS = 1000;
@@ -72,15 +87,21 @@ public final class SpreadCommand {
 
     private SpreadCommand() {}
 
-    private record Visits(ResourceKey<Level> dimension, ChatFormatting color, List<StructureSpread.Found> found,
-                          int index) {
+    private record Visits(ResourceKey<Level> dimension, ChatFormatting color, List<Stop> stops, int index) {
         Visits at(int index) {
-            return new Visits(dimension, color, found, index);
+            return new Visits(dimension, color, stops, index);
+        }
+    }
+
+    /// @param box empty for a chunk a placement picked
+    private record Stop(Identifier id, BlockPos origin, BlockPos target, Optional<BoundingBox> box) {
+        static Stop of(StructureSpread.Found spot) {
+            return new Stop(spot.id(), spot.origin(), spot.visit(), Optional.of(spot.box()));
         }
     }
 
     private record Target(Kind kind, Identifier id, Predicate<Holder<StructureSet>> sets,
-                          Predicate<Holder<Structure>> structures) {
+                          Predicate<Holder<Structure>> structures, @Nullable StructurePlacement placement) {
         enum Kind {
             STRUCTURE,
             TAG,
@@ -88,7 +109,7 @@ public final class SpreadCommand {
         }
 
         static Target of(Kind kind, Identifier id, Predicate<Holder<Structure>> structures) {
-            return new Target(kind, id, set -> set.value().structures().stream().anyMatch(entry -> structures.test(entry.structure())), structures);
+            return new Target(kind, id, set -> set.value().structures().stream().anyMatch(entry -> structures.test(entry.structure())), structures, null);
         }
 
         Component name(ChatFormatting color) {
@@ -104,8 +125,12 @@ public final class SpreadCommand {
     static LiteralArgumentBuilder<CommandSourceStack> spread() {
         return Commands.literal("spread")
                 .then(Commands.literal("clear").executes(context -> clear(context.getSource())))
+                .then(Commands.literal("placement")
+                        .then(withCandidateOptions(Commands.argument("placement", CompoundTagArgument.compoundTag()))))
                 .then(Commands.literal("set")
-                        .then(withOptions(Commands.argument("set", ResourceKeyArgument.key(Registries.STRUCTURE_SET)), SpreadCommand::set)))
+                        .then(withOptions(Commands.argument("set", ResourceKeyArgument.key(Registries.STRUCTURE_SET)), SpreadCommand::set)
+                                .then(Commands.literal("placement")
+                                        .then(withOptions(Commands.argument("placement", CompoundTagArgument.compoundTag()), SpreadCommand::setWithPlacement)))))
                 .then(withOptions(Commands.argument("structure", ResourceOrTagKeyArgument.resourceOrTagKey(Registries.STRUCTURE)), SpreadCommand::structures));
     }
 
@@ -126,6 +151,13 @@ public final class SpreadCommand {
                         .then(withRejected(Commands.argument("color", ColorArgument.color()), target, SpreadCommand::color)));
     }
 
+    private static <T extends ArgumentBuilder<CommandSourceStack, T>> T withCandidateOptions(T node) {
+        return node.executes(context -> candidates(context, DEFAULT_RADIUS, null))
+                .then(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS))
+                        .executes(context -> candidates(context, radius(context), null))
+                        .then(Commands.argument("color", ColorArgument.color())
+                                .executes(context -> candidates(context, radius(context), color(context)))));
+    }
 
     private static <T extends ArgumentBuilder<CommandSourceStack, T>> T withRejected(
             T node, TargetArgument target, Function<CommandContext<CommandSourceStack>, @Nullable ChatFormatting> color) {
@@ -153,7 +185,22 @@ public final class SpreadCommand {
         var key = ResourceKeyArgument.getRegistryKey(context, "set", Registries.STRUCTURE_SET, INVALID_SET);
         context.getSource().registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).get(key)
                 .orElseThrow(() -> INVALID_SET.create(key.identifier()));
-        return new Target(Target.Kind.SET, key.identifier(), set -> set.is(key), _ -> true);
+        return new Target(Target.Kind.SET, key.identifier(), set -> set.is(key), _ -> true, null);
+    }
+
+    private static Target setWithPlacement(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        var target = set(context);
+        return new Target(target.kind(), target.id(), target.sets(), target.structures(), placement(context));
+    }
+
+    private static StructurePlacement placement(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        var ops = context.getSource().registryAccess().createSerializationContext(NbtOps.INSTANCE);
+        var placement = StructurePlacement.CODEC.parse(ops, CompoundTagArgument.getCompoundTag(context, "placement"))
+                .getOrThrow(INVALID_PLACEMENT::create);
+        if (placement instanceof ConcentricRingsStructurePlacement) {
+            throw RINGS_PLACEMENT.create();
+        }
+        return placement;
     }
 
     public static void forget(PlayerEvent.PlayerLoggedOutEvent event) {
@@ -188,7 +235,8 @@ public final class SpreadCommand {
         var player = source.getPlayer();
 
         source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.started", name, radius), false);
-        CompletableFuture.supplyAsync(() -> StructureSpread.analyze(level, target.sets(), target.structures(), center, radius, rejected != Rejected.NONE), Util.backgroundExecutor())
+        CompletableFuture.supplyAsync(() -> StructureSpread.analyze(
+                        level, target.sets(), target.structures(), center, radius, rejected != Rejected.NONE, target.placement()), Util.backgroundExecutor())
                 .whenCompleteAsync((report, error) -> {
                     if (error != null) {
                         ASLog.error("structure spread report failed", error);
@@ -197,10 +245,40 @@ public final class SpreadCommand {
                     }
                     // A player who left meanwhile was already forgotten; storing their report would leak it.
                     if (player != null && !player.hasDisconnected()) {
-                        VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, report.found(), -1));
+                        VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, report.found().stream().map(Stop::of).toList(), -1));
                         sendWaypoints(player, target.id(), level.dimension(), waypointColor, rejected, report);
                     }
                     send(source, target, name, radius, rejected, report);
+                }, source.getServer());
+        return 1;
+    }
+
+    private static int candidates(CommandContext<CommandSourceStack> context, int radius, @Nullable ChatFormatting color) throws CommandSyntaxException {
+        var placement = placement(context);
+        var source = context.getSource();
+        var waypointColor = color != null ? color : defaultColor(PLACEMENT_REPORT);
+        var level = source.getLevel();
+        var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
+        var player = source.getPlayer();
+
+        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.placement_started", radius), false);
+        CompletableFuture.supplyAsync(() -> StructureSpread.candidates(level, placement, center, radius), Util.backgroundExecutor())
+                .whenCompleteAsync((candidates, error) -> {
+                    if (error != null) {
+                        ASLog.error("placement spread report failed", error);
+                        source.sendFailure(Component.translatable("commands.ametrin_structures.spread.failed", error.toString()));
+                        return;
+                    }
+                    var stops = candidates.spots().stream().map(spot -> new Stop(PLACEMENT_REPORT, spot, spot, Optional.<BoundingBox>empty())).toList();
+                    if (player != null && !player.hasDisconnected()) {
+                        VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, stops, -1));
+                        sendWaypoints(player, PLACEMENT_REPORT, level.dimension(), waypointColor, Rejected.NONE, stops, List.of());
+                    }
+                    line(source, Component.translatable("commands.ametrin_structures.spread.candidates", candidates.spots().size(), radius));
+                    sendSpacing(source, candidates.spacing());
+                    if (!candidates.spots().isEmpty()) {
+                        sendNearest(source, candidates.spots().getFirst());
+                    }
                 }, source.getServer());
         return 1;
     }
@@ -212,14 +290,20 @@ public final class SpreadCommand {
     private static void sendWaypoints(
             ServerPlayer player, Identifier report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
             StructureSpread.Report spread) {
+        sendWaypoints(player, report, dimension, color, shownRejected, spread.found().stream().map(Stop::of).toList(), spread.rejectedSpots());
+    }
+
+    private static void sendWaypoints(
+            ServerPlayer player, Identifier report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
+            List<Stop> stops, List<StructureSpread.RejectedSpot> rejectedSpots) {
         if (!player.connection.hasChannel(ASPayloads.SpreadWaypoints.TYPE)) {
             return;
         }
-        var found = spread.found().stream()
+        var found = stops.stream()
                 .limit(MAX_WAYPOINTS)
-                .map(spot -> new ASPayloads.SpreadWaypoints.FoundSpot(spot.origin(), spot.id()))
+                .map(stop -> new ASPayloads.SpreadWaypoints.FoundSpot(stop.origin(), stop.id()))
                 .toList();
-        var rejected = spread.rejectedSpots().stream()
+        var rejected = rejectedSpots.stream()
                 .filter(shownRejected::accepts)
                 .limit(MAX_WAYPOINTS)
                 .map(spot -> new ASPayloads.SpreadWaypoints.RejectedSpot(spot.position(), spot.reason().key(), spot.reason().argument()))
@@ -275,10 +359,16 @@ public final class SpreadCommand {
         var heights = report.startHeights();
         line(source, Component.translatable("commands.ametrin_structures.spread.heights",
                 String.format("%.1f", heights.getAverage()), heights.getMin(), heights.getMax()));
-        report.spacing().ifPresent(spacing -> line(source, Component.translatable(
-                "commands.ametrin_structures.spread.spacing", Math.round(spacing.getAverage()), Math.round(spacing.getMin()))));
+        sendSpacing(source, report.spacing());
+        sendNearest(source, report.found().getFirst().origin());
+    }
 
-        var nearest = report.found().getFirst().origin();
+    private static void sendSpacing(CommandSourceStack source, Optional<DoubleSummaryStatistics> spacing) {
+        spacing.ifPresent(stats -> line(source, Component.translatable(
+                "commands.ametrin_structures.spread.spacing", Math.round(stats.getAverage()), Math.round(stats.getMin()))));
+    }
+
+    private static void sendNearest(CommandSourceStack source, BlockPos nearest) {
         var here = BlockPos.containing(source.getPosition());
         line(source, Component.translatable("commands.ametrin_structures.spread.nearest",
                 Math.round(StructureSpread.horizontalDistance(nearest, here)), coordinates(nearest)));
@@ -323,7 +413,7 @@ public final class SpreadCommand {
     private static int visit(CommandSourceStack source, IntUnaryOperator step) throws CommandSyntaxException {
         var player = source.getPlayerOrException();
         var visits = VISITS.get(player.getUUID());
-        if (visits == null || visits.found().isEmpty()) {
+        if (visits == null || visits.stops().isEmpty()) {
             source.sendFailure(Component.translatable("commands.ametrin_structures.visit.none"));
             return 0;
         }
@@ -333,16 +423,18 @@ public final class SpreadCommand {
             return 0;
         }
 
-        int index = Math.floorMod(step.applyAsInt(visits.index()), visits.found().size());
+        int count = visits.stops().size();
+        int index = Math.floorMod(step.applyAsInt(visits.index()), count);
         VISITS.put(player.getUUID(), visits.at(index));
-        var spot = visits.found().get(index);
-        var target = spot.visit();
+        var stop = visits.stops().get(index);
+        var target = stop.target();
         player.teleportTo(level, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
 
-        var box = spot.box();
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.visit.arrived",
-                index + 1, visits.found().size(), Component.literal(spot.id().toString()).withStyle(visits.color()), coordinates(spot.origin()),
-                box.getXSpan() + "×" + box.getYSpan() + "×" + box.getZSpan()), false);
+        source.sendSuccess(() -> stop.box()
+                .map(box -> Component.translatable("commands.ametrin_structures.visit.arrived",
+                        index + 1, count, Component.literal(stop.id().toString()).withStyle(visits.color()), coordinates(stop.origin()),
+                        box.getXSpan() + "×" + box.getYSpan() + "×" + box.getZSpan()))
+                .orElseGet(() -> Component.translatable("commands.ametrin_structures.visit.arrived_candidate", index + 1, count, coordinates(stop.origin()))), false);
         return index + 1;
     }
 

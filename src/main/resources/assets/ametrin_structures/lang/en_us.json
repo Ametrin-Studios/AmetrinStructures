@@ -53,6 +53,10 @@
   "commands.ametrin_structures.spread.no_set": "%s is in no structure set of this dimension, so it never generates here",
   "commands.ametrin_structures.spread.set_unused": "%s is not a structure set of this dimension, so it never generates here",
   "commands.ametrin_structures.spread.invalid_set": "There is no structure set \"%s\"",
+  "commands.ametrin_structures.spread.invalid_placement": "That is no placement: %s",
+  "commands.ametrin_structures.spread.rings_placement": "Concentric rings are worked out when the world loads, so only a set's own can be reported",
+  "commands.ametrin_structures.spread.placement_started": "Checking which chunks the placement picks within %s chunks…",
+  "commands.ametrin_structures.spread.candidates": "The placement picks %s chunks within %s chunks",
   "commands.ametrin_structures.spread.summary": "%s within %s chunks: %s candidate chunks, %s generate (%s%%)",
   "commands.ametrin_structures.spread.generated": " %s: %s",
   "commands.ametrin_structures.spread.rejected": " %sx %s",
@@ -113,5 +117,6 @@
   "waypoint.ametrin_structures.rejected.taken": "taken by %s",
   "waypoint.ametrin_structures.rejected.no_generation_point": "no generation point",
   "commands.ametrin_structures.visit.none": "Run /ametrin structures spread first; the last report found nothing to visit",
-  "commands.ametrin_structures.visit.arrived": "%s of %s: %s at %s, %s blocks"
+  "commands.ametrin_structures.visit.arrived": "%s of %s: %s at %s, %s blocks",
+  "commands.ametrin_structures.visit.arrived_candidate": "%s of %s: picked chunk at %s"
 }

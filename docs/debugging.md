@@ -28,8 +28,25 @@ permissions.
   height range, which filter failed, or another structure of the same set taking the spot. Other
   structures only report that they found no spot.
 
-Use it to tune spacing and filters: change a value, run datagen, reopen the world and run the report
-again. The report doesn't depend on which chunks exist, so the same world works.
+Use it to tune filters: change a value, run datagen, reopen the world and run the report again. The
+report doesn't depend on which chunks exist, so the same world works.
+
+### Trying placements
+
+```
+/ametrin structures spread set <structure_set> placement <placement> [radius] [color] [rejected [all]]
+/ametrin structures spread placement <placement> [radius] [color]
+```
+
+Try a placement without datagen or reopening the world. `<placement>` is written like the
+`placement` of a structure set, in SNBT, such as
+`{type:"ametrin_structures:even_spread",salt:1,min_distance:20}`.
+
+- `set … placement` reports the set as above, with that placement instead of its own.
+- `placement` reports only the chunks the placement picks, whatever would generate there: how many,
+  their spacing and the nearest. It's fast even over large radii. Its waypoints and visits are the
+  picked chunks.
+- Concentric rings are worked out when the world loads, so they can't be tried this way.
 
 ### Visiting spots
 
