@@ -74,9 +74,9 @@ final class ExampleStructures {
                     .terrainAdaptation(TerrainAdjustment.ENCAPSULATE))
             .build();
 
-    // Sunk in the sea: the interior foam floods, stairs weather, and there must be water overhead.
+    // Sunk in the sea, at least 20 chunks apart: the interior foam floods, stairs weather, and there must be water overhead.
     static final DeferredStructureHolder SUNKEN_SHRINE = REGISTER.set("sunken_shrine")
-            .scatteredGridPlacement(28, 0.4F)
+            .evenSpreadPlacement(20, 0.4F)
             .simple(shrine -> shrine
                     .single(template -> template.template("sunken_shrine").processors(List.of(
                             new RemoveFoamProcessor(Fluids.WATER.defaultFluidState().createLegacyBlock()),

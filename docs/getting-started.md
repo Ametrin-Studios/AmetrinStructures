@@ -59,6 +59,7 @@ public final class ExampleStructures {
 ```
 
 - `scatteredGridPlacement(24, 0.6F)`: one attempt per 24 by 24 chunk cell, 60% of which go ahead.
+  `evenSpreadPlacement(24, 0.6F)` instead keeps the attempts at least 24 chunks apart, without a grid.
 - `single("ruined_tower")`: places the template `examplemod:ruined_tower`.
 - `surface()`: the structure's origin sits on the terrain.
 - `filterFlatness(3)`: skips spots where the terrain under it varies by more than 3 blocks.

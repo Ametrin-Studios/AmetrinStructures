@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure;
 
 import com.ametrin.structures.placement.ScatteredGridPlacement;
+import com.ametrin.structures.placement.EvenSpreadPlacement;
 import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import net.minecraft.core.registries.Registries;
@@ -16,6 +17,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -103,8 +105,9 @@ public class DeferredStructureHolder {
 
         private final Map<String, Supplier<StructurePieceType>> pieces = new LinkedHashMap<>();
         private final Map<String, StructureEntryBuilder<?>> structures = new LinkedHashMap<>();
-        private ScatteredGridPlacement.Builder grid = ScatteredGridPlacement.builder();
-        // Replaces the grid when set.
+        // Takes the mod id and set name, for the default salt.
+        private BiFunction<String, String, StructurePlacement> saltedPlacement = (modId, name) -> ScatteredGridPlacement.builder().saltIfUnset(modId, name).build();
+        // Replaces the salted placement when set.
         private @Nullable Function<BootstrapContext<StructureSet>, StructurePlacement> placement;
 
         Builder(DeferredStructureRegister register, String name) {
@@ -184,7 +187,27 @@ public class DeferredStructureHolder {
 
         /// The salt defaults to one derived from the set's id.
         public Builder scatteredGridPlacement(ScatteredGridPlacement.Builder grid) {
-            this.grid = grid;
+            this.saltedPlacement = (modId, name) -> grid.saltIfUnset(modId, name).build();
+            this.placement = null;
+            return this;
+        }
+
+        public Builder evenSpreadPlacement(int minDistance) {
+            return evenSpreadPlacement(EvenSpreadPlacement.builder().minDistance(minDistance));
+        }
+
+        public Builder evenSpreadPlacement(int minDistance, float probability) {
+            return evenSpreadPlacement(EvenSpreadPlacement.builder(minDistance, probability));
+        }
+
+        /// The salt defaults to one derived from the set's id.
+        public Builder evenSpreadPlacement(UnaryOperator<EvenSpreadPlacement.Builder> configure) {
+            return evenSpreadPlacement(configure.apply(EvenSpreadPlacement.builder()));
+        }
+
+        /// The salt defaults to one derived from the set's id.
+        public Builder evenSpreadPlacement(EvenSpreadPlacement.Builder evenSpread) {
+            this.saltedPlacement = (modId, name) -> evenSpread.saltIfUnset(modId, name).build();
             this.placement = null;
             return this;
         }
@@ -231,7 +254,7 @@ public class DeferredStructureHolder {
                 return placement;
             }
             try {
-                var built = grid.saltIfUnset(register.modId, name).build();
+                var built = saltedPlacement.apply(register.modId, name);
                 return _ -> built;
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);

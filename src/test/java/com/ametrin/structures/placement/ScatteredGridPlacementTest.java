@@ -107,6 +107,13 @@ class ScatteredGridPlacementTest {
     }
 
     @Test
+    void theChunkRestrictionsKeepAwayFromTheCenter() {
+        ScatteredGridPlacement placement = grid(16).minChunksFromCenter(10).build();
+        assertFalse(placement.applyAdditionalChunkRestrictions(9, 0, SEED));
+        assertTrue(placement.applyAdditionalChunkRestrictions(0, -10, SEED));
+    }
+
+    @Test
     void zeroMinChunksFromCenterAllowsTheOrigin() {
         assertFalse(grid(16).build().isTooCloseToCenter(0, 0));
     }

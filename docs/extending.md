@@ -92,11 +92,16 @@ Reference:
 `horizontalPlacement(...)` accepts any `StructurePlacement`, vanilla's or your own. The function
 overload receives the bootstrap context, for placements that reference registry entries.
 
+The library has two: `scatteredGridPlacement(...)` puts one attempt in each grid cell, and
+`evenSpreadPlacement(...)` spreads them evenly with a guaranteed `min_distance` and no grid to spot. Its
+attempts average about 1.3 times `min_distance` apart.
+
 `StructurePlacements.hasStructureChunkInRange(...)` and `LakeProof` answer "is there a structure
 nearby" and "is this position inside a structure" for a structure, holder set or tag, which is handy
 for placements and features that should keep their distance.
 
 Reference: [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java),
+[`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java),
 [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java),
 [`LakeProof`](../src/main/java/com/ametrin/structures/placement/LakeProof.java) and
 [`ASPlacementTypes`](../src/main/java/com/ametrin/structures/registry/ASPlacementTypes.java).

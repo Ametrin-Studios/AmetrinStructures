@@ -6,7 +6,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Vec3i;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.Mth;
@@ -16,7 +15,6 @@ import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
-import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
 import org.jspecify.annotations.Nullable;
 
@@ -32,22 +30,20 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
     // Bounded so a mistyped value fails at load rather than at generation.
     public static final int MAX_SPACING = 4096;
 
-    private static final ThreadLocal<Boolean> CHECKING_EXCLUSION = ThreadLocal.withInitial(() -> false);
-
     public static final MapCodec<ScatteredGridPlacement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     Vec3i.CODEC.optionalFieldOf("locate_offset", Vec3i.ZERO).forGetter(ScatteredGridPlacement::locateOffset),
                     Codec.floatRange(0.0F, 1.0F)
                             .optionalFieldOf("probability", 1.0F)
                             .forGetter(ScatteredGridPlacement::frequency),
                     Codec.INT.fieldOf("salt").forGetter(ScatteredGridPlacement::salt),
-                    ExclusionZone.CODEC.optionalFieldOf("exclusion_zone").forGetter(ScatteredGridPlacement::structureExclusionZone),
+                    TagExclusionZone.CODEC.optionalFieldOf("exclusion_zone").forGetter(ScatteredGridPlacement::structureExclusionZone),
                     Codec.intRange(1, MAX_SPACING).fieldOf("spacing").forGetter(ScatteredGridPlacement::spacing),
                     GridOffset.CODEC.optionalFieldOf("grid_offset").forGetter(ScatteredGridPlacement::declaredGridOffset),
                     Codec.intRange(0, MAX_SPACING).fieldOf("random_offset").forGetter(ScatteredGridPlacement::randomOffset),
                     ExtraCodecs.NON_NEGATIVE_INT.optionalFieldOf("min_chunks_from_center", 0).forGetter(ScatteredGridPlacement::minChunksFromCenter))
             .apply(instance, ScatteredGridPlacement::new));
 
-    private final Optional<ExclusionZone> tagExclusionZone;
+    private final Optional<TagExclusionZone> tagExclusionZone;
     private final Optional<GridOffset> gridOffset;
     private final int randomOffset;
     private final int minChunksFromCenter;
@@ -56,7 +52,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
             Vec3i locateOffset,
             float probability,
             int salt,
-            Optional<ExclusionZone> exclusionZone,
+            Optional<TagExclusionZone> exclusionZone,
             int spacing,
             Optional<GridOffset> gridOffset,
             int randomOffset,
@@ -90,10 +86,10 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
     }
 
     public boolean isTooCloseToCenter(int chunkX, int chunkZ) {
-        return (long) chunkX * chunkX + (long) chunkZ * chunkZ < (long) minChunksFromCenter * minChunksFromCenter;
+        return StructurePlacements.isTooCloseToCenter(chunkX, chunkZ, minChunksFromCenter);
     }
 
-    public Optional<ExclusionZone> structureExclusionZone() {
+    public Optional<TagExclusionZone> structureExclusionZone() {
         return tagExclusionZone;
     }
 
@@ -113,22 +109,15 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         return new ChunkPos(inGrid.x() + shift.x(), inGrid.z() + shift.z());
     }
 
+    // Locate checks this, not isStructureChunk, so it skips these spots without loading them.
     @Override
-    public boolean isStructureChunk(ChunkGeneratorStructureState state, int x, int z) {
-        return super.isStructureChunk(state, x, z) && !isTooCloseToCenter(x, z) && !isExcluded(state, x, z);
+    public boolean applyAdditionalChunkRestrictions(int x, int z, long seed) {
+        return !isTooCloseToCenter(x, z) && super.applyAdditionalChunkRestrictions(x, z, seed);
     }
 
-    // Placements checked for the exclusion zone skip their own exclusion zones. Placements that exclude each other would otherwise check each other forever.
-    private boolean isExcluded(ChunkGeneratorStructureState state, int x, int z) {
-        if (tagExclusionZone.isEmpty() || CHECKING_EXCLUSION.get()) {
-            return false;
-        }
-        CHECKING_EXCLUSION.set(true);
-        try {
-            return tagExclusionZone.get().isForbidden(state, x, z, this);
-        } finally {
-            CHECKING_EXCLUSION.set(false);
-        }
+    @Override
+    public boolean applyInteractionsWithOtherStructures(ChunkGeneratorStructureState state, int x, int z) {
+        return tagExclusionZone.isEmpty() || !tagExclusionZone.get().isForbidden(state, x, z, this);
     }
 
     @Override
@@ -155,18 +144,6 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         }
     }
 
-    public record ExclusionZone(TagKey<Structure> structures, int chunkCount) {
-        public static final Codec<ExclusionZone> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                        TagKey.codec(Registries.STRUCTURE).fieldOf("structures").forGetter(ExclusionZone::structures),
-                        Codec.intRange(1, 16).fieldOf("chunk_count").forGetter(ExclusionZone::chunkCount))
-                .apply(instance, ExclusionZone::new));
-
-        public boolean isForbidden(ChunkGeneratorStructureState state, int x, int z, StructurePlacement own) {
-            return StructurePlacements.hasStructureChunkInRange(
-                    state, set -> set.value().placement() != own, holder -> holder.is(structures), x, z, chunkCount);
-        }
-    }
-
     public static Builder builder() {
         return new Builder();
     }
@@ -184,7 +161,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         private float probability = 1.0F;
         @Nullable
         private Integer salt;
-        private Optional<ExclusionZone> exclusionZone = Optional.empty();
+        private Optional<TagExclusionZone> exclusionZone = Optional.empty();
         private int spacing = 16;
         private Optional<GridOffset> gridOffset = Optional.empty();
         @Nullable
@@ -216,7 +193,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         }
 
         public Builder exclusionZone(TagKey<Structure> structures, int chunkCount) {
-            this.exclusionZone = Optional.of(new ExclusionZone(structures, chunkCount));
+            this.exclusionZone = Optional.of(new TagExclusionZone(structures, chunkCount));
             return this;
         }
 

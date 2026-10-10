@@ -6,6 +6,7 @@ An open source library mod for Minecraft structure mod developers.
 - **Simple structures** - a built-in structure type and piece type covering a large range of structure use-cases.  Everything is data driven so pack authors can modify structures.
 - **Extended jigsaw** - jigsaw structure with a fluent builder and pool bootstrap helpers that reduce boilerplate.
 - **Scattered Grid placement** - scattered grid-shaped placement with a structure-tag exclusion zone.
+- **Even Spread placement** - spreads structures evenly with a minimum distance, without a visible grid.
 - **Fixtures** - a block that gets replaced with whatever it specifies when a structure is generated.
 - **Spawner profiles** - data driven spawner settings that resolve at load time so spawners can be adjusted from data packs
 
