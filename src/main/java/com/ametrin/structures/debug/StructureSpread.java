@@ -76,9 +76,9 @@ final class StructureSpread {
 
     /// @param candidateCount chunks the sets' placement picked
     /// @param rejectedSpots  candidates that failed, nearest first; only when asked for
-    /// @param meanSpacing    the average horizontal distance from each spot to the closest other one (in blocks); empty with fewer than 2 or more than [StructureSpread#MAX_SPACING_SPOTS] spots
+    /// @param spacing        each spot's horizontal distance to the closest other one (in blocks); empty with fewer than 2 or more than [StructureSpread#MAX_SPACING_SPOTS] spots
     public record Report(int structureSetCount, int candidateCount, Map<Reason, Integer> rejections, List<Found> found,
-                         List<RejectedSpot> rejectedSpots, OptionalDouble meanSpacing, List<Timing> timings) {
+                         List<RejectedSpot> rejectedSpots, Optional<DoubleSummaryStatistics> spacing, List<Timing> timings) {
         public IntSummaryStatistics startHeights() {
             return found.stream().mapToInt(spot -> spot.origin().getY()).summaryStatistics();
         }
@@ -87,18 +87,17 @@ final class StructureSpread {
     /// Spacing compares every pair, so it is skipped for very dense structures.
     public static final int MAX_SPACING_SPOTS = 4096;
 
-    private static OptionalDouble meanSpacing(List<Found> found) {
-        if (found.size() > MAX_SPACING_SPOTS) {
-            return OptionalDouble.empty();
+    private static Optional<DoubleSummaryStatistics> spacing(List<Found> found) {
+        if (found.size() < 2 || found.size() > MAX_SPACING_SPOTS) {
+            return Optional.empty();
         }
-        return found.stream()
+        return Optional.of(found.stream()
                 .mapToDouble(spot -> found.stream()
                         .filter(other -> other != spot)
                         .mapToDouble(other -> horizontalDistance(spot.origin(), other.origin()))
                         .min()
-                        .orElse(Double.NaN))
-                .filter(distance -> !Double.isNaN(distance))
-                .average();
+                        .orElseThrow())
+                .summaryStatistics());
     }
 
     private static final class Stopwatch implements ExtendedStructure.Timer {
@@ -186,7 +185,7 @@ final class StructureSpread {
                 .map(entry -> entry.getValue().timing(entry.getKey()))
                 .sorted(Comparator.comparingLong(Timing::nanos).reversed())
                 .toList();
-        return new Report(checked.size(), candidates, rejections, List.copyOf(found), List.copyOf(rejectedSpots), meanSpacing(found), timings);
+        return new Report(checked.size(), candidates, rejections, List.copyOf(found), List.copyOf(rejectedSpots), spacing(found), timings);
     }
 
     /// The structure set's pick for one chunk, as vanilla makes it: the structures are tried in a

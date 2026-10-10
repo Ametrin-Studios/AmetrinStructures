@@ -17,8 +17,8 @@ permissions.
 - For a tag or a set, the report also counts the spots of each structure.
 - `radius`: how far to look, in chunks. Defaults to 128.
 - The report lists how many candidate chunks the placement picked and how many of them generate,
-  the most common reasons for the others, the start heights found, the average distance between
-  spots and the nearest spot.
+  the most common reasons for the others, the start heights found, the average and smallest distance
+  between spots and the nearest spot.
 - It also times the slowest structures: how long each took to find its spots and build its pieces,
   in total and per candidate chunk. For the library's structures it splits the time into creating
   the pieces, finding the start height and each filter. The first report after starting the game also
