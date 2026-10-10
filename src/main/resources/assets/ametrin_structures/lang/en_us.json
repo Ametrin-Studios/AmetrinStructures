@@ -56,6 +56,7 @@
   "commands.ametrin_structures.spread.invalid_placement": "That is no placement: %s",
   "commands.ametrin_structures.spread.rings_placement": "Concentric rings are worked out when the world loads, so only a set's own can be reported",
   "commands.ametrin_structures.spread.placement": "Placement %s",
+  "commands.ametrin_structures.spread.with_placement": "%s with placement %s",
   "commands.ametrin_structures.spread.placement_started": "Checking which chunks %s picks within %s chunks…",
   "commands.ametrin_structures.spread.candidates": "%s picks %s chunks within %s chunks",
   "commands.ametrin_structures.spread.summary": "%s within %s chunks: %s candidate chunks, %s generate (%s%%)",

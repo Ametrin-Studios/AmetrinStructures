@@ -42,10 +42,14 @@ Try a placement without datagen or reopening the world. `<placement>` is written
 `placement` of a structure set, in SNBT, such as
 `{type:"ametrin_structures:even_spread",salt:1,min_distance:20}`.
 
-- `set … placement` reports the set as above, with that placement instead of its own.
+- `set … placement` reports the set as above, with that placement instead of its own. Tab fills in
+  the set's own placement to edit.
 - `placement` reports only the chunks the placement picks, whatever would generate there: how many,
   their spacing and the nearest. It's fast even over large radii. Its waypoints and visits are the
   picked chunks.
+- Each run is numbered and keeps the earlier runs' waypoints, in a random color unless `color` is
+  given, so you can overlay placements to compare them. `rejected` still replaces all waypoints, and
+  `spread clear` starts the numbering over.
 - Concentric rings are worked out when the world loads, so they can't be tried this way.
 
 ### Visiting spots

@@ -44,7 +44,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
@@ -75,8 +74,8 @@ public final class SpreadCommand {
     // The rings are worked out once per world, for the sets' own placements.
     private static final SimpleCommandExceptionType RINGS_PLACEMENT = new SimpleCommandExceptionType(
             Component.translatable("commands.ametrin_structures.spread.rings_placement"));
-    // Numbered, so each placement report keeps its own waypoints for comparison.
-    private static final AtomicInteger PLACEMENT_REPORTS = new AtomicInteger();
+    // Per player, numbered so each report with a placement from the command keeps its own waypoints for comparison.
+    private static final Map<UUID, Integer> PLACEMENT_REPORTS = new ConcurrentHashMap<>();
 
     /// Per kind, nearest first, so a map mod is not flooded by a dense structure.
     private static final int MAX_WAYPOINTS = 1000;
@@ -230,6 +229,12 @@ public final class SpreadCommand {
 
     public static void forget(PlayerEvent.PlayerLoggedOutEvent event) {
         VISITS.remove(event.getEntity().getUUID());
+        PLACEMENT_REPORTS.remove(event.getEntity().getUUID());
+    }
+
+    private static int nextPlacementReport(CommandSourceStack source) {
+        var player = source.getPlayer();
+        return PLACEMENT_REPORTS.merge(player != null ? player.getUUID() : Util.NIL_UUID, 1, Integer::sum);
     }
 
     private static int radius(CommandContext<CommandSourceStack> context) {
@@ -253,8 +258,19 @@ public final class SpreadCommand {
 
     private static int spread(CommandContext<CommandSourceStack> context, Target target, int radius, @Nullable ChatFormatting color, Rejected rejected) {
         var source = context.getSource();
-        var waypointColor = color != null ? color : defaultColor(target.id());
-        var name = target.name(waypointColor);
+        Identifier reportId;
+        ChatFormatting waypointColor;
+        Component name;
+        if (target.placement() == null) {
+            reportId = target.id();
+            waypointColor = color != null ? color : defaultColor(target.id());
+            name = target.name(waypointColor);
+        } else {
+            int number = nextPlacementReport(source);
+            reportId = target.id().withSuffix("/placement_" + number);
+            waypointColor = color != null ? color : randomColor();
+            name = Component.translatable("commands.ametrin_structures.spread.with_placement", target.name(waypointColor), number);
+        }
         var level = source.getLevel();
         var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
         var player = source.getPlayer();
@@ -271,7 +287,7 @@ public final class SpreadCommand {
                     // A player who left meanwhile was already forgotten; storing their report would leak it.
                     if (player != null && !player.hasDisconnected()) {
                         VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, report.found().stream().map(Stop::of).toList(), -1));
-                        sendWaypoints(player, target.id(), level.dimension(), waypointColor, rejected, report);
+                        sendWaypoints(player, reportId, level.dimension(), waypointColor, rejected, report);
                     }
                     send(source, target, name, radius, rejected, report);
                 }, source.getServer());
@@ -281,9 +297,9 @@ public final class SpreadCommand {
     private static int candidates(CommandContext<CommandSourceStack> context, int radius, @Nullable ChatFormatting color) throws CommandSyntaxException {
         var placement = placement(context);
         var source = context.getSource();
-        int number = PLACEMENT_REPORTS.incrementAndGet();
+        int number = nextPlacementReport(source);
         var report = Identifier.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement/" + number);
-        var waypointColor = color != null ? color : WAYPOINT_COLORS.get(ThreadLocalRandom.current().nextInt(WAYPOINT_COLORS.size()));
+        var waypointColor = color != null ? color : randomColor();
         var name = Component.translatable("commands.ametrin_structures.spread.placement", number).withStyle(waypointColor);
         var level = source.getLevel();
         var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
@@ -315,6 +331,10 @@ public final class SpreadCommand {
         return WAYPOINT_COLORS.get(Math.floorMod(id.hashCode(), WAYPOINT_COLORS.size()));
     }
 
+    private static ChatFormatting randomColor() {
+        return WAYPOINT_COLORS.get(ThreadLocalRandom.current().nextInt(WAYPOINT_COLORS.size()));
+    }
+
     private static void sendWaypoints(
             ServerPlayer player, Identifier report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
             StructureSpread.Report spread) {
@@ -342,6 +362,7 @@ public final class SpreadCommand {
 
     private static int clear(CommandSourceStack source) throws CommandSyntaxException {
         var player = source.getPlayerOrException();
+        PLACEMENT_REPORTS.remove(player.getUUID());
         if (player.connection.hasChannel(ASPayloads.ClearSpreadWaypoints.TYPE)) {
             PacketDistributor.sendToPlayer(player, ASPayloads.ClearSpreadWaypoints.INSTANCE);
         }
