@@ -29,7 +29,7 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
     public static final MapCodec<EvenSpreadPlacement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     Vec3i.CODEC.optionalFieldOf("locate_offset", Vec3i.ZERO).forGetter(EvenSpreadPlacement::locateOffset),
                     Codec.floatRange(0.0F, 1.0F).optionalFieldOf("probability", 1.0F).forGetter(EvenSpreadPlacement::frequency),
-                    Codec.INT.fieldOf("salt").forGetter(EvenSpreadPlacement::salt),
+                    Codec.INT.optionalFieldOf("salt", 0).forGetter(EvenSpreadPlacement::salt),
                     TagExclusionZone.CODEC.optionalFieldOf("exclusion_zone").forGetter(EvenSpreadPlacement::structureExclusionZone),
                     Codec.intRange(1, MAX_DISTANCE).fieldOf("min_distance").forGetter(EvenSpreadPlacement::minDistance),
                     ExtraCodecs.NON_NEGATIVE_INT.optionalFieldOf("min_chunks_from_center", 0).forGetter(EvenSpreadPlacement::minChunksFromCenter))

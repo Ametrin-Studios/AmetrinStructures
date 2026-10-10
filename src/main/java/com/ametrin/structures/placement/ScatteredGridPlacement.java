@@ -35,7 +35,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
                     Codec.floatRange(0.0F, 1.0F)
                             .optionalFieldOf("probability", 1.0F)
                             .forGetter(ScatteredGridPlacement::frequency),
-                    Codec.INT.fieldOf("salt").forGetter(ScatteredGridPlacement::salt),
+                    Codec.INT.optionalFieldOf("salt", 0).forGetter(ScatteredGridPlacement::salt),
                     TagExclusionZone.CODEC.optionalFieldOf("exclusion_zone").forGetter(ScatteredGridPlacement::structureExclusionZone),
                     Codec.intRange(1, MAX_SPACING).fieldOf("spacing").forGetter(ScatteredGridPlacement::spacing),
                     GridOffset.CODEC.optionalFieldOf("grid_offset").forGetter(ScatteredGridPlacement::declaredGridOffset),
