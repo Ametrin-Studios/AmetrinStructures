@@ -12,6 +12,10 @@ import java.util.function.Predicate;
 public final class StructurePlacements {
     private StructurePlacements() {}
 
+    public static int salt(String namespace, String id) {
+        return namespace.hashCode() ^ id.hashCode();
+    }
+
     public static boolean isTooCloseToCenter(int chunkX, int chunkZ, int minChunksFromCenter) {
         return (long) chunkX * chunkX + (long) chunkZ * chunkZ < (long) minChunksFromCenter * minChunksFromCenter;
     }
@@ -28,7 +32,7 @@ public final class StructurePlacements {
         return hasStructureChunkInRange(state, _ -> true, holder -> holder.is(structures), x, z, range);
     }
 
-    /// Checks the structure sets accepts that contain a structure `structures` accepts.
+    /// Checks the structure sets `sets` accepts that contain a structure `structures` accepts.
     public static boolean hasStructureChunkInRange(
             ChunkGeneratorStructureState state,
             Predicate<Holder<StructureSet>> sets,

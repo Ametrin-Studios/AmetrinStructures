@@ -39,7 +39,7 @@ import java.util.function.Function;
 ///
 /// ```
 /// REGISTER.set("tower")
-///     .scatteredGridPlacement(24, 0.6F)
+///     .evenSpreadPlacement(18, 0.6F)
 ///     .simple(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST))
 ///     .build();
 /// ```
@@ -181,7 +181,7 @@ public class SimpleStructure extends ExtendedStructure {
         }
 
         public Builder single(String template) {
-            return pieces(g -> new PieceSources.SingleSource(TemplateEntry.of(Identifier.fromNamespaceAndPath(namespace, template))));
+            return pieces(_ -> new PieceSources.SingleSource(TemplateEntry.of(Identifier.fromNamespaceAndPath(namespace, template))));
         }
 
         public Builder single(Consumer<TemplateEntry.Builder> configure) {
@@ -275,7 +275,7 @@ public class SimpleStructure extends ExtendedStructure {
             return this;
         }
 
-        /// Whether waterloggable blocks placed in water get waterlogged.Defaults to [LiquidSettings#IGNORE_WATERLOGGING]
+        /// Whether waterloggable blocks placed in water get waterlogged. Defaults to [LiquidSettings#IGNORE_WATERLOGGING].
         ///
         /// [com.ametrin.structures.foam.RemoveFoamProcessor#WATER] always waterlogs.
         public Builder liquidSettings(LiquidSettings liquidSettings) {

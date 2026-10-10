@@ -144,7 +144,8 @@ public final class SpreadCommand {
     static LiteralArgumentBuilder<CommandSourceStack> visit() {
         return Commands.literal("visit")
                 .then(Commands.literal("next").executes(context -> visit(context.getSource(), index -> index + 1)))
-                .then(Commands.literal("previous").executes(context -> visit(context.getSource(), index -> index - 1)))
+                // Before the first visit (-1) this wraps to the last stop.
+                .then(Commands.literal("previous").executes(context -> visit(context.getSource(), index -> Math.max(index, 0) - 1)))
                 .then(Commands.argument("number", IntegerArgumentType.integer(1))
                         .executes(context -> {
                             int number = IntegerArgumentType.getInteger(context, "number");

@@ -106,7 +106,7 @@ public class DeferredStructureHolder {
         private final Map<String, Supplier<StructurePieceType>> pieces = new LinkedHashMap<>();
         private final Map<String, StructureEntryBuilder<?>> structures = new LinkedHashMap<>();
         // Takes the mod id and set name, for the default salt.
-        private BiFunction<String, String, StructurePlacement> saltedPlacement = (modId, name) -> EvenSpreadPlacement.builder().saltIfUnset(modId, name).build();
+        private BiFunction<String, String, StructurePlacement> saltedPlacement = EvenSpreadPlacement.builder()::build;
         // Replaces the salted placement when set.
         private @Nullable Function<BootstrapContext<StructureSet>, StructurePlacement> placement;
 
@@ -187,7 +187,7 @@ public class DeferredStructureHolder {
 
         /// The salt defaults to one derived from the set's id.
         public Builder scatteredGridPlacement(ScatteredGridPlacement.Builder grid) {
-            this.saltedPlacement = (modId, name) -> grid.saltIfUnset(modId, name).build();
+            this.saltedPlacement = grid::build;
             this.placement = null;
             return this;
         }
@@ -207,7 +207,7 @@ public class DeferredStructureHolder {
 
         /// The salt defaults to one derived from the set's id.
         public Builder evenSpreadPlacement(EvenSpreadPlacement.Builder evenSpread) {
-            this.saltedPlacement = (modId, name) -> evenSpread.saltIfUnset(modId, name).build();
+            this.saltedPlacement = evenSpread::build;
             this.placement = null;
             return this;
         }
