@@ -275,8 +275,8 @@ public final class SpreadCommand {
         var heights = report.startHeights();
         line(source, Component.translatable("commands.ametrin_structures.spread.heights",
                 String.format("%.1f", heights.getAverage()), heights.getMin(), heights.getMax()));
-        report.meanSpacing().ifPresent(spacing -> line(source, Component.translatable(
-                "commands.ametrin_structures.spread.spacing", Math.round(spacing))));
+        report.spacing().ifPresent(spacing -> line(source, Component.translatable(
+                "commands.ametrin_structures.spread.spacing", Math.round(spacing.getAverage()), Math.round(spacing.getMin()))));
 
         var nearest = report.found().getFirst().origin();
         var here = BlockPos.containing(source.getPosition());

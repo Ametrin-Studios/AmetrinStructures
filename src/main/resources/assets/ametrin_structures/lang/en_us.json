@@ -63,7 +63,7 @@
   "commands.ametrin_structures.spread.reason.taken": "another structure of the set, %s",
   "commands.ametrin_structures.spread.reason.no_generation_point": "no generation point or wrong biome",
   "commands.ametrin_structures.spread.heights": " Start height: average %s, lowest %s, highest %s",
-  "commands.ametrin_structures.spread.spacing": " Average distance to the nearest other: %s blocks",
+  "commands.ametrin_structures.spread.spacing": " Distance to the nearest other: average %s, closest %s blocks",
   "commands.ametrin_structures.spread.nearest": " Nearest: %s blocks away at %s",
   "commands.ametrin_structures.spread.visit_hint": " [Visit them, nearest first]",
   "commands.ametrin_structures.spread.outside_biome_hidden": " %s rejected spots outside its biomes are not waypoints; add \"all\" to show them",
