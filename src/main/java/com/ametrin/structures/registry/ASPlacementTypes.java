@@ -1,6 +1,7 @@
 package com.ametrin.structures.registry;
 
 import com.ametrin.structures.AmetrinStructures;
+import com.ametrin.structures.placement.EvenSpreadPlacement;
 import com.ametrin.structures.placement.ScatteredGridPlacement;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.registries.Registries;
@@ -12,4 +13,5 @@ public final class ASPlacementTypes {
     public static final DeferredRegister<MapCodec<? extends StructurePlacement>> REGISTER = DeferredRegister.create(Registries.STRUCTURE_PLACEMENT, AmetrinStructures.MOD_ID);
 
     public static final DeferredHolder<MapCodec<? extends StructurePlacement>, MapCodec<ScatteredGridPlacement>> GRID = REGISTER.register("scattered_grid", () -> ScatteredGridPlacement.CODEC);
+    public static final DeferredHolder<MapCodec<? extends StructurePlacement>, MapCodec<EvenSpreadPlacement>> EVEN_SPREAD = REGISTER.register("even_spread", () -> EvenSpreadPlacement.CODEC);
 }

@@ -48,7 +48,7 @@ public final class ExampleStructures {
     public static final DeferredStructureRegister REGISTER = new DeferredStructureRegister("examplemod");
 
     public static final DeferredStructureHolder RUINED_TOWER = REGISTER.set("ruined_tower") // create the structure set
-            .scatteredGridPlacement(p -> p.spacing(24).probability(0.6F))
+            .evenSpreadPlacement(p -> p.minDistance(18).probability(0.6F))
             .simple(tower -> tower // a single simple structure in the set
                     .surface() // place on the worlds surface
                     .single(t -> t.template("ruined_tower")) // a single template is placed
@@ -58,7 +58,8 @@ public final class ExampleStructures {
 }
 ```
 
-- `scatteredGridPlacement(...)`: one attempt per 24 by 24 chunk cell, 60% of which go ahead.
+- `evenSpreadPlacement(...)`: attempts at least 18 chunks apart, about 24 on average, 60% of
+  which succeed.
 - `single(...)`: places the template `examplemod:ruined_tower`.
 - `surface()`: the structure's origin sits on the terrain.
 - `filterFlatness(3)`: skips spots where the terrain under it varies by more than 3 blocks. Use sparingly.

@@ -46,8 +46,10 @@ class ExampleStructuresTest {
         }
         // Sets mix structure types and take any placement.
         assertEquals(2, structureCount(registries, ops, "castle"));
-        assertEquals("minecraft:random_spread", encode(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, "graves")
-                .getAsJsonObject().getAsJsonObject("placement").get("type").getAsString());
+        assertEquals("minecraft:random_spread", placementType(registries, ops, "graves"));
+        assertEquals("ametrin_structures:even_spread", placementType(registries, ops, "crypt"));
+        assertEquals("ametrin_structures:even_spread", placementType(registries, ops, "sunken_shrine"), "the default");
+        assertEquals("ametrin_structures:scattered_grid", placementType(registries, ops, "castle"));
         for (var pool : new String[]{"castle/start", "castle/walls", "castle/wall_ends", "castle/moat"}) {
             encode(registries, ops, Registries.TEMPLATE_POOL, StructureTemplatePool.DIRECT_CODEC, pool);
         }
@@ -78,6 +80,11 @@ class ExampleStructuresTest {
             }
         });
         return builder;
+    }
+
+    private static String placementType(HolderLookup.Provider registries, RegistryOps<JsonElement> ops, String set) {
+        return encode(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, set)
+                .getAsJsonObject().getAsJsonObject("placement").get("type").getAsString();
     }
 
     private static int structureCount(HolderLookup.Provider registries, RegistryOps<JsonElement> ops, String set) {

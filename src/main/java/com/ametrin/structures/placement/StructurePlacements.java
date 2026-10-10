@@ -12,6 +12,10 @@ import java.util.function.Predicate;
 public final class StructurePlacements {
     private StructurePlacements() {}
 
+    public static boolean isTooCloseToCenter(int chunkX, int chunkZ, int minChunksFromCenter) {
+        return (long) chunkX * chunkX + (long) chunkZ * chunkZ < (long) minChunksFromCenter * minChunksFromCenter;
+    }
+
     public static boolean hasStructureChunkInRange(ChunkGeneratorStructureState state, Holder<Structure> structure, int x, int z, int range) {
         return hasStructureChunkInRange(state, _ -> true, holder -> holder.equals(structure), x, z, range);
     }

@@ -1,7 +1,6 @@
 package com.ametrin.structures.example;
 
 import com.ametrin.structures.foam.RemoveFoamProcessor;
-import com.ametrin.structures.placement.ScatteredGridPlacement;
 import com.ametrin.structures.processor.ReplaceBlockProcessor;
 import com.ametrin.structures.structure.DeferredStructureHolder;
 import com.ametrin.structures.structure.DeferredStructureRegister;
@@ -44,7 +43,7 @@ final class ExampleStructures {
 
     // One template on dry, level ground: no Structure subclass, no type, no piece type.
     static final DeferredStructureHolder RUINED_TOWER = REGISTER.set("ruined_tower")
-            .scatteredGridPlacement(24, 0.6F)
+            .evenSpreadPlacement(18, 0.6F)
             .simple(tower -> tower
                     .single("ruined_tower")
                     .surface()
@@ -59,7 +58,7 @@ final class ExampleStructures {
 
     // A random pick of templates anywhere from just above bedrock to well below the surface.
     static final DeferredStructureHolder CRYPT = REGISTER.set("crypt")
-            .scatteredGridPlacement(ScatteredGridPlacement.builder(32, 0.5F).minChunksFromCenter(16))
+            .evenSpreadPlacement(spread -> spread.minDistance(24).probability(0.5F).minChunksFromCenter(16))
             .simple(crypt -> crypt
                     // Every template is mossified; the large one adds cobwebs on top of that, where foam was.
                     .weighted(weighted -> weighted
@@ -74,9 +73,9 @@ final class ExampleStructures {
                     .terrainAdaptation(TerrainAdjustment.ENCAPSULATE))
             .build();
 
-    // Sunk in the sea: the interior foam floods, stairs weather, and there must be water overhead.
+    // Sunk in the sea, at least 20 chunks apart: the interior foam floods, stairs weather, and there must be water overhead.
     static final DeferredStructureHolder SUNKEN_SHRINE = REGISTER.set("sunken_shrine")
-            .scatteredGridPlacement(28, 0.4F)
+            .evenSpreadPlacement(20, 0.4F)
             .simple(shrine -> shrine
                     .single(template -> template.template("sunken_shrine").processors(List.of(
                             new RemoveFoamProcessor(Fluids.WATER.defaultFluidState().createLegacyBlock()),
