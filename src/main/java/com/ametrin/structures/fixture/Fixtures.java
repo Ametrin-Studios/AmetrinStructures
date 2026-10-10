@@ -124,9 +124,8 @@ public final class Fixtures {
 
         @Override
         public void apply(FixtureContext context) {
-            var pos = context.actionBlockPos();
-            context.level().setBlock(pos, BlockStateMerging.merge(context.markerState(), block), Block.UPDATE_CLIENTS);
-            RandomizableContainer.setBlockEntityLootTable(context.level(), context.random(), pos, lootTable);
+            context.placeBlock(block);
+            RandomizableContainer.setBlockEntityLootTable(context.level(), context.random(), context.actionBlockPos(), lootTable);
         }
 
         @Override
@@ -168,7 +167,7 @@ public final class Fixtures {
         @Override
         public void apply(FixtureContext context) {
             var pos = context.actionBlockPos();
-            context.level().setBlock(pos, BlockStateMerging.merge(context.markerState(), block), Block.UPDATE_CLIENTS);
+            context.placeBlock(block);
             if (!(context.level().getBlockEntity(pos) instanceof BlockEntity blockEntity && blockEntity instanceof Container container)) {
                 return;
             }
@@ -279,7 +278,7 @@ public final class Fixtures {
 
         @Override
         public void apply(FixtureContext context) {
-            context.level().setBlock(context.actionBlockPos(), BlockStateMerging.merge(context.markerState(), state), Block.UPDATE_CLIENTS);
+            context.placeBlock(state);
         }
 
         @Override
@@ -663,9 +662,8 @@ public final class Fixtures {
             if (normal.isEmpty() || ominous.isEmpty()) {
                 return;
             }
-            var pos = context.actionBlockPos();
-            context.level().setBlock(pos, Blocks.TRIAL_SPAWNER.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (!(context.level().getBlockEntity(pos) instanceof TrialSpawnerBlockEntity spawner)) {
+            context.placeBlock(Blocks.TRIAL_SPAWNER.defaultBlockState());
+            if (!(context.level().getBlockEntity(context.actionBlockPos()) instanceof TrialSpawnerBlockEntity spawner)) {
                 return;
             }
             configure(spawner, new FullConfig(normal.get(), ominous.get(), targetCooldownLength, requiredPlayerRange), registries);
@@ -723,10 +721,8 @@ public final class Fixtures {
 
         @Override
         public void apply(FixtureContext context) {
-            var pos = context.actionBlockPos();
-            var state = Blocks.VAULT.defaultBlockState().setValue(VaultBlock.OMINOUS, ominous);
-            context.level().setBlock(pos, BlockStateMerging.merge(context.markerState(), state), Block.UPDATE_CLIENTS);
-            if (context.level().getBlockEntity(pos) instanceof VaultBlockEntity vault) {
+            context.placeBlock(Blocks.VAULT.defaultBlockState().setValue(VaultBlock.OMINOUS, ominous));
+            if (context.level().getBlockEntity(context.actionBlockPos()) instanceof VaultBlockEntity vault) {
                 // Marked for tests only, but it's the vault's one way to take a config other than loading it from a tag.
                 vault.setConfig(config());
                 vault.setChanged();
@@ -794,9 +790,8 @@ public final class Fixtures {
 
         @Override
         public void apply(FixtureContext context) {
-            var pos = context.actionBlockPos();
-            context.level().setBlock(pos, block, Block.UPDATE_CLIENTS);
-            if (context.level().getBlockEntity(pos) instanceof BrushableBlockEntity brushable) {
+            context.placeBlock(block);
+            if (context.level().getBlockEntity(context.actionBlockPos()) instanceof BrushableBlockEntity brushable) {
                 lootTable.ifPresent(loot -> brushable.setLootTable(loot, context.random().nextLong()));
             }
         }
@@ -958,10 +953,8 @@ public final class Fixtures {
             });
             return;
         }
-        var pos = context.actionBlockPos();
-        context.level()
-                .setBlock(pos, BlockStateMerging.merge(context.markerState(), Blocks.SPAWNER.defaultBlockState()), Block.UPDATE_CLIENTS);
-        if (context.level().getBlockEntity(pos) instanceof SpawnerBlockEntity spawner) {
+        context.placeBlock(Blocks.SPAWNER.defaultBlockState());
+        if (context.level().getBlockEntity(context.actionBlockPos()) instanceof SpawnerBlockEntity spawner) {
             configure.accept(spawner, spawner.getSpawner());
         }
     }

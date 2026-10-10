@@ -4,8 +4,6 @@ import com.ametrin.structures.fixture.*;
 import com.ametrin.structures.network.ASPayloads;
 import com.ametrin.structures.registry.ASFixtures;
 import com.ametrin.structures.registry.ASRegistries;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.serialization.DynamicOps;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ComponentPath;
@@ -30,21 +28,18 @@ import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.*;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /// Authoring screen for a fixture block. Only Cancel discards edits.
@@ -65,7 +60,7 @@ public class FixtureScreen extends Screen {
     private final List<ListTab> tabs = new ArrayList<>();
 
     private final BlockPos pos;
-    private final List<Alternative> alternatives = new ArrayList<>();
+    private final List<AlternativeDraft> alternatives = new ArrayList<>();
     private final List<Identifier> availableTypes;
     private int selected;
     private boolean rebuildFixtures;
@@ -86,7 +81,7 @@ public class FixtureScreen extends Screen {
     private FixtureScreen(FixtureBlockEntity marker) {
         super(Component.translatable("screen.ametrin_structures.fixture"));
         this.pos = marker.getBlockPos();
-        marker.fixtureData().forEach(data -> alternatives.add(new Alternative(data)));
+        marker.fixtureData().forEach(data -> alternatives.add(new AlternativeDraft(data, registries())));
         this.customName = marker.customName() == null ? "" : marker.customName().getString();
         this.useGravity = marker.useGravity();
         this.markPostProcessing = marker.markPostProcessing();
@@ -98,7 +93,7 @@ public class FixtureScreen extends Screen {
                 .toList();
         if (alternatives.isEmpty() && !availableTypes.isEmpty()) {
             var empty = ASFixtures.EMPTY.getId();
-            alternatives.add(new Alternative(availableTypes.contains(empty) ? empty : availableTypes.getFirst()));
+            alternatives.add(new AlternativeDraft(availableTypes.contains(empty) ? empty : availableTypes.getFirst()));
         }
     }
 
@@ -175,21 +170,21 @@ public class FixtureScreen extends Screen {
         var weightLabel = Component.translatable("screen.ametrin_structures.weight");
         var weightBox = editBox(controlWidth(), weightLabel, alternative.weight);
         weightBox.setHint(Component.literal("1").withStyle(EditBox.SEARCH_HINT_STYLE));
-        onEdit(weightBox, value -> parseWeight(value).isPresent(), value -> alternative.weight = value);
+        onEdit(weightBox, value -> FixtureInput.parseWeight(value).isPresent(), value -> alternative.weight = value);
         list.addRow(new Row(weightLabel, List.of(), weightBox));
         var chanceLabel = Component.translatable("screen.ametrin_structures.generation_chance");
         var chanceBox = editBox(controlWidth(), chanceLabel, alternative.chance);
         chanceBox.setHint(Component.literal("1.0").withStyle(EditBox.SEARCH_HINT_STYLE));
-        onEdit(chanceBox, value -> parseChance(value).isPresent(), value -> alternative.chance = value);
+        onEdit(chanceBox, value -> FixtureInput.parseChance(value).isPresent(), value -> alternative.chance = value);
         list.addRow(new Row(chanceLabel, tooltip(Component.translatable("screen.ametrin_structures.generation_chance.tooltip")), chanceBox));
         var conditionsLabel = Component.translatable("screen.ametrin_structures.conditions");
         var conditionsBox = editBox(controlWidth(), conditionsLabel, alternative.conditions);
         conditionsBox.setMaxLength(Integer.MAX_VALUE);
         conditionsBox.setHint(Component.literal("[{type: \"ametrin_structures:biome\", biomes: \"#minecraft:is_forest\"}]").withStyle(EditBox.SEARCH_HINT_STYLE));
-        onEdit(conditionsBox, value -> value.isBlank() || parseConditions(value).isPresent(), value -> alternative.conditions = value);
+        onEdit(conditionsBox, value -> value.isBlank() || FixtureInput.parseConditions(registries(), value).isPresent(), value -> alternative.conditions = value);
         list.addRow(new Row(conditionsLabel, tooltip(Component.translatable("screen.ametrin_structures.conditions.tooltip")), conditionsBox));
 
-        var fields = fieldsOf(alternative.type);
+        var fields = alternative.fields();
         if (!fields.isEmpty()) {
             list.addRow(new HeaderRow(Component.translatable("screen.ametrin_structures.parameters")));
         }
@@ -213,11 +208,11 @@ public class FixtureScreen extends Screen {
                 previous, next, add, remove);
     }
 
-    private EditBox typeBox(Alternative alternative, CompletionPopup completions) {
-        var box = editBox(controlWidth(), Component.translatable("screen.ametrin_structures.type"), alternative.type.toString());
+    private EditBox typeBox(AlternativeDraft alternative, CompletionPopup completions) {
+        var box = editBox(controlWidth(), Component.translatable("screen.ametrin_structures.type"), alternative.type().toString());
         completions.attach(box, () -> availableTypes.stream().map(Identifier::toString).toList());
         onEdit(box, value -> knownType(value).isPresent(), value -> knownType(value)
-                .filter(type -> !type.equals(alternative.type))
+                .filter(type -> !type.equals(alternative.type()))
                 .ifPresent(type -> {
                     alternative.setType(type);
                     refocusType = true;
@@ -231,7 +226,7 @@ public class FixtureScreen extends Screen {
         return Optional.ofNullable(Identifier.tryParse(value)).filter(availableTypes::contains);
     }
 
-    private Row fieldRow(FixtureField<?> field, Alternative alternative, CompletionPopup completions) {
+    private Row fieldRow(FixtureField<?> field, AlternativeDraft alternative, CompletionPopup completions) {
         var key = field.key();
         var type = field.type();
         var name = fieldName(key);
@@ -282,7 +277,7 @@ public class FixtureScreen extends Screen {
     }
 
     /// Cycles through the choices, with a blank one standing for none when the field has no default.
-    private CycleButton<String> choiceButton(FixtureField<?> field, Alternative alternative, Component name, String initial) {
+    private CycleButton<String> choiceButton(FixtureField<?> field, AlternativeDraft alternative, Component name, String initial) {
         var values = new ArrayList<String>();
         if (field.presence() != FixtureField.Presence.DEFAULT) {
             values.add("");
@@ -311,9 +306,9 @@ public class FixtureScreen extends Screen {
         String[] axes = {"X", "Y", "Z"};
         for (int axis = 0; axis < 3; axis++) {
             int index = axis;
-            var box = editBox(offsetWidth, Component.literal(axes[axis]), formatOffset(offset[axis]));
+            var box = editBox(offsetWidth, Component.literal(axes[axis]), FixtureInput.formatOffset(offset[axis]));
             box.setHint(Component.literal(axes[axis]).withStyle(EditBox.SEARCH_HINT_STYLE));
-            onEdit(box, value -> parseOffset(value).isPresent(), value -> parseOffset(value).ifPresent(parsed -> offset[index] = parsed));
+            onEdit(box, value -> FixtureInput.parseOffset(value).isPresent(), value -> FixtureInput.parseOffset(value).ifPresent(parsed -> offset[index] = parsed));
             offsetBoxes[axis] = box;
         }
         var offsetTooltip = Component.translatable("screen.ametrin_structures.offset.tooltip", FixtureBlockEntity.MAX_OFFSET);
@@ -323,7 +318,7 @@ public class FixtureScreen extends Screen {
         var becomesBox = editBox(controlWidth(), becomesLabel, becomes);
         becomesBox.setHint(Component.translatable("screen.ametrin_structures.becomes.hint").withStyle(EditBox.SEARCH_HINT_STYLE));
         completions.attach(becomesBox, Completer.blockState(blocks(), _ -> true));
-        onEdit(becomesBox, value -> parseState(value).isPresent(), value -> becomes = value);
+        onEdit(becomesBox, value -> FixtureInput.parseState(registries(), value).isPresent(), value -> becomes = value);
         list.addRow(new Row(becomesLabel, List.of(), becomesBox));
 
         var gravityLabel = Component.translatable("screen.ametrin_structures.use_gravity");
@@ -343,7 +338,7 @@ public class FixtureScreen extends Screen {
                         .create(0, 0, controlWidth(), WIDGET_HEIGHT, postProcessingLabel, (_, value) -> markPostProcessing = value)));
     }
 
-    private Alternative current() {
+    private AlternativeDraft current() {
         return alternatives.get(Math.min(selected, alternatives.size() - 1));
     }
 
@@ -355,7 +350,7 @@ public class FixtureScreen extends Screen {
 
     // Starts from a copy of the shown alternative, since variants of one fixture are the common case.
     private void addAlternative() {
-        alternatives.add(new Alternative(current()));
+        alternatives.add(new AlternativeDraft(current()));
         selected = alternatives.size() - 1;
         tabs.getFirst().scrollToTop();
         requestFixturesRebuild();
@@ -369,17 +364,8 @@ public class FixtureScreen extends Screen {
         }
     }
 
-    private static List<FixtureField<?>> fieldsOf(Identifier type) {
-        var fixture = ASRegistries.FIXTURE_TYPES.getValue(type);
-        return fixture == null ? List.of() : fixture.fields();
-    }
-
     private static HolderLookup.Provider registries() {
         return Objects.requireNonNull(Minecraft.getInstance().level, "the screen only opens in a level").registryAccess();
-    }
-
-    private static DynamicOps<Tag> ops() {
-        return registries().createSerializationContext(NbtOps.INSTANCE);
     }
 
     private static Component fieldName(String key) {
@@ -515,163 +501,17 @@ public class FixtureScreen extends Screen {
     private void sendUpdate() {
         ClientPacketDistributor.sendToServer(new ASPayloads.UpdateFixture(
                 pos,
-                alternatives.stream().map(Alternative::toTag).toList(),
+                alternatives.stream().map(alternative -> alternative.toTag(registries())).toList(),
                 customName.isBlank() ? Optional.empty() : Optional.of(Component.literal(customName)),
                 useGravity,
                 markPostProcessing,
                 new Vec3(offset[0], offset[1], offset[2]),
-                parseState(becomes)));
-    }
-
-    private static Optional<BlockState> parseState(String raw) {
-        if (raw.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(BlockStateParser.parseForBlock(blocks(), raw, false).blockState());
-        } catch (CommandSyntaxException exception) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<Double> parseOffset(String raw) {
-        try {
-            var value = Double.parseDouble(raw.trim());
-            return FixtureBlockEntity.isValidOffset(value) ? Optional.of(value) : Optional.empty();
-        } catch (NumberFormatException exception) {
-            return Optional.empty();
-        }
-    }
-
-    // Whole numbers without the trailing `.0`.
-    private static String formatOffset(double value) {
-        return value == Math.rint(value) ? String.valueOf((long) value) : String.valueOf(value);
-    }
-
-    private static Optional<Integer> parseWeight(String raw) {
-        try {
-            var weight = Integer.parseInt(raw.trim());
-            return weight >= 1 ? Optional.of(weight) : Optional.empty();
-        } catch (NumberFormatException exception) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<Float> parseChance(String raw) {
-        try {
-            var chance = Float.parseFloat(raw.trim());
-            return chance >= 0.0F && chance <= 1.0F ? Optional.of(chance) : Optional.empty();
-        } catch (NumberFormatException exception) {
-            return Optional.empty();
-        }
-    }
-
-    /// SNBT for a list of conditions, as NBT when it parses and reads as conditions.
-    private static Optional<Tag> parseConditions(String raw) {
-        try {
-            var tag = TagParser.create(NbtOps.INSTANCE).parseFully(raw.trim());
-            return FixtureCondition.LIST_CODEC.parse(ops(), tag).isSuccess() ? Optional.of(tag) : Optional.empty();
-        } catch (CommandSyntaxException exception) {
-            return Optional.empty();
-        }
+                FixtureInput.parseState(registries(), becomes)));
     }
 
     @Override
     public boolean isPauseScreen() {
         return false;
-    }
-
-    /// One fixture alternative while it is edited: its type, weight, chance and the text of each field.
-    /// Text that doesn't parse is kept as it is, so the alternative stays unreadable, but not lost,
-    /// until it's fixed.
-    private static final class Alternative {
-        private static final String TYPE_KEY = Fixture.TYPE_KEY;
-        private static final String WEIGHT_KEY = WeightedFixture.WEIGHT_KEY;
-        private static final String CHANCE_KEY = WeightedFixture.GENERATION_CHANCE_KEY;
-
-        private Identifier type;
-        private String weight = "";
-        private String chance = "";
-        private String conditions = "";
-        private final Map<String, String> texts = new LinkedHashMap<>();
-        // The alternative as it was stored. What the screen doesn't edit is sent back as it came, such as
-        // every field of a type this game doesn't know, or a type that isn't an id, until the type changes.
-        private CompoundTag stored;
-
-        private Alternative(Identifier type) {
-            this.type = type;
-            this.stored = typeOnly(type);
-        }
-
-        // Copies the text as typed, so a copy of an unreadable alternative stays unreadable too.
-        private Alternative(Alternative source) {
-            this.type = source.type;
-            this.weight = source.weight;
-            this.chance = source.chance;
-            this.conditions = source.conditions;
-            this.texts.putAll(source.texts);
-            this.stored = source.stored.copy();
-        }
-
-        private Alternative(Tag stored) {
-            var data = stored instanceof CompoundTag compound ? compound : new CompoundTag();
-            this.stored = data;
-            var id = data.getString(TYPE_KEY).map(Identifier::tryParse);
-            this.type = id.orElseGet(() -> Identifier.withDefaultNamespace("unknown"));
-            this.weight = text(data.get(WEIGHT_KEY)).orElse("");
-            this.chance = text(data.get(CHANCE_KEY)).orElse("");
-            this.conditions = Optional.ofNullable(data.get(WeightedFixture.CONDITIONS_KEY)).map(Tag::toString).orElse("");
-            for (var field : fieldsOf(type)) {
-                var value = data.get(field.key());
-                if (value != null) {
-                    texts.put(field.key(), field.type().tagToText(value, registries()).result().or(() -> text(value)).orElse(""));
-                }
-            }
-        }
-
-        private void setType(Identifier type) {
-            this.type = type;
-            this.texts.clear();
-            this.stored = typeOnly(type);
-        }
-
-        private static CompoundTag typeOnly(Identifier type) {
-            var data = new CompoundTag();
-            data.putString(TYPE_KEY, type.toString());
-            return data;
-        }
-
-        // Weight, chance and the fields go into one alternative as they're stored.
-        private Tag toTag() {
-            var data = stored.copy();
-            put(data, WEIGHT_KEY, weight, value -> parseWeight(value).map(IntTag::valueOf));
-            put(data, CHANCE_KEY, chance, value -> parseChance(value).map(FloatTag::valueOf));
-            put(data, WeightedFixture.CONDITIONS_KEY, conditions, FixtureScreen::parseConditions);
-            for (var field : fieldsOf(type)) {
-                put(data, field.key(), texts.getOrDefault(field.key(), ""), value -> field.type().textToTag(value, registries()).result());
-            }
-            return data;
-        }
-
-        // A blank value stays out, so it takes its default. Text that doesn't parse stays text, which
-        // keeps the alternative unreadable rather than losing what was typed.
-        private static void put(CompoundTag data, String key, String text, Function<String, Optional<? extends Tag>> parse) {
-            if (text.isBlank()) {
-                data.remove(key);
-            } else {
-                var parsed = parse.apply(text);
-                data.put(key, parsed.isPresent() ? parsed.get() : StringTag.valueOf(text));
-            }
-        }
-
-        private static Optional<String> text(@Nullable Tag tag) {
-            return switch (tag) {
-                case null -> Optional.empty();
-                case StringTag(String value) -> Optional.of(value);
-                case NumericTag number -> Optional.of(number.toString().replaceAll("[bsLfd]$", ""));
-                default -> Optional.of(tag.toString());
-            };
-        }
     }
 
     @FunctionalInterface
