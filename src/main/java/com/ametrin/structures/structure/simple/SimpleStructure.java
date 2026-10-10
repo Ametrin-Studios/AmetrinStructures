@@ -37,10 +37,9 @@ import java.util.function.Function;
 /// A structure of one or more templates at a start height measured from the terrain. A built-in type, so it needs no structure type, piece type or codec of its own:
 ///
 /// ```
-/// REGISTER.set("tower")
+/// STRUCTURES.registerSet("tower", set -> set
 ///     .evenSpreadPlacement(18, 0.6F)
-///     .simple(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST))
-///     .build();
+///     .simple(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST)));
 /// ```
 public class SimpleStructure extends ExtendedStructure {
     public static final StartHeight ON_SURFACE_START_HEIGHT = StartHeight.at(HeightAnchor.surface(0));
@@ -178,7 +177,7 @@ public class SimpleStructure extends ExtendedStructure {
         return ASStructureTypes.SIMPLE.get();
     }
 
-    /// For a structure outside a [DeferredStructureHolder]; templates default to `id`'s namespace.
+    /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap]; templates default to `id`'s namespace.
     /// Create it with [Builder#build(BootstrapContext)].
     public static Builder builder(Identifier id) {
         return new Builder(id.getNamespace(), id.getPath());

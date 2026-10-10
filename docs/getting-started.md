@@ -45,16 +45,15 @@ it in creative mode.
 
 ```java
 public final class ExampleStructures {
-    public static final DeferredStructureRegister REGISTER = new DeferredStructureRegister("examplemod");
+    public static final StructureBootstrap STRUCTURES = new StructureBootstrap("examplemod");
 
-    public static final DeferredStructureHolder RUINED_TOWER = REGISTER.set("ruined_tower") // create the structure set
+    public static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set // create the structure set
             .evenSpreadPlacement(18, 0.6F)
             .simple(tower -> tower // a single simple structure in the set
                     .surface() // place on the worlds surface
                     .single("ruined_tower") // a single template is placed
                     .filterFlatness(3)
-                    .biomes(BiomeTags.IS_FOREST))
-            .build();
+                    .biomes(BiomeTags.IS_FOREST)));
 }
 ```
 
@@ -65,21 +64,17 @@ public final class ExampleStructures {
 - `filterFlatness(3)`: skips spots where the terrain under it varies by more than 3 blocks.
 - `biomes(...)`: where it may generate. Defaults to every overworld biome.
 
-`build()` checks everything right away, so a mistake shows up when datagen runs, not while you
-explore a world.
+`registerSet` checks everything right away, so a mistake shows up as soon as the class loads, not
+while you explore a world. `RUINED_TOWER` holds the keys of the set and its structures.
 
 ## 4. Wire it up
 
-Two calls connect the register to the game:
+The structures only exist as data, so only datagen needs them:
 
 ```java
-// Mod constructor
-ExampleStructures.REGISTER.register(modBus);
-
-// Datagen
 modBus.addListener(GatherDataEvent.Client.class, event -> {
     var registries = new RegistrySetBuilder();
-    ExampleStructures.REGISTER.bootstrap(registries);
+    ExampleStructures.STRUCTURES.addTo(registries);
     event.createDatapackRegistryObjects(registries);
 });
 ```
@@ -127,7 +122,7 @@ as the structure block shows them; its bottom is where the terrain meets the str
 order, and falls back to the next when one doesn't fit:
 
 ```java
-REGISTER.set("graves")
+STRUCTURES.registerSet("graves", set -> set
         .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
         .simple("small", grave -> grave
                 .single("graves/small")
@@ -135,8 +130,7 @@ REGISTER.set("graves")
                 .weight(3))
         .simple("large", grave -> grave
                 .single("graves/large")
-                .surface())
-        .build();
+                .surface()));
 ```
 
 Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and

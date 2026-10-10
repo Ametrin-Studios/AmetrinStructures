@@ -2,8 +2,8 @@ package com.ametrin.structures.example;
 
 import com.ametrin.structures.foam.RemoveFoamProcessor;
 import com.ametrin.structures.processor.ReplaceBlockProcessor;
-import com.ametrin.structures.structure.DeferredStructureHolder;
-import com.ametrin.structures.structure.DeferredStructureRegister;
+import com.ametrin.structures.structure.StructureBootstrap;
+import com.ametrin.structures.structure.StructureSetKeys;
 import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.jigsaw.JigsawPools;
 import com.ametrin.structures.structure.simple.HeightAnchor;
@@ -24,25 +24,24 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
 import java.util.List;
 
 /// How a mod registers structures with this library, end to end: simple structures, a jigsaw
-/// structure with its pools, the mod bus call and the datagen wiring.
+/// structure with its pools, and the datagen wiring.
 final class ExampleStructures {
     static final String MODID = "examplemod";
 
-    /// One per mod. It owns the structure types, piece types, structures and structure sets.
-    static final DeferredStructureRegister REGISTER = new DeferredStructureRegister(MODID);
+    /// One per mod. It declares the structures and structure sets.
+    static final StructureBootstrap STRUCTURES = new StructureBootstrap(MODID);
 
     static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(MODID, path);
     }
 
     // One template on dry, level ground: no Structure subclass, no type, no piece type.
-    static final DeferredStructureHolder RUINED_TOWER = REGISTER.set("ruined_tower")
+    static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set
             .evenSpreadPlacement(18, 0.6F)
             .simple(tower -> tower
                     .single("ruined_tower")
@@ -53,11 +52,10 @@ final class ExampleStructures {
                     .filterFlatness(3)
                     .filterMaxWaterDepth(1)
                     .filterGroundCheck(BlockTags.DIRT)
-                    .biomes(BiomeTags.IS_FOREST))
-            .build();
+                    .biomes(BiomeTags.IS_FOREST)));
 
     // A random pick of templates anywhere from just above bedrock to well below the surface.
-    static final DeferredStructureHolder CRYPT = REGISTER.set("crypt")
+    static final StructureSetKeys CRYPT = STRUCTURES.registerSet("crypt", set -> set
             .evenSpreadPlacement(spread -> spread.minDistance(24).probability(0.5F).minChunksFromCenter(16))
             .simple(crypt -> crypt
                     // Every template is mossified; the large one adds cobwebs on top of that, where foam was.
@@ -70,11 +68,10 @@ final class ExampleStructures {
                     .processors(ProcessorLists.MOSSIFY_20_PERCENT)
                     .between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
-                    .terrainAdaptation(TerrainAdjustment.ENCAPSULATE))
-            .build();
+                    .terrainAdaptation(TerrainAdjustment.ENCAPSULATE)));
 
     // Sunk in the sea, at least 20 chunks apart: the interior foam floods, stairs weather, and there must be water overhead.
-    static final DeferredStructureHolder SUNKEN_SHRINE = REGISTER.set("sunken_shrine")
+    static final StructureSetKeys SUNKEN_SHRINE = STRUCTURES.registerSet("sunken_shrine", set -> set
             .evenSpreadPlacement(20, 0.4F)
             .simple(shrine -> shrine
                     .single(template -> template.template("sunken_shrine").processors(List.of(
@@ -88,12 +85,11 @@ final class ExampleStructures {
                     .verticalPlacementMode(HeightMode.LOWEST)
                     .filterSubmerged(6)
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
-                    .biomes(BiomeTags.IS_DEEP_OCEAN))
-            .build();
+                    .biomes(BiomeTags.IS_DEEP_OCEAN)));
 
     // Two structures sharing vanilla's random spread. Each spot tries them by weight, and takes the
     // other when the first does not fit.
-    static final DeferredStructureHolder GRAVES = REGISTER.set("graves")
+    static final StructureSetKeys GRAVES = STRUCTURES.registerSet("graves", set -> set
             .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
             .simple("small", grave -> grave
                     .surface()
@@ -105,11 +101,10 @@ final class ExampleStructures {
                     .surface()
                     .filterFlatness(1)
                     .single("graves/large")
-            )
-            .build();
+            ));
 
     // A jigsaw castle, and now and then a simple ruin in its place.
-    static final DeferredStructureHolder CASTLE = REGISTER.set("castle")
+    static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
             .structure((settings, context) -> ExtendedJigsawStructure.builder(
                                     settings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(CastlePools.START))
@@ -117,8 +112,7 @@ final class ExampleStructures {
                             .onSurface()
                             .build(),
                     castle -> castle.biomes(BiomeTags.IS_TAIGA).terrainAdaptation(TerrainAdjustment.BEARD_THIN).weight(4))
-            .simple("ruin", ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA))
-            .build();
+            .simple("ruin", ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
 
     static final class CastlePools {
         static final ResourceKey<StructureTemplatePool> START = JigsawPools.key(MODID, "castle/start");
@@ -147,15 +141,10 @@ final class ExampleStructures {
         }
     }
 
-    /// Mod constructor: registers the structure and piece types the register declared, if any.
-    static void construct(IEventBus modBus) {
-        REGISTER.register(modBus);
-    }
-
     /// Every datapack entry the examples declare, one `add` per registry.
     static RegistrySetBuilder registries() {
         RegistrySetBuilder registries = new RegistrySetBuilder().add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
-        REGISTER.bootstrap(registries);
+        STRUCTURES.addTo(registries);
         return registries;
     }
 

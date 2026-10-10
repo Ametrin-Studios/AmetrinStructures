@@ -68,14 +68,12 @@ shared settings to your structure, and keeps biomes, weight, step, terrain adapt
 overrides on the builder:
 
 ```java
-REGISTER.set("castle")
+STRUCTURES.registerSet("castle", set -> set
         .scatteredGridPlacement(40, 0.5F)
-        .structure((settings, context) -> new CastleStructure(settings), castle -> castle.biomes(BiomeTags.IS_TAIGA))
-        .build();
+        .structure((settings, context) -> new CastleStructure(settings), castle -> castle.biomes(BiomeTags.IS_TAIGA)));
 ```
 
-The register also declares what a custom structure needs: `REGISTER.structureType(...)` for its
-type, and `pieceType(...)` on the set for its piece types, named like the set's structures.
+Register its structure type and piece types with your own `DeferredRegister`s, like any other registry entry.
 
 Extend `ExtendedStructure` to get the library's filters, biome check and `/ametrin structures spread`
 reasons. Lay the structure out in `layOut` and leave the rest to it:

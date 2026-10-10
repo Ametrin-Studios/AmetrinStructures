@@ -106,7 +106,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         }
     }
 
-    /// Validates and creates the structure, for one registered outside a [DeferredStructureHolder].
+    /// Validates and creates the structure, for one registered outside a [StructureBootstrap].
     public Structure build(BootstrapContext<Structure> context) {
         validate();
         return bootstrap(context);
