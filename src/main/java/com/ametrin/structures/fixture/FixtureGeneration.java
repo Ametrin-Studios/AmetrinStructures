@@ -4,14 +4,12 @@ import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.util.ASLog;
 import com.ametrin.structures.util.PositionHelper;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -90,35 +88,15 @@ public final class FixtureGeneration {
             return;
         }
 
-        var before = level.getBlockState(actionBlockPos);
         try {
             fixture.apply(new FixtureContext(markerState, markerPos, actionPos, actionBlockPos, level, random, bounds, piece, generator));
         } catch (RuntimeException exception) {
             ASLog.error("fixture {} at {} failed: {}", fixture, markerPos, exception.toString());
             return;
         }
-        var placed = level.getBlockState(actionBlockPos);
-        if (placed != before) {
-            updateNeighborShapes(level, actionBlockPos, placed, random);
-        }
 
         if (marker.markPostProcessing()) {
             level.getChunk(actionBlockPos).markPosForPostprocessing(actionBlockPos);
-        }
-    }
-
-    // Placing a template reshapes the blocks along its edge against what lies beyond, which can be a marker of the
-    // next chunk or piece that hasn't run yet: half a double chest finds no chest there and turns single. Worldgen
-    // doesn't update neighbors when a fixture places its block, so this does, as placing the template's blocks would.
-    private static void updateNeighborShapes(WorldGenLevel level, BlockPos pos, BlockState placed, RandomSource random) {
-        var neighborPos = new BlockPos.MutableBlockPos();
-        for (var direction : Direction.values()) {
-            neighborPos.setWithOffset(pos, direction);
-            var neighbor = level.getBlockState(neighborPos);
-            var updated = neighbor.updateShape(level, level, neighborPos, direction.getOpposite(), pos, placed, random);
-            if (updated != neighbor) {
-                level.setBlock(neighborPos, updated, REPLACE_FLAGS);
-            }
         }
     }
 
