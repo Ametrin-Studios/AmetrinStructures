@@ -62,7 +62,7 @@ public record TrialSpawnerFixture(
         configure(spawner, new FullConfig(normal.get(), ominous.get(), targetCooldownLength, requiredPlayerRange), registries);
     }
 
-    // The trial spawner has no setter for its config: it loads it, as from a template's block entity data.
+    // The trial spawner has no setter for its config, so load it like a template's block entity data would.
     static void configure(TrialSpawnerBlockEntity spawner, FullConfig config, HolderLookup.Provider registries) {
         var data = FullConfig.MAP_CODEC.codec().encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), config).getOrThrow();
         spawner.loadCustomOnly(TagValueInput.create(ProblemReporter.DISCARDING, registries, (CompoundTag) data));

@@ -28,8 +28,8 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
 
 import java.util.List;
 
-/// How a mod registers structures with this library, end to end: simple structures, a jigsaw
-/// structure with its pools, and the datagen wiring.
+/// A full example of declaring structures with this library: simple structures, a jigsaw structure
+/// with its pools, and the datagen setup.
 final class ExampleStructures {
     static final String MODID = "examplemod";
 
@@ -40,25 +40,25 @@ final class ExampleStructures {
         return Identifier.fromNamespaceAndPath(MODID, path);
     }
 
-    // One template on dry, level ground: no Structure subclass, no type, no piece type.
+    // One template on dry, level ground. Needs no Structure subclass, structure type or piece type.
     static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set
             .evenSpreadPlacement(18, 0.6F)
             .simple(tower -> tower
                     .single("ruined_tower")
                     .surface()
                     .verticalPlacementMode(HeightMode.MEAN)
-                    // Sitting at the mean height leaves some corners above the ground; the foundation fills under them.
+                    // At the mean height some corners float above the ground. The foundation fills under them.
                     .foundation()
                     .filterFlatness(3)
                     .filterMaxWaterDepth(1)
                     .filterGroundCheck(BlockTags.DIRT)
                     .biomes(BiomeTags.IS_FOREST)));
 
-    // A random pick of templates anywhere from just above bedrock to well below the surface.
+    // One of several templates, at a random height between just above bedrock and well below the surface.
     static final StructureSetKeys CRYPT = STRUCTURES.registerSet("crypt", set -> set
             .evenSpreadPlacement(spread -> spread.minDistance(24).probability(0.5F).minChunksFromCenter(16))
             .simple(crypt -> crypt
-                    // Every template is mossified; the large one adds cobwebs on top of that, where foam was.
+                    // Every template gets mossy. The large one also gets cobwebs where its foam was.
                     .weighted(weighted -> weighted
                             .single("crypt/small", 3)
                             .single(template -> template.template("crypt/large").processors(List.of(
@@ -70,7 +70,7 @@ final class ExampleStructures {
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
                     .terrainAdaptation(TerrainAdjustment.ENCAPSULATE)));
 
-    // Sunk in the sea, at least 20 chunks apart: the interior foam floods, stairs weather, and there must be water overhead.
+    // Sunk in the sea, at least 20 chunks apart. The interior foam turns into water, the stairs get mossy, and it needs water above it.
     static final StructureSetKeys SUNKEN_SHRINE = STRUCTURES.registerSet("sunken_shrine", set -> set
             .evenSpreadPlacement(20, 0.4F)
             .simple(shrine -> shrine
@@ -87,8 +87,8 @@ final class ExampleStructures {
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
                     .biomes(BiomeTags.IS_DEEP_OCEAN)));
 
-    // Two structures sharing vanilla's random spread. Each spot tries them by weight, and takes the
-    // other when the first does not fit.
+    // Two structures sharing vanilla's random spread. Each spot tries them by weight, and uses the
+    // other one if the first doesn't fit.
     static final StructureSetKeys GRAVES = STRUCTURES.registerSet("graves", set -> set
             .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
             .simple("small", grave -> grave
@@ -103,7 +103,7 @@ final class ExampleStructures {
                     .single("graves/large")
             ));
 
-    // A jigsaw castle, and now and then a simple ruin in its place.
+    // A jigsaw castle, sometimes replaced by a simple ruin.
     static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
             .structure((settings, context) -> ExtendedJigsawStructure.builder(
@@ -129,7 +129,7 @@ final class ExampleStructures {
                     .element("wall_corner")
                     .element("wall_ruined", element -> element.weight(2).processors(ProcessorLists.MOSSIFY_10_PERCENT)));
 
-            // Foam stays and the air saved in this template is placed, not treated as void.
+            // Foam stays, and the air saved in this template is placed instead of treated as void.
             pools.pool("wall_ends", pool -> pool
                     .element("wall_end", JigsawPools.Element::noFoamProcessing));
 
@@ -141,14 +141,14 @@ final class ExampleStructures {
         }
     }
 
-    /// Every datapack entry the examples declare, one `add` per registry.
+    /// All datapack entries the examples declare.
     static RegistrySetBuilder registries() {
         RegistrySetBuilder registries = new RegistrySetBuilder().add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
         STRUCTURES.addTo(registries);
         return registries;
     }
 
-    /// Datagen: writes the structures, structure sets and pools as JSON.
+    /// Writes the structures, structure sets and pools as JSON.
     static void gatherData(GatherDataEvent.Client event) {
         event.createDatapackRegistryObjects(registries());
     }

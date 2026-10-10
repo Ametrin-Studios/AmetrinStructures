@@ -28,7 +28,7 @@ import java.util.function.Function;
 
 /// A template piece that runs fixtures, removes foam, extends down to a [Foundation], and fits the terrain to its [TerrainBox].
 ///
-/// The terrain adapts to the piece's own settings, not the structure's: pass the structure's [net.minecraft.world.level.levelgen.structure.Structure#terrainAdaptation()].
+/// The terrain adapts to the piece's settings instead of the structure's, so pass it the structure's [net.minecraft.world.level.levelgen.structure.Structure#terrainAdaptation()].
 public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePiece implements PieceBeardifierModifier {
     private static final String LIQUID_SETTINGS_KEY = "liquid_settings";
     private static final String FOUNDATION_KEY = "foundation";
@@ -56,7 +56,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         super(type, genDepth, manager, template, template.toString(), prepare(settings), position);
         this.terrainAdaptation = terrainAdaptation;
         this.terrainBox = terrainBox.resolve(this.template, groundLevelDelta);
-        // Relative to the bottom of the terrain box, which only a local box moves; its bottom is the ground.
+        // Relative to the bottom of the terrain box. Only a local box moves it, and its bottom is the ground.
         this.groundLevelDelta = terrainBox instanceof TerrainBox.Local ? 0 : groundLevelDelta;
     }
 
@@ -86,7 +86,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         return makeTemplateLocation();
     }
 
-    /// Whether a waterloggable block placed where the world holds water takes it in.
+    /// Whether waterloggable blocks placed in water get waterlogged.
     public LiquidSettings liquidSettings() {
         return placeSettings.shouldApplyWaterlogging() ? LiquidSettings.APPLY_WATERLOGGING : LiquidSettings.IGNORE_WATERLOGGING;
     }

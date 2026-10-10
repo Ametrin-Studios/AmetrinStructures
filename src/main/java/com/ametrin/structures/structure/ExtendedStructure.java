@@ -13,10 +13,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-/// The base of the library's structure types. It holds the [ExtendedStructureSettings] and finds the
-/// generation point in steps that say why a structure doesn't fit.
+/// Base class for the library's structure types. It finds the generation point in steps, so it can say
+/// why a structure doesn't fit.
 ///
-/// The subclass lays the structure out, then this class checks the biome and runs the [PlacementFilter]s.
+/// The subclass lays out the structure, then this class checks the biome and runs the [PlacementFilter]s.
 public abstract class ExtendedStructure extends Structure {
     private final ExtendedStructureSettings extendedSettings;
 
@@ -80,11 +80,11 @@ public abstract class ExtendedStructure extends Structure {
         return new Evaluation.Generated(candidate.stub().get());
     }
 
-    /// Lays the structure out up to its start position, or says why it can't, with [Evaluation.NoPieces] or [Evaluation.NoStartHeight].
+    /// Lays out the structure and finds its start position, or returns [Evaluation.NoPieces] or [Evaluation.NoStartHeight].
     protected abstract Either<Candidate, Evaluation> layOut(GenerationContext context, Timer timer);
 
-    /// @param footprint the box around every piece at `origin`, only asked for when there are filters
-    /// @param stub      the structure as it generates, asked for once it passed
+    /// @param footprint the box around all pieces at `origin`, only requested when there are filters
+    /// @param stub      the structure to generate, only requested once all checks passed
     public record Candidate(BlockPos origin, TerrainSampler terrain, Supplier<BoundingBox> footprint,
                             Supplier<GenerationStub> stub) {}
 
@@ -100,7 +100,7 @@ public abstract class ExtendedStructure extends Structure {
         record Filtered(PlacementFilter filter, BlockPos origin) implements Evaluation {}
     }
 
-    /// Told how long each step of [#evaluateGenerationPoint(GenerationContext, Timer)] took, in nanoseconds.
+    /// Receives how long each step of [#evaluateGenerationPoint(GenerationContext, Timer)] took, in nanoseconds.
     public interface Timer {
         Timer NONE = new Timer() {};
 

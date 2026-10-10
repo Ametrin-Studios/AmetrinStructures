@@ -27,12 +27,10 @@ public final class FixturePresets {
         return id -> presets.flatMap(lookup -> lookup.get(ResourceKey.create(ASRegistries.FIXTURE_PRESET, id))).map(Holder::value);
     }
 
-    /// Follows preset alternatives, each drawing among its own that `eligible` accepts, until one that isn't a preset.
-    /// The result's generation chance is the product of the chances along the way.
+    /// Follows presets, each drawing from its alternatives that `eligible` accepts, until it reaches one
+    /// that isn't a preset. The result's generation chance is the product of all chances along the way.
     ///
-    /// empty when a preset is missing or nested deeper than [#MAX_DEPTH];
-    ///
-    /// empty when a preset has no eligible alternatives.
+    /// Empty when a preset is missing, has no eligible alternatives, or is nested deeper than [#MAX_DEPTH].
     public static Optional<WeightedFixture> resolve(WeightedFixture drawn, Function<Identifier, Optional<FixturePreset>> presets, Predicate<WeightedFixture> eligible, RandomSource random) {
         var alternative = drawn;
         var chance = drawn.generationChance();
@@ -56,7 +54,7 @@ public final class FixturePresets {
         return Optional.of(new WeightedFixture(alternative.weight(), chance, alternative.conditions(), alternative.fixture()));
     }
 
-    // Logged when the server starts, since a preset is only read once a structure generates.
+    // Logged when the server starts, since presets are otherwise only read when a structure generates.
     public static void validateOnStart(ServerAboutToStartEvent event) {
         var presets = event.getServer().registryAccess().lookup(ASRegistries.FIXTURE_PRESET)
                 .map(lookup -> lookup.listElements().collect(Collectors.toMap(holder -> holder.key().identifier(), Holder::value)))

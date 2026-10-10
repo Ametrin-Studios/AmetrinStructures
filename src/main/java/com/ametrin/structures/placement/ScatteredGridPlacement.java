@@ -21,12 +21,12 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
 
-/// A grid-shaped placement: the world is cut into `spacing`-sized cells of chunks, one structure each.
+/// Splits the world into a grid of `spacing` by `spacing` chunk cells, with one structure per cell.
 ///
-/// - `grid_offset` shifts the whole grid. Left out, it is derived from the world seed and the salt, so structures sharing a spacing don't cluster at the same cell corners.
-/// - `random_offset` moves each structure up to that many chunks from its cell corner (0 is a strict grid)
+/// - `grid_offset` shifts the whole grid. If left out, it's derived from the world seed and the salt, so sets with the same spacing don't line up.
+/// - `random_offset` moves each structure up to that many chunks away from its cell corner. 0 is a strict grid.
 ///
-/// Also has an exclusion zone for a structure tag and a minimum distance from the world origin.
+/// It can also keep away from structures in a tag and from the world origin.
 public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // extends RandomSpreadStructurePlacement because /locate and similar have no generic case
     // Bounded so a mistyped value fails at load rather than at generation.
     public static final int MAX_SPACING = 4096;
@@ -139,7 +139,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
                                 ? Either.left(offset.x)
                                 : Either.right(offset));
 
-        // Folds the offset into one cell
+        // Wraps the offset into a single cell.
         GridOffset within(int spacing) {
             return new GridOffset(Math.floorMod(x, spacing), Math.floorMod(z, spacing));
         }
@@ -199,7 +199,7 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
             return this;
         }
 
-        /// Pins the grid shift. Left unset, it is derived from the world seed and the salt.
+        /// Fixes the grid shift. If unset, it's derived from the world seed and the salt.
         public Builder gridOffset(int x, int z) {
             this.gridOffset = Optional.of(new GridOffset(x, z));
             return this;

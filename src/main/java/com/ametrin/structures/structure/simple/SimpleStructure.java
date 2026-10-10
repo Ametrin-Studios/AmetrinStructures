@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/// A structure of one or more templates at a start height measured from the terrain. A built-in type, so it needs no structure type, piece type or codec of its own:
+/// A structure made of one or more templates, at a start height measured from the terrain. It's a built-in type, so you don't need your own structure type, piece type or codec:
 ///
 /// ```
 /// STRUCTURES.registerSet("tower", set -> set
@@ -86,7 +86,7 @@ public class SimpleStructure extends ExtendedStructure {
 
     @Override
     protected Either<Candidate, Evaluation> layOut(GenerationContext context, Timer timer) {
-        // The pieces come first, at Y 0, so the terrain can be measured under their real footprint.
+        // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
         var chunkPos = context.chunkPos();
         var unplaced = new BlockPos(chunkPos.getMinBlockX(), 0, chunkPos.getMinBlockZ());
@@ -177,7 +177,7 @@ public class SimpleStructure extends ExtendedStructure {
         return ASStructureTypes.SIMPLE.get();
     }
 
-    /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap]; templates default to `id`'s namespace.
+    /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap]. Templates default to `id`'s namespace.
     /// Create it with [Builder#build(BootstrapContext)].
     public static Builder builder(Identifier id) {
         return new Builder(id.getNamespace(), id.getPath());

@@ -35,7 +35,7 @@ public sealed interface TerrainBox {
         return Automatic.FOOTPRINT;
     }
 
-    /// in template coordinates, before any rotation
+    /// In template coordinates, before rotation.
     static TerrainBox of(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
         return new Local(new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ));
     }
@@ -52,8 +52,8 @@ public sealed interface TerrainBox {
 
         public static final Codec<Automatic> CODEC = StringRepresentable.fromEnum(Automatic::values);
 
-        // Keyed by the template's first palette: saving or loading a template replaces its palettes,
-        // so a re-saved template gets a fresh footprint and the old entry is collected.
+        // Keyed by the template's first palette. Saving or loading a template replaces its palettes, so a
+        // re-saved template gets a new footprint and the old entry is garbage collected.
         private static final LoadingCache<StructureTemplate.Palette, Map<Integer, Optional<BoundingBox>>> FOOTPRINTS =
                 CacheBuilder.newBuilder().weakKeys().build(CacheLoader.from(() -> new ConcurrentHashMap<>()));
 

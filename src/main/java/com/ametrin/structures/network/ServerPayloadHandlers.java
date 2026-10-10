@@ -41,7 +41,7 @@ public final class ServerPayloadHandlers {
         NetworkHelper.sendTo(player, new ASPayloads.SendRegistryKeys(payload.registry(), keys));
     }
 
-    /// Runs a marker now. Running consumes it, so its settings go back into the player's inventory first, unless they already carry an identical copy.
+    /// Runs a marker now. Running removes it, so it's given back to the player as an item first, unless they already have an identical one.
     public static void generateFixture(ASPayloads.GenerateFixture payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player) || !player.canUseGameMasterBlocks()) {
             return;

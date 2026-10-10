@@ -23,11 +23,11 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
 
-/// Works out where some structures would generate around a chunk without generating anything, and
-/// why every other candidate chunk fails. Mirrors `ChunkGenerator#createStructures`: each structure
-/// set's placement picks the chunks, a set with several structures tries them by weight until one
-/// fits, and each structure checks the biome at its start position. Simple structures check it before
-/// their filters and say which filter failed; for the others any failure counts as no generation point.
+/// Works out where structures would generate around a chunk, and why the other candidate chunks fail,
+/// without generating anything. It follows `ChunkGenerator#createStructures`: each set's placement picks
+/// the chunks, a set with several structures tries them by weight until one fits, and each structure
+/// checks the biome at its start position. The library's structures report which step failed. For
+/// other structures every failure is reported as no generation point.
 ///
 /// Only evaluates terrain noise, so it is safe to run off the server thread.
 final class StructureSpread {
@@ -146,9 +146,9 @@ final class StructureSpread {
     }
 
     /// Checks every chunk within `radius` chunks of `center`, for the dimension's structure sets that
-    /// `sets` accepts. Those of their structures that `targets` accepts are looked for; the others only
-    /// take spots from them. With `locateRejected` the report also lists where each rejected candidate
-    /// would have stood. `placement`, if given, replaces the sets' placements.
+    /// `sets` accepts. Structures that `targets` accepts are reported, the others in those sets can only
+    /// take their spots. With `locateRejected`, the report also lists where each rejected candidate would
+    /// have been. `placement` replaces the sets' placements if given.
     public static Report analyze(
             ServerLevel level, Predicate<Holder<StructureSet>> sets, Predicate<Holder<Structure>> targets,
             ChunkPos center, int radius, boolean locateRejected, @Nullable StructurePlacement placement) {
@@ -211,9 +211,9 @@ final class StructureSpread {
         return new Candidates(List.copyOf(spots), spacing(spots));
     }
 
-    /// The structure set's pick for one chunk, as vanilla makes it: the structures are tried in a
-    /// weighted order seeded by the chunk, and the first that fits wins. When several targets fail,
-    /// the first to get past its biome check gives the reason, since it says the most.
+    /// What the structure set generates in one chunk, decided like vanilla does: the structures are tried
+    /// in a weighted order seeded by the chunk, and the first one that fits wins. If several targets fail,
+    /// the reason comes from the first one that passed its biome check, since that's the most useful.
     private static Outcome tryChunk(
             ServerLevel level, ChunkGeneratorStructureState state, StructureSet set, Predicate<Holder<Structure>> targets, ChunkPos chunk,
             Map<Holder<Structure>, Stopwatch> stopwatches) {
@@ -259,7 +259,7 @@ final class StructureSpread {
         var context = context(level, state, holder.value(), chunk);
         long start = System.nanoTime();
         var evaluated = evaluate(holder.value(), context, stopwatch);
-        // Jigsaw structures assemble their pieces only when asked, so that counts as their work too.
+        // Jigsaw structures only assemble their pieces when asked, so include that in the time.
         var pieces = evaluated.left().map(Structure.GenerationStub::getPiecesBuilder);
         stopwatch.attempted(System.nanoTime() - start);
         return evaluated.<Outcome>map(stub -> found(holder, context, stub.position(), pieces.orElseThrow()), rejected -> rejected);
@@ -268,7 +268,7 @@ final class StructureSpread {
     /// Where the structure generates, or why it doesn't.
     private static Either<Structure.GenerationStub, Outcome.Rejected> evaluate(Structure structure, Structure.GenerationContext context, ExtendedStructure.Timer timer) {
         if (!(structure instanceof ExtendedStructure extended)) {
-            // Only the library's structures can say why; for the rest this also covers the biome.
+            // Only the library's structures can say why they failed. For others this includes the biome check.
             return structure.findValidGenerationPoint(context)
                     .<Either<Structure.GenerationStub, Outcome.Rejected>>map(Either::left)
                     .orElseGet(() -> Either.right(new Outcome.Rejected(Reason.NO_GENERATION_POINT)));

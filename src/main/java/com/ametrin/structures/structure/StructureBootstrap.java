@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/// Declares a mod's structure sets for datagen. Nothing is registered at runtime; the returned keys are safe to use anywhere.
+/// Declares a mod's structure sets for datagen.
 ///
 /// ```
 /// public static final StructureBootstrap STRUCTURES = new StructureBootstrap(MODID);
@@ -34,7 +34,7 @@ public final class StructureBootstrap {
         this.namespace = namespace;
     }
 
-    /// Declares the set `name` and its structures, named `<name>/<suffix>`. Fails right away on a mistake in `configure`.
+    /// Declares the set `name` and its structures, named `<name>/<suffix>`. Validates the builder immediately.
     public StructureSetKeys registerSet(String name, Consumer<StructureSetBuilder> configure) {
         var builder = new StructureSetBuilder(namespace, name);
         configure.accept(builder);

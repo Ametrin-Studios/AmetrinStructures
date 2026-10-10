@@ -14,8 +14,8 @@ public final class StructuresCommand {
     }
 
     static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        // The permission is on `structures`, not on the shared root: brigadier merges a node registered twice
-        // and keeps the first registration's requirement, which would then hold for the API's commands too.
+        // The permission check is on `structures`, not the shared root. Brigadier merges nodes registered twice
+        // and keeps the first requirement, so a check on the root would also apply to the API's commands.
         var structures = Commands.literal("structures")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(SpreadCommand.spread())

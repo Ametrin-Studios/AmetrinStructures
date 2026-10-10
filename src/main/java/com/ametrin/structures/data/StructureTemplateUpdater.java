@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-/// Brings structure templates saved by an older game version up to the current one, so worlds don't have to fix them each time they load them.
+/// Upgrades structure templates saved by an older game version, so the game doesn't have to upgrade them every time it loads them.
 ///
 /// Rewrites every outdated `data/<namespace>/structure/**.nbt` under the source folders in place.
 /// Pass the data generator's `--input` folders, from [GatherDataEvent#getInputs()]:
@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 /// ```gradle
 /// '--input', file('src/main/resources/').absolutePath
 /// ```
-/// The files are updated where they are, not written to the generated output.
+/// The files are updated in place, not written to the generated output.
 public final class StructureTemplateUpdater implements DataProvider {
     private static final String TEMPLATES = "structure";
     private static final String EXTENSION = ".nbt";
@@ -105,7 +105,7 @@ public final class StructureTemplateUpdater implements DataProvider {
         }
     }
 
-    // Loading into a template and saving it back, as vanilla's StructureUpdater does, leaves the template the way the game would save it: palette rebuilt, and stamped with the current version.
+    // Load and save the template like vanilla's StructureUpdater. That rebuilds the palette and stamps the current version.
     private static CompoundTag update(CompoundTag tag, int version) {
         var template = new StructureTemplate();
         template.load(BuiltInRegistries.BLOCK, DataFixTypes.STRUCTURE.updateToCurrentVersion(DataFixers.getDataFixer(), tag, version));

@@ -6,7 +6,7 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
-/// Placing it while crouching lays down a [FoamSpreaderBlock] which fills the surrounding volume the way the stack's [FoamSpread] component says.
+/// Placing it while sneaking places a [FoamSpreaderBlock], which fills the space around it as the stack's [FoamSpread] component says.
 public class FoamBlockItem extends BlockItem {
     public FoamBlockItem(FoamBlock block, Properties properties) {
         super(block, properties);

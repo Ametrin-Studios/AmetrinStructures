@@ -29,7 +29,7 @@ public record SpawnerProfileFixture(ResourceKey<SpawnerProfile> profile, boolean
         var attachment = new SpawnerProfileAttachment(profile.identifier());
         Fixtures.placeSpawner(context, minecart, (holder, spawner) -> {
             holder.setData(ASAttachments.SPAWNER_PROFILE, attachment);
-            // Applied now as well as on every later load: a freshly generated block entity is not reloaded.
+            // Apply it now too, since a freshly generated block entity isn't loaded again.
             SpawnerProfiles.resolve(attachment, context.level().registryAccess())
                     .ifPresent(resolved -> SpawnerAccess.applyWithSpawnDelay(spawner, resolved));
         });

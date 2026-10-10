@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 
 @ApiStatus.Internal
 public final class FixtureGeneration {
-    /// Client updates but no neighbor cascade: worldgen sets its own shapes
+    /// Updates clients but not neighbors, since worldgen sets its own shapes.
     private static final int REPLACE_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     private FixtureGeneration() {
@@ -48,9 +48,8 @@ public final class FixtureGeneration {
         }
     }
 
-    /// Runs the marker at `pos` as it would during world gen but without the probability roll.
-    ///
-    ///  The marker is consumed.
+    /// Runs the marker at `pos` like world generation would, but without the generation chance roll.
+    /// The marker is removed.
     public static void runNow(ServerLevel level, BlockPos pos) {
         processOne(null, pos, BoundingBox.infinite(), level.getRandom(), level, level.getChunkSource().getGenerator(), true);
     }
@@ -69,7 +68,7 @@ public final class FixtureGeneration {
         var markerState = level.getBlockState(markerPos);
         level.setBlock(markerPos, marker.becomes(), REPLACE_FLAGS);
 
-        // Once the marker is gone, so it neither stops the fall to the ground nor shows to conditions.
+        // After the marker is removed, so it doesn't stop the fall to the ground and conditions don't see it.
         var actionPos = actionPosition(markerPos, marker, level);
         var actionBlockPos = BlockPos.containing(actionPos);
         var conditionContext = new FixtureCondition.Context(level, actionBlockPos);
@@ -104,7 +103,7 @@ public final class FixtureGeneration {
         var position = PositionHelper.bottomCenter(markerPos).add(marker.offset());
 
         if (marker.useGravity()) {
-            // Worldgen heightmaps only exist while a chunk generates. a finished level keeps the final one.
+            // Worldgen heightmaps only exist while a chunk generates. A finished level only has the final ones.
             var heightmap = level instanceof WorldGenRegion ? Heightmap.Types.OCEAN_FLOOR_WG : Heightmap.Types.OCEAN_FLOOR;
             var surface = level.getHeight(heightmap, Mth.floor(position.x), Mth.floor(position.z));
             position = new Vec3(position.x, Math.min(position.y, surface), position.z);

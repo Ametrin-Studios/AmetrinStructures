@@ -50,16 +50,19 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /// `/ametrin structures spread <structure|#tag> [radius] [color] [rejected]` reports where a structure,
-/// or those of a tag, would generate around the caller and why the other candidate chunks fail, without
-/// generating anything, see [StructureSpread]. `spread set <structure_set> …` does the same for all of
-/// a structure set's structures, and only its placement. With Xaero's Minimap installed the spots also
-/// show as waypoints, in `color` (picked from the reported id by default), next to earlier reports';
-/// `rejected` adds the failed candidates inside the structures' biomes in gray, `rejected all` every
-/// failed candidate, and either replaces all earlier waypoints. `spread clear` removes them.
-/// `spread set <structure_set> placement <placement>` reports with that placement instead of the set's, and
+/// or the structures in a tag, would generate around the caller and why other candidate chunks fail.
+/// It doesn't generate anything, see [StructureSpread]. `spread set <structure_set> …` does the same
+/// for all structures in a set, using only that set's placement.
+///
+/// With Xaero's Minimap installed, the spots also show up as waypoints in `color`, which defaults to a
+/// color based on the reported id. `rejected` adds the failed candidates inside the structures' biomes
+/// in gray, and `rejected all` adds every failed candidate. Both replace all earlier waypoints.
+/// `spread clear` removes them.
+///
+/// `spread set <structure_set> placement <placement>` uses that placement instead of the set's own.
 /// `spread placement <placement> [radius] [color]` only reports the chunks a placement picks.
-/// `/ametrin structures visit next|previous|<number>` then teleports a player through the spots of
-/// their last report, nearest first.
+/// `/ametrin structures visit next|previous|<number>` teleports a player through the spots of their
+/// last report, nearest first.
 public final class SpreadCommand {
     private static final int DEFAULT_RADIUS = 128;
     private static final int MAX_RADIUS = 1024;
@@ -71,13 +74,13 @@ public final class SpreadCommand {
             id -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_set", id));
     private static final DynamicCommandExceptionType INVALID_PLACEMENT = new DynamicCommandExceptionType(
             error -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_placement", error));
-    // The rings are worked out once per world, for the sets' own placements.
+    // Concentric ring positions are only computed once per world, for the sets' own placements.
     private static final SimpleCommandExceptionType RINGS_PLACEMENT = new SimpleCommandExceptionType(
             Component.translatable("commands.ametrin_structures.spread.rings_placement"));
-    // Per player, numbered so each report with a placement from the command keeps its own waypoints for comparison.
+    // Per player. Each placement report gets a number, so it keeps its own waypoints.
     private static final Map<UUID, Integer> PLACEMENT_REPORTS = new ConcurrentHashMap<>();
 
-    /// Per kind, nearest first, so a map mod is not flooded by a dense structure.
+    /// For found and for rejected spots each, nearest first, so a dense structure doesn't flood the map mod.
     private static final int MAX_WAYPOINTS = 1000;
     /// Slowest first.
     private static final int MAX_TIMINGS = 5;
@@ -248,7 +251,7 @@ public final class SpreadCommand {
 
     enum Rejected {
         NONE,
-        /// Only those whose spot is in a looked-for structure's biomes: the rest fail wherever those could never be.
+        /// Only spots inside the biomes of a structure being looked for. The structure can't generate at the others anyway.
         IN_BIOME,
         ALL;
 
@@ -285,7 +288,7 @@ public final class SpreadCommand {
                         source.sendFailure(Component.translatable("commands.ametrin_structures.spread.failed", error.toString()));
                         return;
                     }
-                    // A player who left meanwhile was already forgotten; storing their report would leak it.
+                    // A player who left in the meantime was already removed. Storing their report would leak it.
                     if (player != null && !player.hasDisconnected()) {
                         VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, report.found().stream().map(Stop::of).toList(), -1));
                         sendWaypoints(player, reportId, level.dimension(), waypointColor, rejected, report);

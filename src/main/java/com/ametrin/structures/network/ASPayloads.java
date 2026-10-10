@@ -67,7 +67,7 @@ public final class ASPayloads {
         }
     }
 
-    /// Client to server: run a marker now, the authoring screen's way to try a fixture out. Sent after [UpdateFixture], so the marker runs with the edits just made.
+    /// Client to server: run a marker now, to test a fixture from its screen. Sent after [UpdateFixture], so it runs with the latest edits.
     public record GenerateFixture(BlockPos pos) implements CustomPacketPayload {
         public static final Type<GenerateFixture> TYPE = new Type<>(AmetrinStructures.locate("generate_fixture"));
 
@@ -81,8 +81,8 @@ public final class ASPayloads {
     }
 
     /// Client to server: commit the authoring screen's changes.
-    // One packet carries the whole marker so a partially applied edit is not possible. The alternatives
-    // go as they're stored, so a field left blank stays out and follows its default.
+    // One packet for the whole marker, so an edit can't be partially applied. The alternatives are sent as
+    // stored, so a blank field stays out and uses its default.
     public record UpdateFixture(
             BlockPos pos,
             List<Tag> fixtures,

@@ -15,12 +15,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/// Completion for plain edit boxes: a list of matching candidates under whichever attached box has
-/// focus, plus the best prefix match as ghost text inside the box.
+/// Completion for plain edit boxes. Shows matching candidates under the focused box, and the best prefix match as ghost text inside it.
 ///
-/// Vanilla's own popup only completes commands, so this is the same idea for arbitrary candidate
-/// lists. The owning screen forwards key, click, scroll and render calls, the way the chat screen
-/// forwards them to its command suggestions: up and down pick, tab accepts, escape dismisses.
+/// Works like vanilla's command suggestions, but for any list of candidates. The screen has to forward key, click, scroll and render calls to it. Up and down select, Tab accepts and Escape closes.
 final class CompletionPopup {
     private static final int LINE_HEIGHT = 12;
     private static final int VISIBLE_LINES = 8;

@@ -21,7 +21,7 @@ public final class SpawnerEvents {
     /// A spawn egg used on a spawner clears the spawner profile, restoring vanilla behavior.
     @SubscribeEvent
     static void onUseOnSpawner(PlayerInteractEvent.RightClickBlock event) {
-        // Only when vanilla will apply the egg; otherwise the profile would be lost for nothing.
+        // Only if vanilla applies the egg, otherwise the profile would be lost for nothing.
         if (event.getLevel() instanceof ServerLevel level
                 && level.isSpawnerBlockEnabled()
                 && SpawnEggItem.getType(event.getItemStack()) != null

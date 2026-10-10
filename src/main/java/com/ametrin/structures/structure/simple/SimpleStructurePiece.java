@@ -24,7 +24,7 @@ public class SimpleStructurePiece extends ExtendedTemplateStructurePiece {
     private static final String STRUCTURE_PROCESSORS_KEY = "structure_processors";
 
     private final Rotation rotation;
-    // Both saved unexpanded, so processor lists from the registry are saved as their ids.
+    // Saved before expanding, so processor lists from the registry are saved as ids.
     private final Optional<Holder<StructureProcessorList>> processors;
     private final Optional<Holder<StructureProcessorList>> structureProcessors;
 

@@ -16,11 +16,11 @@ import xaero.hud.minimap.world.container.MinimapWorldRootContainer;
 
 import java.util.ArrayList;
 
-/// only load this class when `xaerominimap` is present.
+/// Only load this class when `xaerominimap` is installed.
 final class XaeroSpreadWaypoints {
-    // Spread report spots as Xaero's Minimap third-party waypoints: shown on the minimap and world map,
-    // never saved with the player's own. Each report gets its own origin, so a new one replaces the
-    // spots of the same structure, tag or set and leaves the others for comparison.
+    // Shows spread report spots as Xaero's Minimap third-party waypoints. They show up on the minimap and
+    // world map, but aren't saved with the player's own waypoints. Each report gets its own origin, so a
+    // new report replaces the spots of the same structure, tag or set and keeps the others.
     //
     // Xaero's has no published API; this goes through the same classes its own Waystones support uses.
     private static final String FOUND = "spread/";
@@ -47,7 +47,7 @@ final class XaeroSpreadWaypoints {
         for (int i = 0; i < payload.found().size(); i++) {
             var spot = payload.found().get(i);
             var pos = spot.position();
-            // Numbered across the report, as `visit <number>` counts them.
+            // Numbered across the whole report, matching `visit <number>`.
             var structure = spot.structure().getPath();
             found.add(Integer.toString(i), new Waypoint(pos.getX(), pos.getY(), pos.getZ(), structure + " " + (i + 1), initials(structure), color, WaypointPurpose.NORMAL));
         }
@@ -58,7 +58,7 @@ final class XaeroSpreadWaypoints {
         for (int i = 0; i < payload.rejected().size(); i++) {
             var spot = payload.rejected().get(i);
             var pos = spot.position();
-            // Ids lose their namespace: the label is short, and the full id is in the chat report.
+            // Drop the namespace to keep the label short. The full id is in the chat report.
             var argument = spot.argument().substring(spot.argument().indexOf(':') + 1);
             var label = I18n.get("waypoint.ametrin_structures.rejected." + spot.reason(), argument);
             rejected.add(Integer.toString(i), new Waypoint(pos.getX(), pos.getY(), pos.getZ(), name + ": " + label, "x", WaypointColor.GRAY, WaypointPurpose.NORMAL));

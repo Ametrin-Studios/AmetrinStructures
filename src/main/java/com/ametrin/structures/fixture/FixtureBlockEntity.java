@@ -60,8 +60,8 @@ public class FixtureBlockEntity extends BlockEntity {
             : DataResult.error(() -> "offset " + offset + " is more than " + MAX_OFFSET + " blocks along an axis"));
     private static final Codec<List<Tag>> DATA_CODEC = ExtraCodecs.NBT.listOf();
 
-    // The alternatives as they're stored, saved back unchanged: encoding a decoded one drops a value that
-    // equals its default, so an explicitly set value would follow a later change of the default.
+    // The alternatives exactly as stored, saved back unchanged. Re-encoding a decoded alternative drops
+    // values that equal the default, so an explicitly set value would change if the default changes.
     private List<Tag> fixtureData = List.of();
     private List<WeightedFixture> fixtures = List.of();
 
@@ -80,7 +80,7 @@ public class FixtureBlockEntity extends BlockEntity {
         return fixtures;
     }
 
-    /// The alternatives as they're stored: a field left out takes the current default.
+    /// The alternatives as stored. A missing field uses the current default.
     public List<Tag> fixtureData() {
         return fixtureData.stream().map(Tag::copy).toList();
     }
@@ -144,7 +144,7 @@ public class FixtureBlockEntity extends BlockEntity {
         return Math.abs(offset) <= MAX_OFFSET;
     }
 
-    /// when not overridden [Blocks#AIR] or [Fluids#WATER] when waterlogged
+    /// Unless set, [Blocks#AIR], or [Fluids#WATER] when waterlogged.
     public BlockState becomes() {
         return becomes.orElseGet(() -> getBlockState().getValue(FixtureBlock.WATERLOGGED)
                 ? Fluids.WATER.defaultFluidState().createLegacyBlock()
@@ -170,7 +170,7 @@ public class FixtureBlockEntity extends BlockEntity {
         try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(problemPath(), LOGGER)) {
             var output = TagValueOutput.createWithContext(reporter, registries);
             saveCustomOnly(output);
-            // The name travels as the item's name component instead.
+            // The name is stored as the item's name component instead.
             output.discard(CUSTOM_NAME_KEY);
             BlockItem.setBlockEntityData(stack, getType(), output);
             stack.applyComponents(collectComponents());
@@ -199,7 +199,7 @@ public class FixtureBlockEntity extends BlockEntity {
         this.customName = input.read(CUSTOM_NAME_KEY, ComponentSerialization.CODEC).orElse(null);
         this.useGravity = input.getBooleanOr(USE_GRAVITY_KEY, false);
         this.markPostProcessing = input.getBooleanOr(MARK_POST_PROCESSING_KEY, false);
-        // One out of range is left out; the structure check reports it.
+        // An offset out of range is ignored. The structure check reports it.
         this.offset = input.read(OFFSET_KEY, OFFSET_CODEC).orElse(Vec3.ZERO);
         this.becomes = input.read(BECOMES_KEY, BlockState.CODEC);
     }

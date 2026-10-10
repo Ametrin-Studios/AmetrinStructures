@@ -21,9 +21,9 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.function.Predicate;
 
-/// Replaces every block matching `condition` with `change_to` at probability `chance`, rolled once per
-/// position. With `preserve_state`, properties both blocks share carry over, and so does block entity
-/// data, which is otherwise only kept when the block stays the same.
+/// Replaces blocks matching `condition` with `change_to`, each with probability `chance`, rolled per
+/// position. With `preserve_state`, properties both blocks have are copied over, and so is block entity
+/// data, which is otherwise only kept if the block stays the same.
 public class ReplaceBlockProcessor extends StructureProcessor {
     public static final MapCodec<ReplaceBlockProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     Condition.CODEC.fieldOf("condition").forGetter(p -> p.condition),

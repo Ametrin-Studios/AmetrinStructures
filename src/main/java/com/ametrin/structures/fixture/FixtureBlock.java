@@ -67,7 +67,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
                 .setValue(WATERLOGGED, waterlogged);
     }
 
-    // Faces the player. Facing up or down, the top still points at them, so horizontal blocks do too.
+    // Faces the player. When facing up or down, the top points toward the player, so horizontal blocks placed from it do too.
     private static FrontAndTop orientation(BlockPlaceContext context) {
         var front = context.getNearestLookingDirection().getOpposite();
         var top = front.getAxis() == Direction.Axis.Y ? context.getHorizontalDirection().getOpposite() : Direction.UP;
@@ -114,7 +114,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
     protected VoxelShape getBlockSupportShape(BlockState state, BlockGetter level, BlockPos pos) {
         if (level.getBlockEntity(pos) instanceof FixtureBlockEntity marker) {
             var becomes = marker.becomes();
-            // A marker becoming a marker would ask itself again.
+            // A marker that becomes a marker would ask itself again.
             if (!(becomes.getBlock() instanceof FixtureBlock)) {
                 return becomes.getBlockSupportShape(level, pos);
             }
@@ -122,7 +122,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
         return Shapes.empty();
     }
 
-    // A picked marker's data loads after its neighbors have updated, so they update again for its becomes state.
+    // A picked marker's data loads after its neighbors updated, so update them again for its becomes state.
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity by, ItemStack itemStack) {
         if (!level.isClientSide()

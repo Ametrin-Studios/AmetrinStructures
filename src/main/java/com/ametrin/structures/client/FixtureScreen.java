@@ -346,7 +346,7 @@ public class FixtureScreen extends Screen {
         requestFixturesRebuild();
     }
 
-    // Starts from a copy of the shown alternative, since variants of one fixture are the common case.
+    /// Copies the current alternative.
     private void addAlternative() {
         alternatives.add(new AlternativeDraft(current()));
         selected = alternatives.size() - 1;
@@ -391,7 +391,7 @@ public class FixtureScreen extends Screen {
                 .build();
     }
 
-    // Rows grow with the screen up to a limit; the controls take what the label leaves.
+    // Rows grow with the screen up to a limit. The controls get the space the label doesn't use.
     private int rowWidth() {
         return Math.min(MAX_ROW_WIDTH, width - 24);
     }
@@ -403,7 +403,7 @@ public class FixtureScreen extends Screen {
 
     private EditBox editBox(int width, Component label, String value) {
         var box = new EditBox(font, width, WIDGET_HEIGHT, label) {
-            // The hint and the completion's ghost text aren't clipped to the box on their own.
+            // hint and text isn't clipped to the box by default.
             @Override
             public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
                 graphics.enableScissor(getX(), getY(), getRight(), getBottom());
@@ -477,7 +477,7 @@ public class FixtureScreen extends Screen {
         extractMenuBackground(graphics, 0, layout.getHeaderHeight(), width, height);
     }
 
-    /// Saves, like pressing Done: losing edits to Escape is worse than an unwanted save.
+    /// Saves like pressing Done. Losing edits by accident is worse than an unwanted save.
     @Override
     public void onClose() {
         sendUpdate();
@@ -488,8 +488,7 @@ public class FixtureScreen extends Screen {
         super.onClose();
     }
 
-    /// Saves the edits, then runs the marker in place. The server hands the marker back as an item
-    /// first, since running it consumes the block.
+    /// Saves the edits and runs the marker in place. Running it removes the block, so the server gives it back as an item first.
     private void generate() {
         sendUpdate();
         ClientPacketDistributor.sendToServer(new ASPayloads.GenerateFixture(pos));

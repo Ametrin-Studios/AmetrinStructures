@@ -8,9 +8,7 @@ import java.util.*;
 
 /// Registry keys the server has told us about.
 ///
-/// The authoring screen asks the server rather than reading client-side registries: the server may
-/// have datapacks the client does not, and a suggestion list that silently omits them is worse than
-/// no suggestion list.
+/// The fixture screen asks the server instead of reading the client's registries, because the server can have datapacks the client doesn't know about.
 public final class RegistryKeyCache {
     private static final Map<Identifier, List<Identifier>> KEYS = new HashMap<>();
     private static final Set<Identifier> REQUESTED = new HashSet<>();
@@ -27,7 +25,7 @@ public final class RegistryKeyCache {
         return KEYS.getOrDefault(registry, List.of());
     }
 
-    /// Asks again on next use, keeping the old keys until then, so a server /reload shows up.
+    /// Asks the server again on next use, so changes from /reload show up. The old keys stay until then.
     public static void refresh() {
         REQUESTED.clear();
     }
@@ -42,7 +40,7 @@ public final class RegistryKeyCache {
         return version;
     }
 
-    /// Dropped on disconnect: another server may have different datapacks.
+    /// Call on disconnect, since another server can have different datapacks.
     public static void clear() {
         KEYS.clear();
         REQUESTED.clear();

@@ -15,9 +15,9 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.material.Fluids;
 import org.jspecify.annotations.Nullable;
 
-/// Replaces foam, with its [FoamBlock#replacementState()], or `fill`, and treats air the template saved like structure void.
+/// Replaces foam with its [FoamBlock#replacementState()] or `fill`, and treats air saved in the template as structure void.
 ///
-/// Pieces of this library and [com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement]s add [#AIR] by default unless they already declare one.
+/// This library's pieces and [com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement]s add [#AIR] unless they already have one.
 public class RemoveFoamProcessor extends StructureProcessor {
     public static final RemoveFoamProcessor AIR = new RemoveFoamProcessor(Blocks.AIR.defaultBlockState());
     public static final RemoveFoamProcessor WATER = new RemoveFoamProcessor(Fluids.WATER.defaultFluidState().createLegacyBlock());
@@ -31,7 +31,7 @@ public class RemoveFoamProcessor extends StructureProcessor {
     /// With water as `fill`, every waterloggable block of the template is waterlogged too.
     public RemoveFoamProcessor(BlockState fill) {
         this.fill = fill;
-        // Only water waterlogs, compared by type, as tags aren't bound when the constants are built.
+        // Compared by type, since tags aren't bound yet when the constants are created.
         this.waterFilled = fill.getFluidState().getType().isSame(Fluids.WATER);
     }
 
@@ -46,7 +46,7 @@ public class RemoveFoamProcessor extends StructureProcessor {
             var replacement = state.getBlock() instanceof FoamBlock foam ? foam.replacementState().orElse(fill) : fill;
             return new StructureTemplate.StructureBlockInfo(current.pos(), replacement, null);
         }
-        // Only air the template saved is void. Air an earlier processor produced (e.g. jigsaw block, double foam removal) is placed like any other block.
+        // Only air saved in the template is void. Air from an earlier processor (e.g. a jigsaw block or a second foam removal) is placed like any other block.
         if (state.isAir() && original.state().isAir()) {
             return null;
         }

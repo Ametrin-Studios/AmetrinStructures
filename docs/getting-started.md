@@ -1,9 +1,8 @@
 # Getting started
 
-This guide takes you from an empty mod to a structure generating in the world. It assumes you know how to build a
-structure with structure blocks and how NeoForge datagen works.
+This guide takes you from an empty mod to a structure generating in the world. It assumes you know how to build and save a structure with structure blocks and how NeoForge datagen works.
 
-## 1. Depend on the library
+## 1. Add the dependency
 
 Add the Ametrin Studios maven and the library to your `build.gradle`:
 
@@ -20,7 +19,7 @@ dependencies {
 }
 ```
 
-Declare the dependency in `neoforge.mods.toml`, Ametrin Structures needs to load before your mod:
+Declare the dependency in `neoforge.mods.toml`. Ametrin Structures has to load before your mod:
 
 ```toml
 [[dependencies.examplemod]]
@@ -33,13 +32,9 @@ side = "BOTH"
 
 ## 2. Build the template
 
-Before saving, fill every space that should keep its air, such as rooms and hallways, with foam
-from the operator items tab. Foam turns into air when the structure generates. Air blocks get treated as structure void
-so the structure blends into exising terrain.
+Air in a template is treated as structure void, so the structure blends into the terrain around it. Before you save, fill every space that should stay air, like rooms and hallways, with foam from the operator items tab. Foam turns into air when the structure generates.
 
-Placing a foam item while crouching fills the space based on rules defined by the foam item. Their tooltips explain the
-spreading. Interior Foam is probably what you need most of the time. To remove a blob of foam, use an amethyst shard on
-it in creative mode.
+Placing foam while sneaking fills the space around it. How it spreads depends on the foam item, and its tooltip explains it. Interior Foam is what you want most of the time. To remove a blob of foam, use an amethyst shard on it in creative mode.
 
 ## 3. Declare the structure
 
@@ -47,29 +42,28 @@ it in creative mode.
 public final class ExampleStructures {
     public static final StructureBootstrap STRUCTURES = new StructureBootstrap("examplemod");
 
-    public static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set // create the structure set
+    public static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set
             .evenSpreadPlacement(18, 0.6F)
-            .simple(tower -> tower // a single simple structure in the set
-                    .surface() // place on the worlds surface
-                    .single("ruined_tower") // a single template is placed
+            .simple(tower -> tower
+                    .surface()
+                    .single("ruined_tower")
                     .filterFlatness(3)
                     .biomes(BiomeTags.IS_FOREST)));
 }
 ```
 
-- `evenSpreadPlacement(18, 0.6F)`: attempts at least 18 chunks apart, about 24 on average, 60% of
-  which succeed.
+- `registerSet(...)`: declares a structure set and returns the keys of the set and its structures.
+- `evenSpreadPlacement(18, 0.6F)`: attempts are at least 18 chunks apart, about 24 on average, and 60% of them
+  generate.
+- `simple(...)`: adds a simple structure to the set.
+- `surface()`: puts the structure's origin on the surface.
 - `single("ruined_tower")`: places the template `examplemod:ruined_tower`.
-- `surface()`: the structure's origin sits on the terrain.
-- `filterFlatness(3)`: skips spots where the terrain under it varies by more than 3 blocks.
-- `biomes(...)`: where it may generate. Defaults to every overworld biome.
+- `filterFlatness(3)`: skips spots where the ground varies by more than 3 blocks.
+- `biomes(...)`: where it can generate. Defaults to all overworld biomes.
 
-`registerSet` checks everything right away, so a mistake shows up as soon as the class loads, not
-while you explore a world. `RUINED_TOWER` holds the keys of the set and its structures.
+## 4. Add it to datagen
 
-## 4. Wire it up
-
-The structures only exist as data, so only datagen needs them:
+The structures are fully data-driven, so they only need to be added in datagen:
 
 ```java
 modBus.addListener(GatherDataEvent.Client.class, event -> {
@@ -79,34 +73,25 @@ modBus.addListener(GatherDataEvent.Client.class, event -> {
 });
 ```
 
-Run datagen, then start the game. `/locate structure examplemod:ruined_tower` finds your structure.
-If it doesn't show up where you expect, [`/ametrin structures spread`](debugging.md) tells you why.
+Run datagen and start the game. `/locate structure examplemod:ruined_tower` should find it. If it doesn't generate where you expect, [`/ametrin structures spread`](debugging.md) helps you figure out why.
 
 ## Going further
 
-The builder has more to offer than the example shows. Your IDE's completion lists it all. Some
-highlights:
+The builders can do a lot more than this example. Your IDE's completion lists everything. Some highlights:
 
-**Several templates.** `weighted(...)` picks one of several templates at random, `compound(...)`
-places several together. Each template can have its own offset and processors.
+**Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several
+together. Each template can have its own offset and processors.
 
-**Vertical placement.** `surface()` sits on the ground, or on the water where there is any;
-`oceanFloor()` sits on the ground below the water. `between(HeightAnchor.aboveBottom(8),
-HeightAnchor.surface(-24))` picks a random height, e.g. for something buried.
-`verticalPlacementMode(...)` sets where the terrain is measured: at the origin corner, averaged
-over the corners, or at the lowest corner.
+**Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. `verticalPlacementMode(...)` sets where the terrain height is measured: at the origin corner, as the average of the corners, or at the lowest corner.
 
-**Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't
-float on uneven terrain.
+**Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't float on uneven terrain.
 
-**Filters.** Besides flatness, filters check height ranges, the ground block, water depth, being
-submerged, or that the whole structure stays inside its biomes.
+**Filters.** Besides flatness there are filters for the height range, water depth, being submerged
+and staying inside the correct biomes.
 
-**Structure settings.** `terrainAdaptation(...)`, `step(...)` and `noSpawns(...)` work like on any
-vanilla structure.
+**Structure settings.** `terrainAdaptation(...)`, `step(...)` and `noSpawns(...)` work like on vanilla structures.
 
-**Overhangs.** Terrain adaptation fits the terrain to the whole template, so a wide roof or a
-balcony gets a hill raised under it. Give the template a smaller box to fit to:
+**Overhangs.** Terrain adaptation fits the terrain to the whole template, so a wide roof or a balcony gets a hill under it. Give the template a smaller box instead:
 
 ```java
 tower.single(t -> t
@@ -114,12 +99,9 @@ tower.single(t -> t
         .terrainBox(TerrainBox.footprint()))
 ```
 
-`TerrainBox.footprint()` uses the blocks at and below ground level.
-`TerrainBox.of(minX, minY, minZ, maxX, maxY, maxZ)` takes a box in the template's own coordinates,
-as the structure block shows them; its bottom is where the terrain meets the structure.
+`TerrainBox.footprint()` only uses the blocks at and below ground level. `TerrainBox.of(minX, minY, minZ, maxX, maxY, maxZ)` takes a box in template coordinates, as the structure block shows them. The terrain meets the structure at the bottom of the box.
 
-**Several structures per set.** A set can hold several structures. Each spot tries them in weighted
-order, and falls back to the next when one doesn't fit:
+**Several structures per set.** A set can hold more than one structure. They're tried in weighted order at each spot, and if one doesn't fit, the next one gets a chance:
 
 ```java
 STRUCTURES.registerSet("graves", set -> set
@@ -133,31 +115,19 @@ STRUCTURES.registerSet("graves", set -> set
                 .surface()));
 ```
 
-Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and
-`examplemod:graves/large`. `horizontalPlacement(...)` accepts any vanilla placement.
+Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and `examplemod:graves/large`.
+`horizontalPlacement(...)` takes any vanilla placement.
 
-**Jigsaw and custom structures.** When a structure outgrows the simple type, replace its `simple(...)`
-with `structure(...)` and keep the rest. `ExtendedJigsawStructure.builder(...)` creates a jigsaw
-structure, and `JigsawPools` declares its template pools in datagen with far less boilerplate. Its
-elements run fixtures and remove foam like simple structures do, and `foundation()` on an element
-extends that piece to the ground. Pools written by hand need `ametrin_structures:single_pool_element`
-for that; vanilla's element places fixture blocks as they were saved.
-Simple, jigsaw and custom structures can share one set.
+**Jigsaw and custom structures.** For something the simple type can't do, use `jigsaw(...)` or `structure(...)`
+instead of `simple(...)`. They take the same settings, like biomes and weight, and all three can be mixed in one set.
+`JigsawPools` helps you declare template pools in datagen. Its elements run fixtures and remove foam like simple structures do, and `foundation()` on an element extends that piece down to the ground. If you write pools by hand, use `ametrin_structures:single_pool_element` to get the same. Vanilla's element places fixture blocks as they are.
 
-**Fixtures.** A fixture block inside a template fills a container with loot, spawns an entity, places a
-spawner or runs a feature when the structure generates, then disappears. Place one from the operator items tab and
-right-click it to configure it. "Generate now" tries it out in place. Fixtures you use in many
-places can share a [preset](extending.md#fixture-presets).
+**Fixtures.** A fixture block in a template turns into something else when the structure generates. It can fill a container with loot, spawn an entity, place a spawner, run a feature and more. Place one from the operator items tab and right-click it to configure it. "Generate now" runs it in place so you can test it. If you use the same setup in many places, put it in a [preset](extending.md#fixture-presets).
 
-**Lake proofing.** Add a structure to the `#ametrin_structures:lake_proof` structure tag and lakes
-won't carve into it.
+**Lake proofing.** Lakes don't carve into structures in the `#ametrin_structures:lake_proof` structure tag.
 
-**Datapacks.** Everything the builder sets is plain JSON after datagen, so datapacks can declare and
-override structures the same way.
-
-**Updating templates.** Templates saved in an older Minecraft version still load, but every world
-fixes them again each time. `StructureTemplateUpdater` rewrites outdated templates in place during datagen.
-Give the data run your resources as an input:
+**Updating templates.** Templates saved in an older Minecraft version still load, but the game upgrades them every time it loads them.
+`StructureTemplateUpdater` upgrades them in place during datagen. Pass your resources to the data run as an input:
 
 ```gradle
 programArguments.addAll '--input', file('src/main/resources/').getAbsolutePath()
@@ -168,10 +138,10 @@ programArguments.addAll '--input', file('src/main/resources/').getAbsolutePath()
 event.addProvider(new StructureTemplateUpdater(event.getInputs()));
 ```
 
-Commit the rewritten files like any other change. I recommend you to only do this once after updating minecraft.
+Then commit the updated files. Running it once after each Minecraft update is enough.
 
-For a real-world example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a source-available mod using this library.
+For a real example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a source-available
+mod built on this library. [extending.md](extending.md) covers adding your own building blocks, and
+[debugging.md](debugging.md) the tools for tuning structures.
 
-See [extending.md](extending.md) to add your own building blocks, and [debugging.md](debugging.md) for the tools that help you tune a structure.
-
-If you have further questions ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).
+If you have any questions, ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).

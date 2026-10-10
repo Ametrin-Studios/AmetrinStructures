@@ -10,7 +10,7 @@ import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import java.util.Optional;
 import java.util.function.ToIntFunction;
 
-/// a vanilla [VerticalAnchor] or a heightmap plus an offset.
+/// A vanilla [VerticalAnchor], or a heightmap plus an offset.
 public sealed interface HeightAnchor {
     Codec<HeightAnchor> CODEC = Codec.either(VerticalAnchor.CODEC, OnHeightmap.CODEC)
             .xmap(

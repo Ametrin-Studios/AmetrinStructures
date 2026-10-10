@@ -16,7 +16,7 @@ import net.minecraft.world.level.levelgen.structure.StructureType;
 
 import java.util.function.Predicate;
 
-/// Whether a position is inside a structure: with `pieceGranularity` inside one of its pieces,
+/// Checks if a position is inside a structure: inside one of its pieces with `pieceGranularity`,
 /// otherwise inside its overall box. Safe to call from features during world generation.
 ///
 /// Lakes don't form where they would reach into the pieces of structures tagged `#ametrin_structures:lake_proof`.

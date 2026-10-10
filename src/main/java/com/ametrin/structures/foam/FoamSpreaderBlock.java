@@ -18,8 +18,8 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-/// Foam that is still filling the surrounding space [FoamSpreaderBlockEntity].
-/// It becomes plain foam once the fill is done, and otherwise behaves like foam, dissolving included.
+/// Foam that's still filling the space around it, see [FoamSpreaderBlockEntity].
+/// It turns into plain foam once the fill is done. Otherwise it behaves like foam, including dissolving.
 @ApiStatus.Internal
 public class FoamSpreaderBlock extends FoamBlock implements EntityBlock {
     public static final MapCodec<FoamSpreaderBlock> CODEC = simpleCodec(FoamSpreaderBlock::new);

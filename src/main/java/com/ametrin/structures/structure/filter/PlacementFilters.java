@@ -203,8 +203,8 @@ public final class PlacementFilters {
             var bottom = QuartPos.fromBlock(box.minY());
             var top = QuartPos.fromBlock(box.maxY());
 
-            // Ring by ring from the edge inward: the start is already known to be in a valid biome, so
-            // a mismatch is most likely near the edge, and a failing box stops early.
+            // Check ring by ring from the edge inward. The start is already known to be in a valid biome, so a
+            // mismatch is most likely near the edge, and a failing box exits early.
             for (int ring = 0; minX + ring <= maxX - ring && minZ + ring <= maxZ - ring; ring++) {
                 int ringMinX = minX + ring, ringMaxX = maxX - ring, ringMinZ = minZ + ring, ringMaxZ = maxZ - ring;
                 for (int x = ringMinX; x <= ringMaxX; x++) {

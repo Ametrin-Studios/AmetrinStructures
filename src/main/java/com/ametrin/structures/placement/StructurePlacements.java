@@ -32,7 +32,7 @@ public final class StructurePlacements {
         return hasStructureChunkInRange(state, _ -> true, holder -> holder.is(structures), x, z, range);
     }
 
-    /// Checks the structure sets `sets` accepts that contain a structure `structures` accepts.
+    /// Only checks sets that `sets` accepts and that contain a structure `structures` accepts.
     public static boolean hasStructureChunkInRange(
             ChunkGeneratorStructureState state,
             Predicate<Holder<StructureSet>> sets,

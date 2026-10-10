@@ -41,11 +41,11 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-/// Finds what would silently go wrong once structures generate: templates that don't exist, jigsaws
-/// that can't connect, and loot tables, fixture presets and other entries that templates name but
-/// that aren't registered. Looks into simple and jigsaw structures and skips other types.
+/// Finds problems that would otherwise silently break structures: missing templates, jigsaws that
+/// can't connect, and loot tables, fixture presets and other entries that templates use but that
+/// don't exist. Checks simple and jigsaw structures and skips other types.
 ///
-/// Loads templates but places nothing, so it is safe to run off the server thread.
+/// Only loads templates and doesn't place anything, so it's safe to run off the server thread.
 final class StructureCheck {
     record Problem(Subject subject, Identifier id, Component message) {
         enum Subject {
@@ -119,7 +119,7 @@ final class StructureCheck {
         return true;
     }
 
-    /// The template, whose contents are checked the first time it is asked for. A missing one is the structure's problem.
+    /// Checks the template's contents the first time it's requested. A missing template is reported for `structure`.
     private Optional<StructureTemplate> template(Identifier structure, Identifier id) {
         var template = checkedTemplates.get(id);
         if (template == null) {
@@ -234,8 +234,8 @@ final class StructureCheck {
             }
         }
 
-        // A jigsaw another piece attaches to is taken by that piece, so where it would lead doesn't
-        // matter. Such jigsaws often point back the way they came, which never fits.
+        // A jigsaw that another piece attached to is used up, so where it would lead doesn't matter. These
+        // often point back the way they came, which would never fit.
         var receivers = new HashSet<Connector>();
         for (var link : links) {
             candidates(structure, link, jigsaws)
@@ -270,7 +270,7 @@ final class StructureCheck {
         }
     }
 
-    // Pieces only turn around the vertical axis: a sideways jigsaw can meet any other sideways one, an upward one only a downward one.
+    // Pieces only rotate around the vertical axis. A sideways jigsaw can connect to any other sideways one, but an upward one only to a downward one.
     static boolean canFace(StructureTemplate.JigsawBlockInfo source, StructureTemplate.JigsawBlockInfo target) {
         var from = JigsawBlock.getFrontFacing(source.info().state());
         var to = JigsawBlock.getFrontFacing(target.info().state());
@@ -322,7 +322,7 @@ final class StructureCheck {
         };
     }
 
-    // As generation sees it: the empty pool is meant to be empty.
+    // minecraft:empty is meant to be empty.
     private static boolean isEmpty(Holder<StructureTemplatePool> pool) {
         return pool.value().size() == 0 && !pool.is(Pools.EMPTY);
     }
@@ -340,7 +340,7 @@ final class StructureCheck {
                     targets.unwrap().forEach(target -> aliases.computeIfAbsent(alias, _ -> new HashSet<>()).add(target.value()));
             case RandomGroupPoolAlias(var groups) ->
                     groups.unwrap().forEach(group -> group.value().forEach(member -> collectAliases(member, aliases)));
-            // Only one of the choices of a binding of another type shows.
+            // Other binding types only show one of their choices.
             default ->
                     binding.forEachResolved(RandomSource.create(0), (alias, target) -> aliases.computeIfAbsent(alias, _ -> new HashSet<>()).add(target));
         }

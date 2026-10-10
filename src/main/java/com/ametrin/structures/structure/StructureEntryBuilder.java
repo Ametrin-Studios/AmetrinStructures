@@ -40,7 +40,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
 
     protected abstract B self();
 
-    /// defaults to `#minecraft:is_overworld`.
+    /// Defaults to `#minecraft:is_overworld`.
     public B biomes(TagKey<Biome> tag) {
         return biomes(lookup -> lookup.getOrThrow(tag));
     }
@@ -68,7 +68,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return self();
     }
 
-    /// defaults to [GenerationStep.Decoration#SURFACE_STRUCTURES].
+    /// Defaults to [GenerationStep.Decoration#SURFACE_STRUCTURES].
     public B step(GenerationStep.Decoration step) {
         this.step = step;
         return self();
@@ -106,7 +106,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         }
     }
 
-    /// Validates and creates the structure, for one registered outside a [StructureBootstrap].
+    /// Validates and creates the structure, for use outside a [StructureBootstrap].
     public Structure build(BootstrapContext<Structure> context) {
         validate();
         return bootstrap(context);

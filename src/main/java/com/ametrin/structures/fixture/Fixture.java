@@ -7,9 +7,7 @@ import net.minecraft.resources.ResourceKey;
 
 import java.util.stream.Stream;
 
-/// Each kind is a record registered as a [FixtureType];
-///
-/// built-in [Fixture]s are in [Fixtures].
+/// Each kind is a record registered as a [FixtureType]. [Fixtures] has helpers for writing them.
 public interface Fixture {
     String TYPE_KEY = "type";
     MapCodec<Fixture> MAP_CODEC = ASRegistries.FIXTURE_TYPES.byNameCodec().dispatchMap(TYPE_KEY, Fixture::type, FixtureType::codec);
@@ -24,8 +22,8 @@ public interface Fixture {
         return Stream.empty();
     }
 
-    /// A stored fixture that doesn't decode, such as one naming a block of a mod that isn't
-    /// installed. It keeps its data, so saving writes it back unchanged, and generation skips it.
+    /// A stored fixture that can't be decoded, e.g. because it names a block from a mod that isn't
+    /// installed. It keeps its data so it's saved back unchanged. Generation skips it.
     ///
     /// @param data  the whole alternative as it was stored, weight included
     /// @param error why it didn't decode

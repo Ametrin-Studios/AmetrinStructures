@@ -66,7 +66,7 @@ public final class Fixtures {
         return Arrays.stream(keys).flatMap(Optional::stream);
     }
 
-    /// Logs unregistered ones: the entity registry falls back to pigs for unknown ids.
+    /// Logs unregistered ids, since the entity registry falls back to pigs for those.
     public static Optional<EntityType<?>> entityType(ResourceKey<EntityType<?>> key) {
         var type = BuiltInRegistries.ENTITY_TYPE.getOptional(key);
         if (type.isEmpty()) {
@@ -75,10 +75,10 @@ public final class Fixtures {
         return type;
     }
 
-    /// Spawns a persistent entity the way vanilla structures do, facing the marker's front; hanging
-    /// entities hang on the block behind it. Like a spawner, only an entity without extra data gets its own
-    /// randomization, such as armor. `configure` runs before the entity joins the level, since a generating
-    /// chunk saves it on arrival.
+    /// Spawns a persistent entity the way vanilla structures do, facing the marker's front. Hanging
+    /// entities hang on the block behind it. Like with spawners, only an entity without extra data gets its
+    /// own randomization, like armor. `configure` runs before the entity is added, since a generating chunk
+    /// saves it right away.
     public static void spawnEntity(EntityType<?> type, @Nullable CompoundTag extraData, FixtureContext context, Consumer<Entity> configure) {
         WorldGenLevel level = context.level();
         Vec3 pos = context.actionPos();
@@ -120,8 +120,8 @@ public final class Fixtures {
         level.addFreshEntityWithPassengers(entity);
     }
 
-    // Hanging entities, such as item frames and paintings, only take their direction while loading.
-    // They hang on the block behind the marker, facing its front; paintings can only face sideways.
+    // Hanging entities like item frames and paintings only read their direction while loading. They hang
+    // on the block behind the marker, facing its front. Paintings can only face sideways.
     private static CompoundTag hangingData(@Nullable CompoundTag extraData, FixtureContext context) {
         var data = extraData == null ? new CompoundTag() : extraData.copy();
         var blockPos = context.actionBlockPos();
@@ -136,7 +136,7 @@ public final class Fixtures {
         return data;
     }
 
-    // EntityType#getBaseClass is always Entity, so an instance tells instead.
+    // EntityType#getBaseClass is always Entity, so check an instance instead.
     private static boolean isHanging(EntityType<?> type, Level level) {
         return HANGING_TYPES.computeIfAbsent(type, _ -> type.create(level, EntitySpawnReason.STRUCTURE) instanceof HangingEntity);
     }

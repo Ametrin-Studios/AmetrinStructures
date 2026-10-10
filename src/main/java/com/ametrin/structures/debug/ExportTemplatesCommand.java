@@ -26,11 +26,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/// `/ametrin structures export_templates [namespace]` copies the templates that structure blocks saved in this world into the project's resources, at `data/<namespace>/structure/`, so they ship with the mod.
-/// Only namespaces the resources already have a `data/<namespace>` folder for are exported, which keeps edited vanilla or other mods' templates out.
+/// `/ametrin structures export_templates [namespace]` copies the templates structure blocks saved in this world into the project's resources at `data/<namespace>/structure/`.
+/// Only namespaces that already have a `data/<namespace>` folder in the resources are exported, so edited vanilla or other mods' templates stay out.
 ///
-/// Only exists in a development environment, as it writes into the project, which a real server must never do.
-/// The resources are `src/main/resources` next to the run folder, or the folders the [#SOURCES_PROPERTY] system property lists, separated like a class path.
+/// Only exists in a development environment, because it writes into the project.
+/// The resources are `src/main/resources` next to the run folder, or the folders listed in the [#SOURCES_PROPERTY] system property, separated like a classpath.
 public final class ExportTemplatesCommand {
     public static final String SOURCES_PROPERTY = "ametrin_structures.template_sources";
     private static final String TEMPLATES = "structure";

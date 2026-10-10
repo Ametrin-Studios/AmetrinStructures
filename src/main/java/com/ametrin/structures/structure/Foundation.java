@@ -13,9 +13,9 @@ import net.minecraft.world.level.material.Fluids;
 import java.util.Optional;
 
 /// Extends a structure down to the ground where it would otherwise float.
-/// Every block of a piece's bottom layer continues downward through all replaceable blocks for at most `maxDepth` blocks.
+/// Each block of a piece's bottom layer is extended down through replaceable blocks, for at most `maxDepth` blocks.
 ///
-/// @param state what to fill with. empty repeats the block each column hangs from, unless it [can't be repeated][#canRepeat(BlockState)]
+/// @param state what to fill with. If empty, each column repeats the block above it, unless it [can't be repeated][#canRepeat(BlockState)].
 public record Foundation(Optional<BlockState> state, int maxDepth) {
     public static final int DEFAULT_MAX_DEPTH = 64;
 
@@ -62,8 +62,8 @@ public record Foundation(Optional<BlockState> state, int maxDepth) {
         }
     }
 
-    /// Whether a column may repeat `state`: not when it has a block entity, whose data wouldn't carry
-    /// over, or is one part of several, like a door or a bed.
+    /// Whether a column can repeat `state`. Not if it has a block entity, whose data wouldn't be copied,
+    /// or is part of a multi-block, like a door or a bed.
     public static boolean canRepeat(BlockState state) {
         return !state.hasBlockEntity()
                 && !state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)

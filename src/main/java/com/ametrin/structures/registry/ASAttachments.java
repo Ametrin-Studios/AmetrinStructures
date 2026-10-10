@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 public final class ASAttachments {
     public static final DeferredRegister<AttachmentType<?>> REGISTER = DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, AmetrinStructures.MOD_ID);
 
-    // Not synced since clients can't resolve profiles, the server sends them the applied result.
+    // Not synced, since clients can't resolve profiles. The server sends them the applied result.
     public static final Supplier<AttachmentType<SpawnerProfileAttachment>> SPAWNER_PROFILE = REGISTER.register("spawner_profile",
             () -> AttachmentType.builder(() -> SpawnerProfileAttachment.DEFAULT)
                     .serialize(SpawnerProfileAttachment.CODEC)

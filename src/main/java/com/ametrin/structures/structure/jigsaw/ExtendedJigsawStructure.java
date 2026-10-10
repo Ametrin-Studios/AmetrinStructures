@@ -40,10 +40,10 @@ import java.util.Optional;
 
 /// Vanilla's jigsaw structure with the library's [ExtendedStructureSettings].
 ///
-/// Filters see the box around every piece, so a structure with filters assembles its pieces before it knows whether it fits;
-/// one without them assembles only once it generates, as vanilla does.
+/// Filters need the box around all pieces, so a structure with filters assembles its pieces before it knows if it fits.
+/// Without filters it only assembles them when it generates, like vanilla.
 public class ExtendedJigsawStructure extends ExtendedStructure {
-    // Vanilla's final class is duplicated rather than reopened with an access transformer, which would cost more across version bumps.
+    // Copies vanilla's final class instead of opening it with an access transformer, which would be more work to maintain across updates.
 
     // The margin terrain adaptation needs around the structure.
     private static final int TERRAIN_ADAPTATION_MARGIN = 12;
@@ -271,7 +271,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             return startHeight(UniformHeight.of(VerticalAnchor.absolute(minY), VerticalAnchor.absolute(maxY)));
         }
 
-        /// Stretches the bounding box of flat pieces (≤16 tall) upward to fit the tallest child their inward-facing jigsaws can attach, so layouts like village streets can host taller buildings inside their own footprint.
+        /// Expands the bounding box of flat pieces (16 blocks tall or less) upward to fit the tallest piece their inward-facing jigsaws can attach. This lets layouts like village streets have taller buildings inside their footprint.
         public Builder useExpansionHack(boolean useExpansionHack) {
             this.useExpansionHack = useExpansionHack;
             return this;
