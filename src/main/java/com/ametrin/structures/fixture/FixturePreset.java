@@ -14,8 +14,8 @@ import java.util.List;
 ///
 /// ```
 /// context.register(DUNGEON_CHEST, FixturePreset.builder()
-///         .add(3, Fixtures.LootContainer.chest(BuiltInLootTables.SIMPLE_DUNGEON))
-///         .add(1, Fixtures.Empty.INSTANCE)
+///         .add(3, LootContainerFixture.chest(BuiltInLootTables.SIMPLE_DUNGEON))
+///         .add(1, EmptyFixture.INSTANCE)
 ///         .build());
 /// ```
 public record FixturePreset(List<WeightedFixture> fixtures) {
@@ -51,25 +51,25 @@ public record FixturePreset(List<WeightedFixture> fixtures) {
 
         /// Draws from another preset.
         public Builder add(int weight, ResourceKey<FixturePreset> preset) {
-            return add(weight, new Fixtures.Preset(preset));
+            return add(weight, new PresetFixture(preset));
         }
 
         public Builder entity(int weight, EntityType<?> entity) {
-            return add(weight, Fixtures.SpawnEntity.of(entity));
+            return add(weight, EntityFixture.of(entity));
         }
 
         public Builder entity(int weight, EntityDataBuilder entity) {
-            return add(weight, Fixtures.SpawnEntity.of(entity));
+            return add(weight, EntityFixture.of(entity));
         }
 
-        /// A spawner block for `entity` with vanilla's settings, see [Fixtures.Spawner#of(EntityType)].
+        /// A spawner block for `entity` with vanilla's settings, see [SpawnerFixture#of(EntityType)].
         public Builder spawner(int weight, EntityType<?> entity) {
-            return add(weight, Fixtures.Spawner.of(entity));
+            return add(weight, SpawnerFixture.of(entity));
         }
 
         /// A spawner block that takes its settings from `profile`.
         public Builder spawner(int weight, ResourceKey<SpawnerProfile> profile) {
-            return add(weight, new Fixtures.ProfileSpawner(profile, false));
+            return add(weight, new SpawnerProfileFixture(profile, false));
         }
 
         public FixturePreset build() {

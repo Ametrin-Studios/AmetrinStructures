@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EphemeralTestServerProvider.class)
 class FixturePresetsTest {
-    private static final WeightedFixture CHEST = new WeightedFixture(1, Fixtures.LootContainer.chest(BuiltInLootTables.SIMPLE_DUNGEON));
+    private static final WeightedFixture CHEST = new WeightedFixture(1, LootContainerFixture.chest(BuiltInLootTables.SIMPLE_DUNGEON));
 
     @Test
     void aFixtureThatIsntAPresetPassesThrough() {
@@ -40,7 +40,7 @@ class FixturePresetsTest {
     @Test
     void chancesAlongTheWayMultiply() {
         var presets = Map.of(id("inner"), new FixturePreset(List.of(new WeightedFixture(1, 0.5F, CHEST.fixture()))));
-        var drawn = resolve(new WeightedFixture(1, 0.5F, new Fixtures.Preset(key("inner"))), presets).orElseThrow();
+        var drawn = resolve(new WeightedFixture(1, 0.5F, new PresetFixture(key("inner"))), presets).orElseThrow();
         assertEquals(0.25F, drawn.generationChance());
     }
 
@@ -67,7 +67,7 @@ class FixturePresetsTest {
                 ]}""");
         var ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         var preset = FixturePreset.CODEC.parse(ops, json).getOrThrow();
-        assertInstanceOf(Fixtures.LootContainer.class, preset.fixtures().get(0).fixture());
+        assertInstanceOf(LootContainerFixture.class, preset.fixtures().get(0).fixture());
         assertInstanceOf(Fixture.Unreadable.class, preset.fixtures().get(1).fixture(), "stone doesn't take a loot table");
         assertEquals(2, preset.fixtures().get(1).weight());
         assertInstanceOf(Fixture.Unreadable.class, preset.fixtures().get(2).fixture());
@@ -102,7 +102,7 @@ class FixturePresetsTest {
         var alternative = FixturePreset.builder().entity(2, new EntityDataBuilder(EntityTypes.ZOMBIE).passenger(EntityTypes.CHICKEN))
                 .build().fixtures().getFirst();
         assertEquals(2, alternative.weight());
-        var entity = assertInstanceOf(Fixtures.SpawnEntity.class, alternative.fixture());
+        var entity = assertInstanceOf(EntityFixture.class, alternative.fixture());
         assertEquals(Identifier.withDefaultNamespace("zombie"), entity.entity().identifier());
         assertTrue(entity.nbt().orElseThrow().toString().contains("minecraft:chicken"));
         assertFalse(entity.nbt().orElseThrow().contains("id"));
@@ -110,14 +110,14 @@ class FixturePresetsTest {
 
     @Test
     void equipmentKeepsTheDefaultDropChance() {
-        var entity = Fixtures.SpawnEntity.of(EntityTypes.ZOMBIE).withEquipment(BuiltInLootTables.SIMPLE_DUNGEON);
+        var entity = EntityFixture.of(EntityTypes.ZOMBIE).withEquipment(BuiltInLootTables.SIMPLE_DUNGEON);
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.equipment());
         assertEquals(0.085F, entity.equipmentDropChance());
     }
 
     @Test
     void deathLootIsItsOwnFieldNotExtraData() {
-        var entity = Fixtures.SpawnEntity.of(new EntityDataBuilder(EntityTypes.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON));
+        var entity = EntityFixture.of(new EntityDataBuilder(EntityTypes.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON));
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.deathLootTable());
         assertEquals(Optional.empty(), entity.nbt(), "extra data would turn off the entity's randomization");
     }
@@ -125,7 +125,7 @@ class FixturePresetsTest {
     @Test
     void theBuilderWritesWhatTheCodecReads(MinecraftServer server) {
         var preset = FixturePreset.builder()
-                .add(3, Fixtures.LootContainer.chest(BuiltInLootTables.SIMPLE_DUNGEON))
+                .add(3, LootContainerFixture.chest(BuiltInLootTables.SIMPLE_DUNGEON))
                 .add(1, key("rare"))
                 .build();
         var json = JsonParser.parseString("""
@@ -148,7 +148,7 @@ class FixturePresetsTest {
 
     @Test
     void aPresetOnlyDrawsAmongEligibleAlternatives() {
-        var excluded = new WeightedFixture(1000, Fixtures.Empty.INSTANCE);
+        var excluded = new WeightedFixture(1000, EmptyFixture.INSTANCE);
         var presets = Map.of(id("inner"), new FixturePreset(List.of(excluded, CHEST)));
         for (int seed = 0; seed < 20; seed++) {
             var drawn = FixturePresets.resolve(preset("inner"), id -> Optional.ofNullable(presets.get(id)), alternative -> alternative != excluded, RandomSource.create(seed));
@@ -161,7 +161,7 @@ class FixturePresetsTest {
     }
 
     private static WeightedFixture preset(String path) {
-        return new WeightedFixture(1, new Fixtures.Preset(key(path)));
+        return new WeightedFixture(1, new PresetFixture(key(path)));
     }
 
     private static ResourceKey<FixturePreset> key(String path) {

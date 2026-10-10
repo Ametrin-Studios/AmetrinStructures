@@ -45,7 +45,7 @@ class FixtureDataTest {
         marker.setFixtureData(List.of(TagParser.parseCompoundFully("{type: \"ametrin_structures:vault\", weight: 3}")), server.registryAccess());
         var alternative = marker.fixtures().getFirst();
         assertEquals(3, alternative.weight());
-        assertEquals(new Fixtures.Vault(false), assertInstanceOf(Fixtures.Vault.class, alternative.fixture()));
+        assertEquals(new VaultFixture(false), assertInstanceOf(VaultFixture.class, alternative.fixture()));
     }
 
     @Test
@@ -63,7 +63,7 @@ class FixtureDataTest {
                 {becomes: {Name: "minecraft:oak_stairs", Properties: {facing: "east"}},
                  fixtures: [{type: "ametrin_structures:block_state", state: {Name: "minecraft:stone"}}]}""")));
         assertEquals(Optional.of(Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST)), marker.declaredBecomes());
-        assertEquals(new Fixtures.PlaceBlockState(Blocks.STONE.defaultBlockState()), marker.fixtures().getFirst().fixture());
+        assertEquals(new BlockStateFixture(Blocks.STONE.defaultBlockState()), marker.fixtures().getFirst().fixture());
         assertTrue(marker.saveCustomOnly(registries).getCompoundOrEmpty(FixtureBlockEntity.BECOMES_KEY).contains("id"), "saved in the current form");
     }
 

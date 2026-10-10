@@ -28,8 +28,8 @@ class TrialSpawnerFixtureTest {
     @Test
     void theFixtureReadsLikeTheSpawnersOwnData() {
         var json = JsonParser.parseString("{\"type\":\"ametrin_structures:trial_spawner\",\"normal_config\":\"minecraft:trial_chamber/melee/zombie/normal\",\"required_player_range\":20}");
-        var fixture = assertInstanceOf(Fixtures.TrialSpawner.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
-        assertEquals(new Fixtures.TrialSpawner(NORMAL, Optional.empty(), FullConfig.DEFAULT.targetCooldownLength(), 20), fixture);
+        var fixture = assertInstanceOf(TrialSpawnerFixture.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
+        assertEquals(new TrialSpawnerFixture(NORMAL, Optional.empty(), FullConfig.DEFAULT.targetCooldownLength(), 20), fixture);
     }
 
     @Test
@@ -37,7 +37,7 @@ class TrialSpawnerFixtureTest {
         var configs = server.registryAccess().lookupOrThrow(Registries.TRIAL_SPAWNER_CONFIG);
         var spawner = new TrialSpawnerBlockEntity(BlockPos.ZERO, Blocks.TRIAL_SPAWNER.defaultBlockState());
         var config = new FullConfig(configs.getOrThrow(NORMAL), configs.getOrThrow(OMINOUS), 100, 20);
-        Fixtures.TrialSpawner.configure(spawner, config, server.registryAccess());
+        TrialSpawnerFixture.configure(spawner, config, server.registryAccess());
 
         var trialSpawner = spawner.getTrialSpawner();
         assertEquals(configs.getOrThrow(NORMAL).value(), trialSpawner.normalConfig());

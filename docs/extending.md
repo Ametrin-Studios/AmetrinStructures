@@ -139,7 +139,7 @@ public record Lantern(boolean hanging) implements Fixture {
 
     @Override
     public void apply(FixtureContext context) {
-        context.level().setBlock(context.actionBlockPos(), Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, hanging), Block.UPDATE_CLIENTS);
+        context.placeBlock(Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, hanging));
     }
 
     @Override
@@ -163,8 +163,15 @@ because of a fixture.
 Override `references()` to return the registry keys the fixture names, such as loot tables, so
 `/ametrin structures check` reports the ones that don't exist.
 
-Reference: [`Fixtures`](../src/main/java/com/ametrin/structures/fixture/Fixtures.java) and [
-`ASFixtures`](../src/main/java/com/ametrin/structures/registry/ASFixtures.java).
+`context.placeBlock(...)` places a block the way the built-in fixtures do, turned to face like the
+marker; a block state field for it takes `BlockStateMerging.mergedBlockState()`, which leaves out what
+the marker sets. `Fixtures` has the other helpers they share, such as `spawnEntity(...)` and
+`placeSpawner(...)`.
+
+Reference: the built-in fixtures, such as
+[`LootContainerFixture`](../src/main/java/com/ametrin/structures/fixture/LootContainerFixture.java),
+[`Fixtures`](../src/main/java/com/ametrin/structures/fixture/Fixtures.java) and
+[`ASFixtures`](../src/main/java/com/ametrin/structures/registry/ASFixtures.java).
 
 ## Fixture presets
 
@@ -177,11 +184,11 @@ static final ResourceKey<FixturePreset> DUNGEON_CHEST = ResourceKey.create(ASReg
 
 static void bootstrap(BootstrapContext<FixturePreset> context) {
     context.register(DUNGEON_CHEST, FixturePreset.builder()
-            .add(3, new Fixtures.LootContainer(BuiltInLootTables.SIMPLE_DUNGEON))
-            .add(new WeightedFixture(1, 0.5F, new Fixtures.LootContainer(BuiltInLootTables.BURIED_TREASURE)))
+            .add(3, new LootContainerFixture(BuiltInLootTables.SIMPLE_DUNGEON))
+            .add(new WeightedFixture(1, 0.5F, new LootContainerFixture(BuiltInLootTables.BURIED_TREASURE)))
             .build());
     context.register(GUARD, FixturePreset.builder()
-            .add(1, Fixtures.SpawnEntity.of(EntityTypes.SKELETON).withEquipment(GUARD_EQUIPMENT))
+            .add(1, EntityFixture.of(EntityTypes.SKELETON).withEquipment(GUARD_EQUIPMENT))
             .entity(1, new EntityDataBuilder(EntityTypes.SPIDER).passenger(EntityTypes.SKELETON))
             .build());
 }
@@ -243,7 +250,7 @@ An alternative for a mod that isn't installed doesn't read, but keeps its condit
 In Java, add conditions with `withConditions(...)`, and wrap NeoForge's in `FixtureConditions.NeoForge`:
 
 ```java
-.add(new WeightedFixture(1, new Fixtures.LootContainer(CRATE_LOOT))
+.add(new WeightedFixture(1, new LootContainerFixture(CRATE_LOOT))
         .withConditions(new FixtureConditions.NeoForge(new ModLoadedCondition("othermod"))))
 ```
 
@@ -253,8 +260,8 @@ in deserts and a zombie spawner elsewhere:
 ```java
 var desert = new FixtureConditions.InBiome(context.lookup(Registries.BIOME).getOrThrow(Tags.Biomes.IS_DESERT));
 context.register(CRYPT_SPAWNER, FixturePreset.builder()
-        .add(new WeightedFixture(1, Fixtures.Spawner.of(EntityTypes.HUSK)).withConditions(desert))
-        .add(new WeightedFixture(1, Fixtures.Spawner.of(EntityTypes.ZOMBIE)).withConditions(new FixtureConditions.Not(desert)))
+        .add(new WeightedFixture(1, SpawnerFixture.of(EntityTypes.HUSK)).withConditions(desert))
+        .add(new WeightedFixture(1, SpawnerFixture.of(EntityTypes.ZOMBIE)).withConditions(new FixtureConditions.Not(desert)))
         .build());
 ```
 

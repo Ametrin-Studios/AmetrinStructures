@@ -22,13 +22,13 @@ class FixtureTypeTest {
     @Test
     void aReservedKeyIsRejected() {
         var field = FixtureField.withDefault(Fixture.TYPE_KEY, FieldType.bool(), false);
-        var codec = RecordCodecBuilder.<Fixtures.Empty>mapCodec(instance -> instance.group(field.forGetter(_ -> false)).apply(instance, _ -> new Fixtures.Empty()));
+        var codec = RecordCodecBuilder.<EmptyFixture>mapCodec(instance -> instance.group(field.forGetter(_ -> false)).apply(instance, _ -> new EmptyFixture()));
         assertThrows(IllegalArgumentException.class, () -> new FixtureType(codec, List.of(field)));
     }
 
     @Test
     void aFieldMissingFromTheCodecIsRejected() {
         var field = FixtureField.withDefault("hanging", FieldType.bool(), false);
-        assertThrows(IllegalArgumentException.class, () -> new FixtureType(Fixtures.Empty.CODEC, List.of(field)));
+        assertThrows(IllegalArgumentException.class, () -> new FixtureType(EmptyFixture.CODEC, List.of(field)));
     }
 }

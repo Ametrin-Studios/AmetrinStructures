@@ -36,7 +36,7 @@ public final class FixturePresets {
     public static Optional<WeightedFixture> resolve(WeightedFixture drawn, Function<Identifier, Optional<FixturePreset>> presets, Predicate<WeightedFixture> eligible, RandomSource random) {
         var alternative = drawn;
         var chance = drawn.generationChance();
-        for (int depth = 0; alternative.fixture() instanceof Fixtures.Preset(var key); depth++) {
+        for (int depth = 0; alternative.fixture() instanceof PresetFixture(var key); depth++) {
             if (depth == MAX_DEPTH) {
                 ASLog.warn("fixture presets nest deeper than {}, probably in a cycle, starting at {}", MAX_DEPTH, drawn.fixture());
                 return Optional.empty();
@@ -71,7 +71,7 @@ public final class FixturePresets {
             for (var alternative : preset.fixtures()) {
                 switch (alternative.fixture()) {
                     case Fixture.Unreadable unreadable -> problems.add(id + ": " + unreadable.error());
-                    case Fixtures.Preset(var key) when !presets.containsKey(key.identifier()) ->
+                    case PresetFixture(var key) when !presets.containsKey(key.identifier()) ->
                             problems.add(id + ": unknown fixture preset " + key.identifier());
                     default -> {}
                 }
@@ -96,7 +96,7 @@ public final class FixturePresets {
         }
         path.add(id);
         for (var alternative : presets.getOrDefault(id, new FixturePreset(List.of())).fixtures()) {
-            if (alternative.fixture() instanceof Fixtures.Preset(var key)) {
+            if (alternative.fixture() instanceof PresetFixture(var key)) {
                 var cycle = findCycle(key.identifier(), presets, visited, path);
                 if (cycle.isPresent()) {
                     return cycle;

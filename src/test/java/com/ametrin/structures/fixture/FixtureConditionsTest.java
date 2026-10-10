@@ -49,7 +49,7 @@ class FixtureConditionsTest {
     void anAlternativeDrawsOnlyWhenAllItsConditionsPass() {
         var missingMod = new FixtureConditions.NeoForge(new ModLoadedCondition("not_installed"));
         var low = new FixtureConditions.HeightRange(Optional.empty(), Optional.of(10));
-        var alternative = new WeightedFixture(1, Fixtures.Empty.INSTANCE);
+        var alternative = new WeightedFixture(1, EmptyFixture.INSTANCE);
         assertTrue(alternative.conditionsPass(AT_64));
         assertFalse(alternative.withConditions(missingMod).conditionsPass(AT_64));
         assertFalse(alternative.withConditions(new FixtureConditions.Not(low), missingMod).conditionsPass(AT_64));
@@ -64,7 +64,7 @@ class FixtureConditionsTest {
         assertInstanceOf(Fixture.Unreadable.class, unreadable.fixture());
         assertEquals(1, unreadable.conditions().size());
 
-        var chest = new WeightedFixture(1, Fixtures.Empty.INSTANCE);
+        var chest = new WeightedFixture(1, EmptyFixture.INSTANCE);
         for (int seed = 0; seed < 20; seed++) {
             assertEquals(Optional.of(chest), WeightedFixture.draw(List.of(unreadable, chest), alternative -> alternative.conditionsPass(AT_64), RandomSource.create(seed)));
         }

@@ -39,7 +39,7 @@ class FillContainerTest {
     void eachItemGoesToASlotThatTakesIt() {
         var stand = brewingStand();
         var items = List.of(new ItemStack(Items.POTION), new ItemStack(Items.SPLASH_POTION), new ItemStack(Items.POTION), new ItemStack(Items.BLAZE_POWDER, 3));
-        var leftOver = Fixtures.FillContainer.fill(stand, JUDGE, items, RandomSource.create(0));
+        var leftOver = FillContainerFixture.fill(stand, JUDGE, items, RandomSource.create(0));
 
         assertEquals(List.of(), leftOver);
         assertEquals(List.of("minecraft:potion", "minecraft:potion", "minecraft:splash_potion"), IntStream.range(0, 3)
@@ -54,7 +54,7 @@ class FillContainerTest {
     void whatFitsNowhereIsLeftOver() {
         var stand = brewingStand();
         var items = List.of(new ItemStack(Items.POTION), new ItemStack(Items.POTION), new ItemStack(Items.POTION), new ItemStack(Items.POTION), new ItemStack(Items.STONE));
-        var leftOver = Fixtures.FillContainer.fill(stand, JUDGE, items, RandomSource.create(0));
+        var leftOver = FillContainerFixture.fill(stand, JUDGE, items, RandomSource.create(0));
         assertEquals(List.of(Items.POTION, Items.STONE), leftOver.stream().map(ItemStack::getItem).toList());
     }
 
@@ -71,7 +71,7 @@ class FillContainerTest {
         var json = JsonParser.parseString("""
                 {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": "minecraft:furnace"}
                 """);
-        var fixture = assertInstanceOf(Fixtures.FillContainer.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
+        var fixture = assertInstanceOf(FillContainerFixture.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
         assertEquals(Blocks.FURNACE, fixture.block().getBlock());
     }
 
@@ -90,7 +90,7 @@ class FillContainerTest {
         };
         for (int seed = 0; seed < 20; seed++) {
             var stand = brewingStand();
-            Fixtures.FillContainer.fill(stand, judge, List.of(new ItemStack(Items.BLAZE_POWDER, 2)), RandomSource.create(seed));
+            FillContainerFixture.fill(stand, judge, List.of(new ItemStack(Items.BLAZE_POWDER, 2)), RandomSource.create(seed));
             assertEquals(2, stand.getItem(4).getCount(), "seed " + seed);
             assertTrue(stand.getItem(3).isEmpty(), "seed " + seed);
         }
@@ -100,7 +100,7 @@ class FillContainerTest {
     void aChiseledBookshelfFillsWithoutALevel() {
         var shelf = new ChiseledBookShelfBlockEntity(BlockPos.ZERO, Blocks.CHISELED_BOOKSHELF.defaultBlockState());
         var items = List.of(new ItemStack(Items.STONE), new ItemStack(Items.BOOK, 2));
-        var leftOver = Fixtures.FillContainer.fill(shelf, shelf, items, RandomSource.create(0));
+        var leftOver = FillContainerFixture.fill(shelf, shelf, items, RandomSource.create(0));
         assertEquals(List.of(Items.STONE), leftOver.stream().map(ItemStack::getItem).toList(), "the shelf turns away anything but books");
         assertEquals(2, IntStream.range(0, shelf.getContainerSize()).filter(slot -> !shelf.getItem(slot).isEmpty()).count());
     }
@@ -110,7 +110,7 @@ class FillContainerTest {
         var registries = server.registryAccess();
         var state = Blocks.BREWING_STAND.defaultBlockState().setValue(BlockStateProperties.HAS_BOTTLE_1, true);
         var tag = BlockState.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), state).getOrThrow();
-        assertEquals("minecraft:brewing_stand", Fixtures.FillContainer.BLOCK.type().tagToText(tag, registries).getOrThrow());
+        assertEquals("minecraft:brewing_stand", FillContainerFixture.BLOCK.type().tagToText(tag, registries).getOrThrow());
     }
 
     // As one still generating: without a level.
