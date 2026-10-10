@@ -32,15 +32,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-/// Any block with an inventory, such as a brewing stand or a furnace, filled from `loot_table` as the
-/// structure generates. Unlike a [LootContainerFixture] the loot is drawn right away, not when a player
-/// first opens it, so it works for blocks that don't take a loot table. Each item goes into an
-/// empty slot that accepts it, the one that accepts the fewest kinds of items, so blaze powder goes
-/// to a brewing stand's fuel slot; among equal slots the choice is random. What fits nowhere is
-/// left out. The loot table runs during
-/// world generation, so keep it free of functions that search the world, such as exploration maps.
+/// Any block with an inventory, like a brewing stand or a furnace, filled from `loot_table` when the
+/// structure generates. Unlike [LootContainerFixture], the loot is rolled right away instead of when a
+/// player first opens it, so it works for blocks that don't support loot tables. Each item goes into an
+/// empty slot that accepts it, preferring the slot that accepts the fewest kinds of items. That way
+/// blaze powder ends up in a brewing stand's fuel slot. Ties are broken randomly, and items that don't
+/// fit anywhere are dropped. The loot table runs during world generation, so don't use functions that
+/// search the world, like exploration maps.
 ///
-/// A brewing stand's bottles follow the loot: the stand sets them itself once it ticks, so `block`
+/// A brewing stand's bottles follow the loot. The stand sets them itself once it ticks, so `block`
 /// leaves them out.
 public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState block) implements Fixture {
     private static final Map<BlockEntityType<?>, int[]> SLOT_BREADTH = new ConcurrentHashMap<>();
@@ -75,9 +75,9 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
         }
     }
 
-    // A block entity that is still generating has no level, yet some ask theirs whether an item
-    // fits: a brewing stand turns potions away without one. A copy that knows the level decides
-    // instead; it is never placed, so setting its level has no effect on the world.
+    // A block entity that's still generating has no level, but some need one to decide if an item fits.
+    // A brewing stand rejects potions without one, so a copy with the level decides instead. The copy is
+    // never placed, so giving it the level doesn't affect the world.
     private static Container judge(BlockEntity blockEntity, Level level) {
         if (blockEntity.hasLevel() || !(blockEntity.getType().create(blockEntity.getBlockPos(), blockEntity.getBlockState()) instanceof Container copy)) {
             return (Container) blockEntity;
@@ -86,14 +86,14 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
         return copy;
     }
 
-    /// Puts each stack into empty slots of `container`, splitting it to fit. `judge`, a container
-    /// of the same kind, decides which slots take it. The [narrowest][#breadth(Container)] slot
-    /// that takes it wins, so blaze powder fuels a brewing stand instead of brewing in it; among
-    /// equally narrow slots the choice is random.
+    /// Puts each stack into empty slots of `container`, splitting it to fit. `judge`, a container of the
+    /// same kind, decides which slots accept it. The [narrowest][#breadth(Container)] accepting slot is
+    /// used, so blaze powder goes into a brewing stand's fuel slot instead of the ingredient slot. Ties
+    /// are broken randomly.
     ///
     /// @return what didn't fit
-    // Items are set as inside a transaction, which skips side effects such as a chiseled bookshelf
-    // updating its block in a level that a generating block entity doesn't have.
+    // Items are set as if inside a transaction. That skips side effects like a chiseled bookshelf
+    // updating its block, which would need a level the generating block entity doesn't have.
     static List<ItemStack> fill(Container container, Container judge, List<ItemStack> items, RandomSource random) {
         var slots = IntStream.range(0, container.getContainerSize()).boxed().collect(Collectors.toCollection(ArrayList::new));
         Util.shuffle(slots, random);
@@ -107,7 +107,7 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
                 var portion = stack.copyWithCount(Math.min(stack.getCount(), container.getMaxStackSize(stack)));
                 if (container.getItem(slot).isEmpty() && judge.canPlaceItem(slot, portion)) {
                     container.setItem(slot, portion, true);
-                    // Some turn items away in setItem itself: a chiseled bookshelf anything but books.
+                    // Some containers reject items in setItem itself, like a chiseled bookshelf with anything but books.
                     if (!container.getItem(slot).isEmpty()) {
                         stack.shrink(portion.getCount());
                         iterator.remove();
@@ -123,8 +123,8 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
 
     /// How many kinds of items each slot of `judge` takes, counted over every registered item.
     static int[] breadth(Container judge) {
-        // Kept per block entity type: it only orders slots, so a datapack changing what a slot
-        // takes, such as brewing ingredients, at worst leaves the order a little off.
+        // Cached per block entity type. It's only used to order slots, so if a datapack changes what a slot
+        // accepts, like brewing ingredients, the order is a bit off at worst.
         if (judge instanceof BlockEntity blockEntity) {
             var known = SLOT_BREADTH.computeIfAbsent(blockEntity.getType(), _ -> countBreadth(judge));
             if (known.length == judge.getContainerSize()) {

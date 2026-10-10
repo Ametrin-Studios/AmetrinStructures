@@ -9,7 +9,7 @@ import net.minecraft.resources.ResourceKey;
 import java.util.List;
 import java.util.stream.Stream;
 
-/// Draws from a [FixturePreset] and runs what it draws, as if the fixture was that itself.
+/// Draws from a [FixturePreset] and runs the result as if it were this fixture.
 public record PresetFixture(ResourceKey<FixturePreset> preset) implements Fixture {
     public static final FixtureField<ResourceKey<FixturePreset>> PRESET = FixtureField.required("preset", FieldType.registryKey(ASRegistries.FIXTURE_PRESET));
     public static final List<FixtureField<?>> FIELDS = List.of(PRESET);

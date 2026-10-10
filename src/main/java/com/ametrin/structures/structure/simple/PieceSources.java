@@ -96,8 +96,9 @@ public final class PieceSources {
                 context.rotation(),
                 entry.processors(),
                 context.structureProcessors(),
-                -entry.offset().getY(),
-                entry.terrainBox());
+                context.terrainAdaptation(),
+                entry.terrainBox(),
+                -entry.offset().getY());
     }
 
     public abstract static class NestingBuilder {

@@ -16,10 +16,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/// A spawner block, or a spawner minecart. Setting `max_block_light` or `max_sky_light` replaces
-/// the entity's own spawn rules with light ranges from 0 to those values, so a spawner can work
-/// where the entity would not spawn naturally. For settings shared by many spawners, or several
-/// entities, use a [SpawnerProfileFixture].
+/// A spawner block or a spawner minecart. Setting `max_block_light` or `max_sky_light` replaces the
+/// entity's own spawn rules with light ranges from 0 to those values, so the spawner works where the
+/// entity wouldn't spawn naturally. For settings shared by many spawners, or for several entities,
+/// use a [SpawnerProfileFixture].
 public record SpawnerFixture(
         Optional<ResourceKey<EntityType<?>>> entity,
         boolean minecart,
@@ -86,9 +86,9 @@ public record SpawnerFixture(
         Fixtures.placeSpawner(context, minecart, (_, spawner) -> {
             SpawnerAccess.applyWithSpawnDelay(spawner, profile);
             if (spawned != null) {
-                // No level: the spawner would read the block back from the server level to notify
-                // clients, which from a world generation thread waits on the main thread, which is
-                // waiting on this chunk. Clients get the spawner with its chunk anyway.
+                // No level here. The spawner would read the block back from the server level to notify clients.
+                // On a worldgen thread that waits for the main thread, which is waiting for this chunk. Clients get
+                // the spawner with its chunk anyway.
                 spawner.setEntityId(spawned, null, context.random(), context.actionBlockPos());
             }
             var next = SpawnerAccess.nextSpawnData(spawner);

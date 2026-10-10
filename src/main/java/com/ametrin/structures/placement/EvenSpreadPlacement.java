@@ -39,7 +39,7 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
     private final int minChunksFromCenter;
     private final int reach;
 
-    // One candidate per cell; it survives unless a surviving, higher-priority one is closer than minDistance (Matérn type III).
+    // One candidate per cell. A candidate is dropped if a higher-priority candidate that isn't dropped itself is closer than minDistance (Matérn type III).
     public EvenSpreadPlacement(
             Vec3i locateOffset,
             float probability,
@@ -47,7 +47,7 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
             Optional<TagExclusionZone> exclusionZone,
             int minDistance,
             int minChunksFromCenter) {
-        // Dense enough candidates that the thinning leaves no gaps.
+        // Small enough cells that the thinning doesn't leave gaps.
         int cell = Math.max(1, minDistance / 2);
         super(locateOffset, FrequencyReductionMethod.DEFAULT, probability, salt, Optional.empty(), cell, 0, RandomSpreadType.LINEAR);
         this.tagExclusionZone = exclusionZone;

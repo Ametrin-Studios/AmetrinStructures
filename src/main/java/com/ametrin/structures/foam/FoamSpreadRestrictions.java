@@ -12,7 +12,7 @@ import net.minecraft.world.phys.Vec3;
 public final class FoamSpreadRestrictions {
     private FoamSpreadRestrictions() {}
 
-    /// Permits while the candidate's center is within `maxDistance` of the source's center.
+    /// Allows candidates whose center is within `maxDistance` of the source's center.
     public record MaxDistance(int maxDistance) implements FoamSpreadRestriction {
         public static final MapCodec<MaxDistance> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                         ExtraCodecs.NON_NEGATIVE_INT.fieldOf("max_distance").forGetter(MaxDistance::maxDistance))
@@ -40,7 +40,7 @@ public final class FoamSpreadRestrictions {
         }
     }
 
-    /// Keeps foam under a roof: a candidate needs some block above it, even where the sky shows through glass.
+    /// Keeps foam under a roof. A candidate needs some block above it, and glass counts.
     public record RequiresShelter() implements FoamSpreadRestriction {
         public static final RequiresShelter INSTANCE = new RequiresShelter();
         public static final MapCodec<RequiresShelter> CODEC = MapCodec.unit(INSTANCE);
@@ -58,7 +58,7 @@ public final class FoamSpreadRestrictions {
         }
     }
 
-    /// [MaxDistance] with the placing stack's count as the distance, so a builder controls the blob size by how many foam items they hold.
+    /// [MaxDistance] with the stack's count as the distance, so the number of foam items you hold controls the size.
     public record StackCountDistance() implements FoamSpreadRestriction {
         public static final StackCountDistance INSTANCE = new StackCountDistance();
         public static final MapCodec<StackCountDistance> CODEC = MapCodec.unit(INSTANCE);

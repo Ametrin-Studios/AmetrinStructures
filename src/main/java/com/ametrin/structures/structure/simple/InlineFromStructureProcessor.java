@@ -38,7 +38,7 @@ public final class InlineFromStructureProcessor implements StructureProcessor {
         return Optional.of(Holder.direct(new StructureProcessorList(expanded)));
     }
 
-    /// Whether a template with these processors of its own runs the structure's: it has none, or marks where they go.
+    /// Whether a template with these processors also runs the structure's: when it has none, or has this marker.
     public static boolean usesStructures(Optional<Holder<StructureProcessorList>> template) {
         return template.isEmpty() || template.get().value().list().stream().anyMatch(InlineFromStructureProcessor.class::isInstance);
     }

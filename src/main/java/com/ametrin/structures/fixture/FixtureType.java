@@ -10,7 +10,7 @@ import java.util.Set;
 /// @param fields what the authoring screen offers, the same keys as `codec`
 /// @throws IllegalArgumentException a key is one of [#RESERVED_KEYS], is declared twice, or `codec` and `fields` disagree
 public record FixtureType(MapCodec<? extends Fixture> codec, List<FixtureField<?>> fields) {
-    /// Keys a stored alternative already uses next to the fixture's own.
+    /// Keys a stored alternative uses besides the fixture's own fields.
     public static final Set<String> RESERVED_KEYS = Set.of(
             Fixture.TYPE_KEY, WeightedFixture.WEIGHT_KEY, WeightedFixture.GENERATION_CHANCE_KEY, WeightedFixture.CONDITIONS_KEY);
 

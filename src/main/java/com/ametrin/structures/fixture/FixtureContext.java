@@ -34,7 +34,7 @@ public record FixtureContext(
         updateNeighborShapes(placed);
     }
 
-    // Worldgen doesn't update neighbors, yet a template's edge update may have split a double chest whose other half was still a marker.
+    // Worldgen doesn't update neighbors, but the template's edge updates may have split a double chest whose other half was still a marker.
     private void updateNeighborShapes(BlockState placed) {
         var neighborPos = new BlockPos.MutableBlockPos();
         for (var direction : Direction.values()) {

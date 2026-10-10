@@ -73,7 +73,7 @@ public class ExtendedSinglePoolElement extends SinglePoolElement {
 
     @Override
     protected StructurePlaceSettings getSettings(Rotation rotation, BoundingBox chunkBB, LiquidSettings liquidSettings, boolean keepJigsaws) {
-        // the element round-trips to JSON unchanged and never touches its processor holder before the registry is bound.
+        // Added here instead of in the constructor, so the element is saved to JSON unchanged and doesn't touch its processor holder before the registry is bound.
         var settings = super.getSettings(rotation, chunkBB, liquidSettings, keepJigsaws);
         return processFoam ? RemoveFoamProcessor.addDefaultIfAbsent(settings) : settings;
     }

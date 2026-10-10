@@ -93,7 +93,7 @@ public record FieldType<T>(
         }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty(), Optional.of(Float.toString(max)));
     }
 
-    /// An entry of `registry`, which may not exist yet: it's only looked up when the fixture runs.
+    /// A key in `registry`. It doesn't have to exist yet, since it's only looked up when the fixture runs.
     public static <R> FieldType<ResourceKey<R>> registryKey(ResourceKey<? extends Registry<R>> registry) {
         return new FieldType<>(
                 registry.identifier().getPath(),

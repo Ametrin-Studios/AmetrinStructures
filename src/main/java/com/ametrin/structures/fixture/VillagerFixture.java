@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/// A villager, or a zombie villager, of the given type and profession, or random ones. One given a
-/// profession keeps it without a workstation, as if it had traded once.
+/// A villager or zombie villager with the given type and profession, or random ones. A villager with
+/// a profession keeps it without a workstation, as if it had traded once.
 public record VillagerFixture(
         Optional<ResourceKey<VillagerType>> villagerType,
         Optional<ResourceKey<VillagerProfession>> profession,

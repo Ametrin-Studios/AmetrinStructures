@@ -13,12 +13,10 @@ import net.neoforged.neoforge.common.conditions.ICondition;
 import java.util.Collection;
 import java.util.List;
 
-/// Each kind is a record registered as a [FixtureConditionType]
+/// Each kind is a record registered as a [FixtureConditionType]. The built-in ones are in [FixtureConditions].
 ///
-/// Built-in types are in [FixtureConditions].
-///
-/// In a datapack, NeoForge's own conditions go in the same list, such as `neoforge:mod_loaded` or `neoforge:tag_empty`.
-// fixtures needs to be preserved even when the condition is false. Neo discards entries that fail conditions so they would not be resaved correctly
+/// In a datapack, NeoForge's conditions like `neoforge:mod_loaded` or `neoforge:tag_empty` go in the same list.
+// Fixtures have to be kept even when their conditions fail. NeoForge drops entries that fail their conditions, so they wouldn't be saved back correctly.
 public interface FixtureCondition {
     Codec<FixtureCondition> CODEC = Codec.either(
                     ASCodecs.<FixtureCondition, FixtureConditionType>dispatch(() -> ASRegistries.FIXTURE_CONDITION_TYPES, FixtureCondition::type, FixtureConditionType::codec),

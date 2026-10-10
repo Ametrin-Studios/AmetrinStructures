@@ -15,15 +15,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
-/// A fixture alternative while it is edited
-/// Text that doesn't parse is kept as it is, so the alternative stays unreadable and is not lost
+/// A fixture alternative being edited in the screen.
+/// Text that doesn't parse is kept as is, so nothing gets lost.
 final class AlternativeDraft {
     String weight = "";
     String chance = "";
     String conditions = "";
     final Map<String, String> texts = new LinkedHashMap<>();
     private Identifier type;
-    // Sent back for what the screen doesn't edit, such as an unknown type's fields.
+    // Sent back as is for what the screen doesn't edit, like an unknown type's fields.
     private CompoundTag stored;
 
     AlternativeDraft(Identifier type) {
@@ -89,7 +89,7 @@ final class AlternativeDraft {
         return data;
     }
 
-    // Blank text is left out, so it takes its default.
+    // Blank fields are left out, so they use their default.
     private static void put(CompoundTag data, String key, String text, Function<String, Optional<? extends Tag>> parse) {
         if (text.isBlank()) {
             data.remove(key);

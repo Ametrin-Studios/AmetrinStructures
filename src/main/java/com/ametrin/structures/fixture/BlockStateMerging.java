@@ -20,7 +20,7 @@ public final class BlockStateMerging {
 
     private BlockStateMerging() {}
 
-    /// A block state field whose block gets merged: its text leaves out what merging replaces.
+    /// A block state field for blocks merged with the marker. Its text leaves out the properties the merge sets.
     public static FieldType<BlockState> mergedBlockState() {
         return mergedBlockState(List.of());
     }
@@ -30,8 +30,8 @@ public final class BlockStateMerging {
         return FieldType.blockState().formattedBy((state, _) -> serialize(state, derived));
     }
 
-    /// `state` as `/setblock` writes it, without the properties merging replaces: waterlogging and
-    /// the axes, and a facing at the block's default, which means "the way the marker faces".
+    /// `state` written like `/setblock` does, without the properties the merge sets: waterlogging, the
+    /// axes, and a facing at the block's default, which means "the way the marker faces".
     static String serialize(BlockState state) {
         return serialize(state, List.of());
     }

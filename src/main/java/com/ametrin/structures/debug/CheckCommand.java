@@ -19,9 +19,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-/// `/ametrin structures check [namespace]` looks for broken references in every structure, or in those of one namespace, see [StructureCheck].
+/// `/ametrin structures check [namespace]` looks for broken references in every structure, or the ones in a namespace. See [StructureCheck].
 ///
-/// Chat shows the first problems, the log all of them.
+/// Chat shows the first problems, the log has all of them.
 public final class CheckCommand {
     private static final int MAX_LINES = 50;
 

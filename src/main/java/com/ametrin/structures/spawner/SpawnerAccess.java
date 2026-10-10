@@ -16,9 +16,9 @@ public final class SpawnerAccess {
         spawner.spawnRange = profile.spawnRange();
         if (!profile.spawnPotentials().isEmpty()) {
             spawner.spawnPotentials = profile.spawnPotentials();
-            // Clients only get the next spawn, not the potentials, so it must never be left empty or
-            // the spawner shows no entity and no particles until it spawns. Keep it while the profile
-            // still offers it, which also keeps it stable across loads.
+            // Clients only get the next spawn, not the potentials. If it's empty, the spawner shows no entity and
+            // no particles until it spawns. Keep it as long as the profile still has it, which also keeps it
+            // stable across loads.
             if (spawner.nextSpawnData == null || !profile.spawnPotentials().contains(spawner.nextSpawnData)) {
                 spawner.nextSpawnData = profile.spawnPotentials().getRandomOrThrow(RandomSource.create());
             }

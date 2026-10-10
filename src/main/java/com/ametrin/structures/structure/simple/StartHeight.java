@@ -35,7 +35,7 @@ public sealed interface StartHeight {
         return new Provider(provider);
     }
 
-    /// empty when the lower anchor lies above the upper one.
+    /// Empty when the lower anchor is above the upper one.
     ///
     /// @param terrainSampler the terrain height on a heightmap
     OptionalInt sample(RandomSource random, WorldGenerationContext world, ToIntFunction<Heightmap.Types> terrainSampler);

@@ -11,8 +11,8 @@ import org.jspecify.annotations.Nullable;
 
 /// Places template blocks only where the world's block is replaceable, such as air, plants or water, so ruins blend into the surrounding terrain.
 ///
-/// With `replaceable_only`, only the template's own replaceable blocks are held back: solid blocks
-/// always go in, while the template's air, plants and water no longer carve into solid terrain.
+/// With `replaceable_only`, only the template's replaceable blocks are held back. Solid blocks are
+/// always placed, but the template's air, plants and water don't carve into solid terrain.
 public final class RetainExistingProcessor implements StructureProcessor {
     /// Holds back every template block.
     public static final RetainExistingProcessor ALL = new RetainExistingProcessor(false);

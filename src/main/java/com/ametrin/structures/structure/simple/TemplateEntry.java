@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 /// A template placed at `offset` from the structure origin, optionally with processors of its own.
-/// Terrain adaptation fits the terrain to the [TerrainBox]; with the whole template (default) a negative Y offset buries the template's lower part.
+/// Terrain adaptation fits the terrain to the [TerrainBox]. With the default box, the whole template, a negative Y offset buries the template's lower part.
 public record TemplateEntry(Identifier template, BlockPos offset, Optional<Holder<StructureProcessorList>> processors,
                             TerrainBox terrainBox) {
 

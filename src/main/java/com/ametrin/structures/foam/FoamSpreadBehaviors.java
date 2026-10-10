@@ -11,7 +11,7 @@ import java.util.List;
 public final class FoamSpreadBehaviors {
     private FoamSpreadBehaviors() {}
 
-    /// six face neighbors
+    /// The six face neighbors.
     public record Faces() implements FoamSpreadBehavior {
         public static final Faces INSTANCE = new Faces();
         public static final MapCodec<Faces> CODEC = MapCodec.unit(INSTANCE);
@@ -27,7 +27,7 @@ public final class FoamSpreadBehaviors {
         }
     }
 
-    /// twelve edge diagonals
+    /// The twelve edge neighbors.
     public record Edges() implements FoamSpreadBehavior {
         public static final Edges INSTANCE = new Edges();
         public static final MapCodec<Edges> CODEC = MapCodec.unit(INSTANCE);
@@ -43,7 +43,7 @@ public final class FoamSpreadBehaviors {
         }
     }
 
-    /// union of [Faces] and [Edges] (eighteen offsets)
+    /// [Faces] and [Edges] together.
     public record FacesAndEdges() implements FoamSpreadBehavior {
         public static final FacesAndEdges INSTANCE = new FacesAndEdges();
         public static final MapCodec<FacesAndEdges> CODEC = MapCodec.unit(INSTANCE);
@@ -62,7 +62,7 @@ public final class FoamSpreadBehaviors {
         }
     }
 
-    /// face neighbors except the two along the axis the builder faced (fills a plane). Without an axis this is equal to [Faces].
+    /// The face neighbors except the two along the axis the builder faced, which fills a plane. Without an axis it's the same as [Faces].
     public record Planar() implements FoamSpreadBehavior {
         public static final Planar INSTANCE = new Planar();
         public static final MapCodec<Planar> CODEC = MapCodec.unit(INSTANCE);

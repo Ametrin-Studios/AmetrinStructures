@@ -56,7 +56,7 @@ public record WeightedFixture(int weight, float generationChance, List<FixtureCo
         return Optional.of(candidates.getLast());
     }
 
-    /// A condition that fails to run, such as by looking outside the generating area, counts as not passing.
+    /// A condition that throws, e.g. by looking outside the generating area, counts as failed.
     public boolean conditionsPass(FixtureCondition.Context context) {
         for (var condition : conditions) {
             try {
@@ -95,8 +95,8 @@ public record WeightedFixture(int weight, float generationChance, List<FixtureCo
         return new WeightedFixture(weight, generationChance, conditions, fixture);
     }
 
-    /// Decodes each alternative on its own: one that doesn't decode becomes a [Fixture.Unreadable]
-    /// instead of failing the list, so a template never fails to load because of a fixture.
+    /// Decodes each alternative separately. One that can't be decoded becomes a [Fixture.Unreadable]
+    /// instead of failing the whole list, so a fixture never stops a template from loading.
     private static final class LenientListCodec implements Codec<List<WeightedFixture>> {
         @Override
         public <T> DataResult<Pair<List<WeightedFixture>, T>> decode(DynamicOps<T> ops, T input) {

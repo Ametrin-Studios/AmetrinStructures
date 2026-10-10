@@ -8,7 +8,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class NetworkHelper {
     private NetworkHelper() {}
 
-    /// skips fake players as they have no connection
+    /// Skips fake players, since they have no connection.
     public static void sendTo(ServerPlayer player, CustomPacketPayload payload) {
         if (!(player instanceof FakePlayer)) {
             PacketDistributor.sendToPlayer(player, payload);

@@ -40,10 +40,10 @@ import java.util.Optional;
 
 /// Vanilla's jigsaw structure with the library's [ExtendedStructureSettings].
 ///
-/// Filters see the box around every piece, so a structure with filters assembles its pieces before it knows whether it fits;
-/// one without them assembles only once it generates, as vanilla does.
+/// Filters need the box around all pieces, so a structure with filters assembles its pieces before it knows if it fits.
+/// Without filters it only assembles them when it generates, like vanilla.
 public class ExtendedJigsawStructure extends ExtendedStructure {
-    // Vanilla's final class is duplicated rather than reopened with an access transformer, which would cost more across version bumps.
+    // Copies vanilla's final class instead of opening it with an access transformer, which would be more work to maintain across updates.
 
     // The margin terrain adaptation needs around the structure.
     private static final int TERRAIN_ADAPTATION_MARGIN = 12;
@@ -52,28 +52,28 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
                     instance -> instance.group(
                                     settingsCodec(instance),
                                     extendedSettingsCodec(instance),
-                                    StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(s -> s.startPool),
+                                    StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(ExtendedJigsawStructure::startPool),
                                     Identifier.CODEC
                                             .optionalFieldOf("start_jigsaw_name")
-                                            .forGetter(s -> s.startJigsawName),
-                                    Codec.intRange(JigsawStructure.MIN_DEPTH, JigsawStructure.MAX_DEPTH).fieldOf("size").forGetter(s -> s.maxDepth),
-                                    HeightProvider.CODEC.fieldOf("start_height").forGetter(s -> s.startHeight),
-                                    Codec.BOOL.fieldOf("use_expansion_hack").forGetter(s -> s.useExpansionHack),
+                                            .forGetter(ExtendedJigsawStructure::startJigsawName),
+                                    Codec.intRange(JigsawStructure.MIN_DEPTH, JigsawStructure.MAX_DEPTH).fieldOf("size").forGetter(ExtendedJigsawStructure::size),
+                                    HeightProvider.CODEC.fieldOf("start_height").forGetter(ExtendedJigsawStructure::startHeight),
+                                    Codec.BOOL.fieldOf("use_expansion_hack").forGetter(ExtendedJigsawStructure::useExpansionHack),
                                     Heightmap.Types.CODEC
                                             .optionalFieldOf("project_start_to_heightmap")
-                                            .forGetter(s -> s.projectStartToHeightmap),
+                                            .forGetter(ExtendedJigsawStructure::projectStartToHeightmap),
                                     JigsawStructure.MaxDistance.CODEC
                                             .fieldOf("max_distance_from_center")
-                                            .forGetter(s -> s.maxDistanceFromCenter),
+                                            .forGetter(ExtendedJigsawStructure::maxDistanceFromCenter),
                                     Codec.list(PoolAliasBinding.CODEC)
                                             .optionalFieldOf("pool_aliases", List.of())
-                                            .forGetter(s -> s.poolAliases),
+                                            .forGetter(ExtendedJigsawStructure::poolAliases),
                                     DimensionPadding.CODEC
                                             .optionalFieldOf("dimension_padding", JigsawStructure.DEFAULT_DIMENSION_PADDING)
-                                            .forGetter(s -> s.dimensionPadding),
+                                            .forGetter(ExtendedJigsawStructure::dimensionPadding),
                                     LiquidSettings.CODEC
                                             .optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING)
-                                            .forGetter(s -> s.liquidSettings))
+                                            .forGetter(ExtendedJigsawStructure::liquidSettings))
                             .apply(instance, ExtendedJigsawStructure::new))
             .validate(ExtendedJigsawStructure::verifyRange);
 
@@ -114,9 +114,10 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         this.liquidSettings = liquidSettings;
     }
 
-    private static DataResult<ExtendedJigsawStructure> verifyRange(ExtendedJigsawStructure structure) {
+    /// Rejects a max distance that, with terrain adaptation's margin, exceeds vanilla's limit.
+    protected static <S extends ExtendedJigsawStructure> DataResult<S> verifyRange(S structure) {
         int margin = structure.terrainAdaptation() == TerrainAdjustment.NONE ? 0 : TERRAIN_ADAPTATION_MARGIN;
-        return structure.maxDistanceFromCenter.horizontal() + margin > JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE
+        return structure.maxDistanceFromCenter().horizontal() + margin > JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE
                 ? DataResult.error(() -> "max_distance_from_center plus terrain adaptation margin must be at most "
                 + JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE)
                 : DataResult.success(structure);
@@ -188,12 +189,43 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         return maxDepth;
     }
 
+    public HeightProvider startHeight() {
+        return startHeight;
+    }
+
+    public boolean useExpansionHack() {
+        return useExpansionHack;
+    }
+
+    public Optional<Heightmap.Types> projectStartToHeightmap() {
+        return projectStartToHeightmap;
+    }
+
+    public JigsawStructure.MaxDistance maxDistanceFromCenter() {
+        return maxDistanceFromCenter;
+    }
+
     public List<PoolAliasBinding> poolAliases() {
         return poolAliases;
     }
 
+    public DimensionPadding dimensionPadding() {
+        return dimensionPadding;
+    }
+
+    public LiquidSettings liquidSettings() {
+        return liquidSettings;
+    }
+
     public static Builder builder(StructureSettings settings, Holder<StructureTemplatePool> startPool) {
         return new Builder(settings, startPool);
+    }
+
+    /// Starts with `extendedSettings`' filters.
+    public static Builder builder(StructureSettings settings, ExtendedStructureSettings extendedSettings, Holder<StructureTemplatePool> startPool) {
+        var builder = new Builder(settings, startPool);
+        extendedSettings.filters().forEach(builder::filter);
+        return builder;
     }
 
     public static class Builder implements ExtendedStructureBuilder<Builder> {
@@ -239,7 +271,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             return startHeight(UniformHeight.of(VerticalAnchor.absolute(minY), VerticalAnchor.absolute(maxY)));
         }
 
-        /// Stretches the bounding box of flat pieces (≤16 tall) upward to fit the tallest child their inward-facing jigsaws can attach, so layouts like village streets can host taller buildings inside their own footprint.
+        /// Expands the bounding box of flat pieces (16 blocks tall or less) upward to fit the tallest piece their inward-facing jigsaws can attach. This lets layouts like village streets have taller buildings inside their footprint.
         public Builder useExpansionHack(boolean useExpansionHack) {
             this.useExpansionHack = useExpansionHack;
             return this;

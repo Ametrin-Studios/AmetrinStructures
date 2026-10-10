@@ -50,7 +50,6 @@ public class AmetrinStructuresClient {
 
         @SubscribeEvent
         static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
-            // dropping server-provided state on disconnect.
             RegistryKeyCache.clear();
         }
 

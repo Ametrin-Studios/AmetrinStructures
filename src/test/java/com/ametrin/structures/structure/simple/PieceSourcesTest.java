@@ -11,6 +11,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,7 +91,7 @@ class PieceSourcesTest {
     private static List<StructurePiece> appendPieces(MinecraftServer server, PieceSource source, long seed) {
         var generation = GenerationContexts.overPlains(server, seed, biome -> biome.is(Biomes.PLAINS));
         var pieces = new ArrayList<StructurePiece>();
-        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, Optional.empty()));
+        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE));
         return pieces;
     }
 }

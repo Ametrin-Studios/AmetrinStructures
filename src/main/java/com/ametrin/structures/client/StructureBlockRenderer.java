@@ -13,9 +13,9 @@ import net.minecraft.world.level.block.state.properties.StructureMode;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/// Vanilla's structure block renderer, plus a name tag like a fixture's: the template name, or a data
-/// block's metadata. Shown to players who see the bounding box, while the block is looked at or while
-/// they hold a structure block.
+/// Vanilla's structure block renderer plus a name tag, like fixtures have. It shows the template name,
+/// or the metadata of a data block. Players who can see the bounding box see it while looking at the
+/// block or holding a structure block.
 public class StructureBlockRenderer extends BlockEntityWithBoundingBoxRenderer<StructureBlockEntity> {
     @Override
     public BlockEntityWithBoundingBoxRenderState createRenderState() {

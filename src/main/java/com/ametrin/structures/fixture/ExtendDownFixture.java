@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.Optional;
 
 /// Grows a pillar from the action position down to the ground, like a leg or a support beam. Uses
-/// `state` when set, otherwise repeats the block directly above, so the marker goes right under the
-/// bottom block of the leg; one that [can't be repeated][Foundation#canRepeat(BlockState)] grows
-/// nothing. Stops like a [Foundation] column: at the first block that is not air, fluid or
+/// `state` if set, otherwise it repeats the block directly above, so place the marker right below the
+/// bottom block of the leg. A block that [can't be repeated][Foundation#canRepeat(BlockState)] grows
+/// nothing. Like a [Foundation] column, it stops at the first block that isn't air, fluid or
 /// replaceable, or after `max_depth` blocks.
 public record ExtendDownFixture(Optional<BlockState> state, int maxDepth) implements Fixture {
     public static final FixtureField<Optional<BlockState>> STATE = FixtureField.optional("state", FieldType.blockState());

@@ -24,10 +24,10 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
 
-/// Scaffolding that fills the space a structure should keep empty, removed when the structure generates.
-/// How a fill spreads travels with the item as a [FoamSpread] component.
+/// Fills space that should stay empty in a structure, and is removed when the structure generates.
+/// How it spreads is stored on the item as a [FoamSpread] component.
 ///
-/// replacement state overwrites what the [RemoveFoamProcessor] specifies.
+/// A replacement state overrides what the [RemoveFoamProcessor] fills with.
 public class FoamBlock extends Block {
     private final Optional<BlockState> replacementState;
 
@@ -58,8 +58,8 @@ public class FoamBlock extends Block {
 
     @Override
     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        // The only scheduled tick foam gets is its dissolution. A placed foam doesn't know how its fill
-        // spread, so it passes on to all 26 neighbors, and touching blobs dissolve together.
+        // Foam only gets scheduled ticks to dissolve. Placed foam doesn't know how its fill spread, so it
+        // passes the tick on to all 26 neighbors, and touching blobs dissolve together.
         level.removeBlock(pos, false);
         for (var neighbor : BlockPos.betweenClosed(pos.offset(-1, -1, -1), pos.offset(1, 1, 1))) {
             dissolve(level, neighbor);

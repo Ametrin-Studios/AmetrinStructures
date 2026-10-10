@@ -48,7 +48,7 @@ public record VaultFixture(
     public void apply(FixtureContext context) {
         context.placeBlock(Blocks.VAULT.defaultBlockState().setValue(VaultBlock.OMINOUS, ominous));
         if (context.level().getBlockEntity(context.actionBlockPos()) instanceof VaultBlockEntity vault) {
-            // Marked for tests only, but it's the vault's one way to take a config other than loading it from a tag.
+            // Marked as test-only, but it's the only way to set a vault's config other than loading it from a tag.
             vault.setConfig(config());
             vault.setChanged();
         }

@@ -30,8 +30,8 @@ import java.util.Map;
 
 /// An entity's data, for spawners, entity fixtures and passengers.
 ///
-/// Setting anything makes a spawner's entity skip its own spawn randomization, such as random armor and handedness, as vanilla spawners do.
-/// An entity fixture also keeps it with a [#deathLootTable].
+/// Setting anything makes the entity skip its own spawn randomization, like random armor and handedness, the same as vanilla spawners.
+/// Entity fixtures keep the randomization when only a [#deathLootTable] is set.
 public final class EntityDataBuilder {
     public static final String DEATH_LOOT_TABLE_KEY = "DeathLootTable";
 
@@ -133,7 +133,7 @@ public final class EntityDataBuilder {
         return equip(slot, new ItemStackTemplate(item.asItem()));
     }
 
-    /// Stacks referring to datapack content, such as enchanted ones, need [#equip(EquipmentSlot, ItemStackTemplate, HolderLookup.Provider)], which datagen can't call: use an equipment loot table there.
+    /// Stacks that use datapack content, like enchanted ones, need [#equip(EquipmentSlot, ItemStackTemplate, HolderLookup.Provider)], which datagen can't call. Use an equipment loot table there instead.
     public EntityDataBuilder equip(EquipmentSlot slot, ItemStackTemplate stack) {
         return equip(slot, stack, NbtOps.INSTANCE);
     }

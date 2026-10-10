@@ -17,7 +17,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayDeque;
 
-/// At most [#SOURCES_PER_TICK] foam spread per tick, so a large fill takes several ticks instead of stalling the server.
+/// Spreads from at most [#SOURCES_PER_TICK] foam blocks per tick, so a large fill takes several ticks instead of stalling the server.
 ///
 /// The fill stops at chunks that aren't loaded.
 @ApiStatus.Internal
@@ -37,7 +37,7 @@ public class FoamSpreaderBlockEntity extends BlockEntity {
         frontier.add(pos);
     }
 
-    /// the stack that holds the [FoamSpread] (restrictions may use its count).
+    /// The stack that holds the [FoamSpread]. Restrictions can use its count.
     public void configure(ItemStack stack) {
         this.stack = stack.copy();
         setChanged();

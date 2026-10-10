@@ -20,9 +20,9 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import java.util.*;
 import java.util.stream.Stream;
 
-/// An entity facing the marker's front; item frames and paintings hang on the block behind it.
-/// `nbt` turns off the entity's own randomization, such as random armor, as it does for
-/// spawners; equipment and death loot don't.
+/// An entity facing the marker's front. Item frames and paintings hang on the block behind it.
+/// Setting `nbt` turns off the entity's own randomization, like random armor, the same as for
+/// spawners. Equipment and death loot don't.
 ///
 /// @param items items per equipment slot, keyed by the slot's name, like `head`
 public record EntityFixture(
@@ -58,7 +58,7 @@ public record EntityFixture(
         return of(new EntityDataBuilder(entity));
     }
 
-    /// death loot table becomes its own field, so it doesn't turn off the entity's randomization.
+    /// The death loot table goes into its own field, so it doesn't turn off the entity's randomization.
     public static EntityFixture of(EntityDataBuilder entity) {
         var extraData = entity.build();
         var deathLootTable = extraData.read(EntityDataBuilder.DEATH_LOOT_TABLE_KEY, LootTable.KEY_CODEC);
@@ -99,8 +99,8 @@ public record EntityFixture(
         });
     }
 
-    // Only mobs roll equipment tables themselves; other living entities, like armor stands, get
-    // the same slot rules but no drop chances, since they drop everything they hold anyway.
+    // Only mobs roll equipment tables themselves. Other living entities, like armor stands, use the same
+    // slot rules but get no drop chances, since they drop everything they hold anyway.
     private static void equip(LivingEntity living, EquipmentTable table) {
         if (living instanceof Mob mob) {
             mob.equip(table);
