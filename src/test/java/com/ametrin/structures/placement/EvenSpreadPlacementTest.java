@@ -1,5 +1,7 @@
 package com.ametrin.structures.placement;
 
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.StructureTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import org.junit.jupiter.api.Test;
@@ -37,11 +39,12 @@ class EvenSpreadPlacementTest {
 
     @Test
     void noTwoSpotsAreCloserThanTheMinDistance() {
-        var placement = evenSpread(24).build();
-        var spots = spots(placement, SEED);
-        for (var spot : spots) {
-            for (var other : spots) {
-                assertTrue(spot == other || distance(spot, other) >= 24, spot + " and " + other);
+        for (int minDistance : new int[]{2, 3, 13, 24}) {
+            var spots = spots(evenSpread(minDistance).build(), SEED);
+            for (var spot : spots) {
+                for (var other : spots) {
+                    assertTrue(spot == other || distance(spot, other) >= minDistance, minDistance + ": " + spot + " and " + other);
+                }
             }
         }
     }
@@ -77,6 +80,15 @@ class EvenSpreadPlacementTest {
     }
 
     @Test
+    void aSharedBuilderTakesEachSetsDefaultSalt() {
+        var shared = EvenSpreadPlacement.builder().minDistance(24);
+        var first = shared.build("test", "first");
+        assertNotEquals(spots(first, SEED), spots(shared.build("test", "second"), SEED));
+        assertEquals(spots(first, SEED), spots(shared.build(Identifier.fromNamespaceAndPath("test", "first")), SEED));
+        assertEquals(spots(evenSpread(24).salt(7).build(), SEED), spots(shared.salt(7).build("test", "third"), SEED), "an explicit salt wins");
+    }
+
+    @Test
     void theProbabilityOnlyRemovesSpots() {
         var all = spots(evenSpread(24).build(), SEED);
         var some = spots(evenSpread(24).probability(0.5F).build(), SEED);
@@ -105,5 +117,6 @@ class EvenSpreadPlacementTest {
         assertThrows(IllegalStateException.class, () -> evenSpread(EvenSpreadPlacement.MAX_DISTANCE + 1).build());
         assertThrows(IllegalStateException.class, () -> evenSpread(8).probability(1.5F).build());
         assertThrows(IllegalStateException.class, () -> evenSpread(8).minChunksFromCenter(-1).build());
+        assertThrows(IllegalStateException.class, () -> evenSpread(8).exclusionZone(StructureTags.VILLAGE, TagExclusionZone.MAX_CHUNK_COUNT + 1).build());
     }
 }

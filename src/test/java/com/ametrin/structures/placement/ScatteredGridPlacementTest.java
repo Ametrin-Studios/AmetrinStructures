@@ -124,7 +124,8 @@ class ScatteredGridPlacementTest {
     }
 
     @Test
-    void spacingBelowOneIsRejected() {
+    void outOfRangeSpacingIsRejected() {
         assertThrows(IllegalStateException.class, () -> grid(0).build());
+        assertThrows(IllegalStateException.class, () -> grid(ScatteredGridPlacement.MAX_SPACING + 1).build());
     }
 }

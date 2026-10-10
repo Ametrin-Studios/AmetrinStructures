@@ -7,6 +7,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.HashCommon;
 import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
 import net.minecraft.core.Vec3i;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.ChunkPos;
@@ -54,7 +55,8 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
         this.tagExclusionZone = exclusionZone;
         this.minDistance = minDistance;
         this.minChunksFromCenter = minChunksFromCenter;
-        this.reach = minDistance / cell + 1;
+        // Spots d cells apart are at least d * cell - (cell - 1) chunks apart, so farther cells can't come within minDistance.
+        this.reach = (minDistance + cell - 2) / cell;
     }
 
     public int minDistance() {
@@ -170,12 +172,8 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
         }
 
         public Builder salt(String namespace, String id) {
-            this.salt = namespace.hashCode() ^ id.hashCode();
+            this.salt = StructurePlacements.salt(namespace, id);
             return this;
-        }
-
-        public Builder saltIfUnset(String namespace, String id) {
-            return salt == null ? salt(namespace, id) : this;
         }
 
         public Builder exclusionZone(TagKey<Structure> structures, int chunkCount) {
@@ -194,6 +192,20 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
         }
 
         public EvenSpreadPlacement build() {
+            return build(salt == null ? 0 : salt);
+        }
+
+        /// salt defaults to one derived from `id`.
+        public EvenSpreadPlacement build(Identifier id) {
+            return build(id.getNamespace(), id.getPath());
+        }
+
+        /// salt defaults to one derived from `namespace` and `id`.
+        public EvenSpreadPlacement build(String namespace, String id) {
+            return build(salt == null ? StructurePlacements.salt(namespace, id) : salt);
+        }
+
+        private EvenSpreadPlacement build(int salt) {
             if (minDistance < 1 || minDistance > MAX_DISTANCE) {
                 throw new IllegalStateException("even spread placement: min distance " + minDistance + " is outside 1 to " + MAX_DISTANCE);
             }
@@ -203,10 +215,11 @@ public class EvenSpreadPlacement extends RandomSpreadStructurePlacement { // ext
             if (minChunksFromCenter < 0) {
                 throw new IllegalStateException("even spread placement: min chunks from center " + minChunksFromCenter + " is negative");
             }
+            exclusionZone.ifPresent(zone -> zone.validate("even spread placement"));
             return new EvenSpreadPlacement(
                     locateOffset,
                     probability,
-                    salt == null ? 0 : salt,
+                    salt,
                     exclusionZone,
                     minDistance,
                     minChunksFromCenter);

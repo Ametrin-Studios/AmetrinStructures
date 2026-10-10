@@ -6,6 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Vec3i;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.Mth;
@@ -184,12 +185,8 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         }
 
         public Builder salt(String namespace, String id) {
-            this.salt = namespace.hashCode() ^ id.hashCode();
+            this.salt = StructurePlacements.salt(namespace, id);
             return this;
-        }
-
-        public Builder saltIfUnset(String namespace, String id) {
-            return salt == null ? salt(namespace, id) : this;
         }
 
         public Builder exclusionZone(TagKey<Structure> structures, int chunkCount) {
@@ -221,8 +218,22 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
         }
 
         public ScatteredGridPlacement build() {
-            if (spacing < 1) {
-                throw new IllegalStateException("grid placement: spacing " + spacing + " is below 1");
+            return build(salt == null ? 0 : salt);
+        }
+
+        /// salt defaults to one derived from `id`.
+        public ScatteredGridPlacement build(Identifier id) {
+            return build(id.getNamespace(), id.getPath());
+        }
+
+        /// salt defaults to one derived from `namespace` and `id`.
+        public ScatteredGridPlacement build(String namespace, String id) {
+            return build(salt == null ? StructurePlacements.salt(namespace, id) : salt);
+        }
+
+        private ScatteredGridPlacement build(int salt) {
+            if (spacing < 1 || spacing > MAX_SPACING) {
+                throw new IllegalStateException("grid placement: spacing " + spacing + " is outside 1 to " + MAX_SPACING);
             }
             if (probability < 0.0F || probability > 1.0F) {
                 throw new IllegalStateException("grid placement: probability " + probability + " is outside 0 to 1");
@@ -230,10 +241,11 @@ public class ScatteredGridPlacement extends RandomSpreadStructurePlacement { // 
             if (minChunksFromCenter < 0) {
                 throw new IllegalStateException("grid placement: min chunks from center " + minChunksFromCenter + " is negative");
             }
+            exclusionZone.ifPresent(zone -> zone.validate("grid placement"));
             return new ScatteredGridPlacement(
                     locateOffset,
                     probability,
-                    salt == null ? 0 : salt,
+                    salt,
                     exclusionZone,
                     spacing,
                     gridOffset,
