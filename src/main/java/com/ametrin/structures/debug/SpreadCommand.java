@@ -10,6 +10,8 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -21,6 +23,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.*;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -130,7 +133,9 @@ public final class SpreadCommand {
                 .then(Commands.literal("set")
                         .then(withOptions(Commands.argument("set", ResourceKeyArgument.key(Registries.STRUCTURE_SET)), SpreadCommand::set)
                                 .then(Commands.literal("placement")
-                                        .then(withOptions(Commands.argument("placement", CompoundTagArgument.compoundTag()), SpreadCommand::setWithPlacement)))))
+                                        .then(withOptions(
+                                                Commands.argument("placement", CompoundTagArgument.compoundTag()).suggests(SpreadCommand::suggestSetPlacement),
+                                                SpreadCommand::setWithPlacement)))))
                 .then(withOptions(Commands.argument("structure", ResourceOrTagKeyArgument.resourceOrTagKey(Registries.STRUCTURE)), SpreadCommand::structures));
     }
 
@@ -191,6 +196,23 @@ public final class SpreadCommand {
     private static Target setWithPlacement(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         var target = set(context);
         return new Target(target.kind(), target.id(), target.sets(), target.structures(), placement(context));
+    }
+
+    private static CompletableFuture<Suggestions> suggestSetPlacement(CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
+        var registries = context.getSource().registryAccess();
+        try {
+            var key = ResourceKeyArgument.getRegistryKey(context, "set", Registries.STRUCTURE_SET, INVALID_SET);
+            registries.lookupOrThrow(Registries.STRUCTURE_SET).get(key)
+                    .map(set -> set.value().placement())
+                    .filter(placement -> !(placement instanceof ConcentricRingsStructurePlacement))
+                    .flatMap(placement -> StructurePlacement.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), placement).result())
+                    .map(Tag::toString)
+                    .filter(snbt -> snbt.startsWith(builder.getRemaining()))
+                    .ifPresent(builder::suggest);
+        } catch (CommandSyntaxException ignored) {
+            // No set to start from.
+        }
+        return builder.buildFuture();
     }
 
     private static StructurePlacement placement(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
