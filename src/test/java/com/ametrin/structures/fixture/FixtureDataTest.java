@@ -40,7 +40,7 @@ class FixtureDataTest {
         marker.setFixtureData(List.of(TagParser.parseCompoundFully("{type: \"ametrin_structures:vault\", weight: 3}")), server.registryAccess());
         var alternative = marker.fixtures().getFirst();
         assertEquals(3, alternative.weight());
-        assertEquals(new Fixtures.Vault(false), assertInstanceOf(Fixtures.Vault.class, alternative.fixture()));
+        assertEquals(new VaultFixture(false), assertInstanceOf(VaultFixture.class, alternative.fixture()));
     }
 
     @Test

@@ -163,7 +163,7 @@ final class StructureCheck {
         fixture.references()
                 .filter(key -> !exists(key))
                 .forEach(key -> problem(subject, id, "missing_reference", where, key.registry().toString(), key.identifier().toString()));
-        if (fixture instanceof Fixtures.Preset(var key) && checkedPresets.add(key)) {
+        if (fixture instanceof PresetFixture(var key) && checkedPresets.add(key)) {
             registries.lookupOrThrow(ASRegistries.FIXTURE_PRESET).get(key).ifPresent(preset -> {
                 var alternatives = preset.value().fixtures();
                 for (int i = 0; i < alternatives.size(); i++) {

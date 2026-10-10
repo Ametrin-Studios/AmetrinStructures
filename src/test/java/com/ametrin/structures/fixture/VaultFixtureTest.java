@@ -17,13 +17,13 @@ class VaultFixtureTest {
     @Test
     void theFixtureReadsWithDefaults() {
         var json = JsonParser.parseString("{\"type\":\"ametrin_structures:vault\",\"ominous\":true}");
-        var fixture = assertInstanceOf(Fixtures.Vault.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
-        assertEquals(new Fixtures.Vault(true), fixture);
+        var fixture = assertInstanceOf(VaultFixture.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
+        assertEquals(new VaultFixture(true), fixture);
     }
 
     @Test
     void aNormalVaultTakesTheTrialChambersReward() {
-        var config = new Fixtures.Vault(false).config();
+        var config = new VaultFixture(false).config();
         assertEquals(BuiltInLootTables.TRIAL_CHAMBERS_REWARD, config.lootTable());
         assertTrue(config.keyItem().is(Items.TRIAL_KEY));
         assertEquals(Optional.empty(), config.overrideLootTableToDisplay());
@@ -31,14 +31,14 @@ class VaultFixtureTest {
 
     @Test
     void anOminousVaultTakesTheOminousRewardAndKey() {
-        var config = new Fixtures.Vault(true).config();
+        var config = new VaultFixture(true).config();
         assertEquals(BuiltInLootTables.TRIAL_CHAMBERS_REWARD_OMINOUS, config.lootTable());
         assertTrue(config.keyItem().is(Items.OMINOUS_TRIAL_KEY));
     }
 
     @Test
     void anExplicitLootTableWins() {
-        var config = new Fixtures.Vault(true, BuiltInLootTables.SIMPLE_DUNGEON).config();
+        var config = new VaultFixture(true, BuiltInLootTables.SIMPLE_DUNGEON).config();
         assertEquals(BuiltInLootTables.SIMPLE_DUNGEON, config.lootTable());
         assertTrue(config.keyItem().is(Items.OMINOUS_TRIAL_KEY));
     }

@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-final class BlockStateMerging {
+public final class BlockStateMerging {
     private static final Set<Property<?>> REPLACED = Set.of(
             BlockStateProperties.WATERLOGGED, BlockStateProperties.AXIS, BlockStateProperties.HORIZONTAL_AXIS);
     private static final Set<Property<?>> FACINGS = Set.of(
@@ -21,12 +21,12 @@ final class BlockStateMerging {
     private BlockStateMerging() {}
 
     /// A block state field whose block gets merged: its text leaves out what merging replaces.
-    static FieldType<BlockState> mergedBlockState() {
+    public static FieldType<BlockState> mergedBlockState() {
         return mergedBlockState(List.of());
     }
 
     /// As [#mergedBlockState()], also leaving out `derived`, which the fixture sets itself.
-    static FieldType<BlockState> mergedBlockState(Collection<? extends Property<?>> derived) {
+    public static FieldType<BlockState> mergedBlockState(Collection<? extends Property<?>> derived) {
         return FieldType.blockState().formattedBy((state, _) -> serialize(state, derived));
     }
 
