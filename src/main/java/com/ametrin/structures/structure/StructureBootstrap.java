@@ -8,18 +8,13 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.neoforged.neoforge.data.event.DatapackRegistryGatherer;
 import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-/// Declares a mod's structure sets for datagen.
-///
 /// ```
-/// public static final StructureBootstrap STRUCTURES = new StructureBootstrap(MODID);
+/// public static final StructureBootstrap STRUCTURES = new StructureBootstrap(MOD_ID);
 ///
 /// public static final StructureSetKeys TOWER = STRUCTURES.registerSet("tower", set -> set
 ///         .evenSpreadPlacement(18, 0.6F)
@@ -58,11 +53,11 @@ public final class StructureBootstrap {
         return Collections.unmodifiableList(sets);
     }
 
-    /// Adds every structure and structure set. Listen for [GatherDataRegistryEntriesEvent] with it:
-    ///
-    /// ```
-    /// modBus.addListener(GatherDataRegistryEntriesEvent.class, STRUCTURES::addTo);
-    /// ```
+    public Stream<ResourceKey<Structure>> getStructures() {
+        return structures.keySet().stream().sorted();
+    }
+
+    /// Adds every structure and structure set. Call with [GatherDataRegistryEntriesEvent].
     public void addTo(DatapackRegistryGatherer registries) {
         registries.add(Registries.STRUCTURE_SET, context -> structureSets.forEach((key, factory) -> context.register(key, factory.apply(context))))
                 .add(Registries.STRUCTURE, context -> structures.forEach((key, factory) -> context.register(key, factory.apply(context))));
