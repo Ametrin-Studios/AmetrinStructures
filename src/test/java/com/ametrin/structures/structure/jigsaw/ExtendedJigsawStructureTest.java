@@ -51,6 +51,14 @@ class ExtendedJigsawStructureTest {
         assertEquals(stub.getPiecesBuilder(), stub.getPiecesBuilder(), "the stub holds the assembled pieces, not a recipe");
     }
 
+    @Test
+    void theSizeIsSampledFromItsProvider(MinecraftServer server) {
+        var result = structure(server, builder -> builder.size(0, 0)).evaluateGenerationPoint(context(server));
+        var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, result).stub();
+        // Vanilla skips assembly entirely at depth 0, start piece included.
+        assertTrue(stub.getPiecesBuilder().isEmpty());
+    }
+
     private static ExtendedJigsawStructure structure(MinecraftServer server, Consumer<ExtendedJigsawStructure.Builder> configure) {
         var pool = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL).getOrThrow(POOL);
         var builder = ExtendedJigsawStructure.builder(new Structure.StructureSettings(HolderSet.empty()), pool).size(1).startHeight(64);
