@@ -102,7 +102,7 @@ class SimpleStructureBuilderTest {
                 .simple("large", tower -> tower.single("tower")));
         assertEquals("test:tower", keys.key().identifier().toString());
         assertEquals("test:tower/large", keys.structure("large").identifier().toString());
-        assertEquals(List.of("small", "large"), List.copyOf(keys.structures().keySet()));
+        assertEquals(List.of("small", "large"), List.copyOf(keys.declared().keySet()));
         assertThrows(IllegalArgumentException.class, () -> keys.structure("medium"));
         assertThrows(IllegalStateException.class, keys::structure);
     }

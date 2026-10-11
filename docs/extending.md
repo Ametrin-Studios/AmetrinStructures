@@ -118,6 +118,25 @@ Reference:
 [`ExtendedJigsawStructure`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedJigsawStructure.java) and
 [`SimpleStructurePiece`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructurePiece.java).
 
+## Structures without a set
+
+`registerSimple(...)`, `registerJigsaw(...)` and `registerStructure(...)` on the `StructureBootstrap` declare a structure on its own and return its key. 
+
+`existing(...)` adds a structure registered elsewhere to a set, with an optional weight. It can be one of yours or one from vanilla or another mod:
+
+```java
+public static final ResourceKey<Structure> WELL = STRUCTURES.registerSimple("well", well -> well.single("well").surface());
+
+public static final StructureSetKeys VILLAGE_EXTRAS = STRUCTURES.registerSet("village_extras", set -> set
+        .scatteredGridPlacement(24, 0.5F)
+        .existing(WELL, 3)
+        .existing(BuiltinStructures.IGLOO));
+```
+
+The set's keys list these under `existing()` and its own under `declared()`. `structures()` returns both.
+
+Reference: [`StructureBootstrap`](../src/main/java/com/ametrin/structures/structure/StructureBootstrap.java) and [`StructureSetKeys`](../src/main/java/com/ametrin/structures/structure/StructureSetKeys.java).
+
 ## Placements
 
 `horizontalPlacement(...)` takes any `StructurePlacement`, vanilla or your own. The overload with a function gets the
