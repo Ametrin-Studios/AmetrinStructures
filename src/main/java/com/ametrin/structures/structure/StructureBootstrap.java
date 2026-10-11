@@ -7,18 +7,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-/// Declares a mod's structure sets for datagen.
-///
 /// ```
-/// public static final StructureBootstrap STRUCTURES = new StructureBootstrap(MODID);
+/// public static final StructureBootstrap STRUCTURES = new StructureBootstrap(MOD_ID);
 ///
 /// public static final StructureSetKeys TOWER = STRUCTURES.registerSet("tower", set -> set
 ///         .evenSpreadPlacement(18, 0.6F)
@@ -34,7 +29,7 @@ public final class StructureBootstrap {
         this.namespace = namespace;
     }
 
-    /// Declares the set `name` and its structures, named `<name>/<suffix>`. Validates the builder immediately.
+    /// Declares the set `name` and its structures, named `<name>/<suffix>`.
     public StructureSetKeys registerSet(String name, Consumer<StructureSetBuilder> configure) {
         var builder = new StructureSetBuilder(namespace, name);
         configure.accept(builder);
@@ -56,8 +51,10 @@ public final class StructureBootstrap {
     public List<StructureSetKeys> getSets() {
         return Collections.unmodifiableList(sets);
     }
+    public Stream<ResourceKey<Structure>> getStructures() {
+        return structures.keySet().stream().sorted();
+    }
 
-    /// Adds every structure and structure set. Call in datagen.
     public void addTo(RegistrySetBuilder builder) {
         builder.add(Registries.STRUCTURE_SET, context -> structureSets.forEach((key, factory) -> context.register(key, factory.apply(context))))
                 .add(Registries.STRUCTURE, context -> structures.forEach((key, factory) -> context.register(key, factory.apply(context))));
