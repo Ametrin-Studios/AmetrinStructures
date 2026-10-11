@@ -109,7 +109,8 @@ subclass can write its own codec. To create them outside a set, e.g. in your own
 
 For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs
 fixtures, removes foam, places foundations and fits the terrain to a `TerrainBox`. The piece decides its own terrain
-adaptation, so pass it the structure's `terrainAdaptation()`. Other template pieces place fixture blocks as they are.
+adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's
+processors itself. Other template pieces place fixture blocks as they are.
 
 Reference:
 [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java),
@@ -142,8 +143,7 @@ Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/place
 
 `ReplaceBlockProcessor` replaces random blocks, e.g. to make a build look weathered.
 
-Processors on a template in a simple structure replace the structure's processors. Add
-`InlineFromStructureProcessor.INSTANCE` to the template's list to run the structure's processors at that point.
+A structure's `processors(...)` run on every `ExtendedTemplateStructurePiece` that has no processors of its own, including the pieces of your own structures. A piece's own processors replace the structure's; add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point. Jigsaw pool element pieces don't run them.
 
 `RetainExistingProcessor.ALL` only places blocks where the world has something replaceable, like air, plants or water.
 Ruins blend into the terrain instead of cutting through it. `RetainExistingProcessor.REPLACEABLE_ONLY`
@@ -156,7 +156,7 @@ Every piece gets a `RemoveFoamProcessor` automatically. Add one yourself to fill
 
 Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java),
 [`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java),
-[`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/simple/InlineFromStructureProcessor.java)
+[`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/InlineFromStructureProcessor.java)
 and [`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java).
 
 ## Fixtures

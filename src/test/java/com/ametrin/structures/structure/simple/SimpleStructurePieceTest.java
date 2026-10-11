@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure.simple;
 
+import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
@@ -156,8 +157,10 @@ class SimpleStructurePieceTest {
                 LevelHeightAccessor.create(-64, 384),
                 HolderSet.direct(plains)::contains);
         var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, structureProcessors, TerrainAdjustment.BEARD_THIN);
-        return (SimpleStructurePiece) PieceSources.createPiece(entry, context);
+        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN);
+        var piece = (SimpleStructurePiece) PieceSources.createPiece(entry, context);
+        piece.setStructureProcessors(structureProcessors);
+        return piece;
     }
 
     private static Optional<Holder<StructureProcessorList>> processors(StructureProcessor... processors) {

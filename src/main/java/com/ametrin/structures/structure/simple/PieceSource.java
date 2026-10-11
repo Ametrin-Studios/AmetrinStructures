@@ -5,15 +5,12 @@ import com.ametrin.structures.util.ASCodecs;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -36,9 +33,7 @@ public interface PieceSource {
     /// Every template the source can place, so `/ametrin structures check` can look into them.
     Stream<TemplateEntry> templates();
 
-    /// @param structureProcessors the structure's processors, for templates without their own and to expand [InlineFromStructureProcessor] markers
-    /// @param terrainAdaptation   the structure's, for [com.ametrin.structures.structure.ExtendedTemplateStructurePiece]s
-    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation,
-                   Optional<Holder<StructureProcessorList>> structureProcessors, TerrainAdjustment terrainAdaptation) {
+    /// @param terrainAdaptation the structure's, for [com.ametrin.structures.structure.ExtendedTemplateStructurePiece]s
+    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation) {
     }
 }

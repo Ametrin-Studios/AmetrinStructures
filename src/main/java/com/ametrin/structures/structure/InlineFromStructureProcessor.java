@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure;
 
 import com.ametrin.structures.registry.ASProcessors;
 import com.mojang.serialization.MapCodec;
@@ -12,36 +12,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/// Processors on a template replace the structure's processors.
-/// In a [SimpleStructurePiece] this marker pulls them back in. It does nothing anywhere else.
+/// A piece's own processors replace the structure's processors.
+/// In an [ExtendedTemplateStructurePiece] this marker pulls them back in. It does nothing anywhere else.
 public final class InlineFromStructureProcessor extends StructureProcessor {
     public static final InlineFromStructureProcessor INSTANCE = new InlineFromStructureProcessor();
     public static final MapCodec<InlineFromStructureProcessor> CODEC = MapCodec.unit(INSTANCE);
 
     private InlineFromStructureProcessor() {}
 
-    public static Optional<Holder<StructureProcessorList>> resolve(
-            Optional<Holder<StructureProcessorList>> template, Optional<Holder<StructureProcessorList>> structure) {
-        if (template.isEmpty()) {
-            return structure;
+    /// The processors a piece runs: the structure's if the piece has none, otherwise its own with each marker replaced by the structure's.
+    public static List<StructureProcessor> resolve(List<StructureProcessor> own, Optional<Holder<StructureProcessorList>> structure) {
+        var structureList = structure.map(list -> list.value().list()).orElse(List.of());
+        if (own.isEmpty()) {
+            return structureList;
         }
-        if (!usesStructures(template)) {
-            return template;
+        if (!usesStructures(own)) {
+            return own;
         }
         List<StructureProcessor> expanded = new ArrayList<>();
-        for (StructureProcessor processor : template.get().value().list()) {
+        for (var processor : own) {
             if (processor instanceof InlineFromStructureProcessor) {
-                structure.ifPresent(list -> expanded.addAll(list.value().list()));
+                expanded.addAll(structureList);
             } else {
                 expanded.add(processor);
             }
         }
-        return Optional.of(Holder.direct(new StructureProcessorList(expanded)));
+        return expanded;
     }
 
-    /// Whether a template with these processors also runs the structure's: when it has none, or has this marker.
-    public static boolean usesStructures(Optional<Holder<StructureProcessorList>> template) {
-        return template.isEmpty() || template.get().value().list().stream().anyMatch(InlineFromStructureProcessor.class::isInstance);
+    /// Whether a piece with these processors also runs the structure's: when it has none, or has this marker.
+    public static boolean usesStructures(List<StructureProcessor> own) {
+        return own.isEmpty() || own.stream().anyMatch(InlineFromStructureProcessor.class::isInstance);
     }
 
     @Override

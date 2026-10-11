@@ -24,7 +24,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -108,7 +107,7 @@ class PieceSourcesTest {
                 LevelHeightAccessor.create(-64, 384),
                 HolderSet.direct(plains)::contains);
         var pieces = new ArrayList<StructurePiece>();
-        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE));
+        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE));
         return pieces;
     }
 }

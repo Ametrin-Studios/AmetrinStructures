@@ -3,8 +3,12 @@ package com.ametrin.structures.structure;
 import com.ametrin.structures.fixture.FixtureGeneration;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
 import com.ametrin.structures.structure.simple.TerrainBox;
+import com.mojang.serialization.DynamicOps;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
@@ -17,25 +21,30 @@ import net.minecraft.world.level.levelgen.structure.TemplateStructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import net.minecraft.world.level.levelgen.structure.templatesystem.*;
 import net.neoforged.neoforge.common.world.PieceBeardifierModifier;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-/// A template piece that runs fixtures, removes foam, extends down to a [Foundation], and fits the terrain to its [TerrainBox].
+/// A template piece that runs fixtures, removes foam, extends down to a [Foundation], fits the terrain to its [TerrainBox],
+/// and runs its structure's processors, see [InlineFromStructureProcessor].
 ///
 /// The terrain adapts to the piece's settings instead of the structure's, so pass it the structure's [net.minecraft.world.level.levelgen.structure.Structure#terrainAdaptation()].
+/// An [ExtendedStructure] hands over its processors itself.
 public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePiece implements PieceBeardifierModifier {
     private static final String LIQUID_SETTINGS_KEY = "liquid_settings";
     private static final String FOUNDATION_KEY = "foundation";
     private static final String GROUND_LEVEL_DELTA_KEY = "ground_level_delta";
     private static final String TERRAIN_ADAPTATION_KEY = "terrain_adaptation";
     private static final String TERRAIN_BOX_KEY = "terrain_box";
+    private static final String STRUCTURE_PROCESSORS_KEY = "structure_processors";
 
+    // From the settings the piece was created with.
+    private final List<StructureProcessor> ownProcessors;
+    // Empty unless the piece runs them.
+    private Optional<Holder<StructureProcessorList>> structureProcessors = Optional.empty();
     private Optional<Foundation> foundation = Optional.empty();
     private final TerrainAdjustment terrainAdaptation;
     // In template coordinates; empty for the whole template.
@@ -53,23 +62,29 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
             TerrainAdjustment terrainAdaptation,
             TerrainBox terrainBox,
             int groundLevelDelta) {
-        super(type, genDepth, manager, template, template.toString(), prepare(settings), position);
+        var ownProcessors = List.copyOf(settings.getProcessors());
+        super(type, genDepth, manager, template, template.toString(), settings, position);
+        this.ownProcessors = ownProcessors;
         this.terrainAdaptation = terrainAdaptation;
         this.terrainBox = terrainBox.resolve(this.template, groundLevelDelta);
         // Relative to the bottom of the terrain box. Only a local box moves it, and its bottom is the ground.
         this.groundLevelDelta = terrainBox instanceof TerrainBox.Local ? 0 : groundLevelDelta;
+        applyProcessors();
     }
 
     protected ExtendedTemplateStructurePiece(
             StructurePieceType type,
             CompoundTag tag,
-            StructureTemplateManager manager,
+            StructurePieceSerializationContext context,
             Function<Identifier, StructurePlaceSettings> settingsFactory) {
-        super(type, tag, manager, id -> readLiquidSettings(tag, prepare(settingsFactory.apply(id))));
+        super(type, tag, context.structureTemplateManager(), id -> readLiquidSettings(tag, settingsFactory.apply(id)));
+        this.ownProcessors = List.copyOf(placeSettings.getProcessors());
+        this.structureProcessors = tag.read(STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context));
         this.foundation = tag.read(FOUNDATION_KEY, Foundation.CODEC);
         this.terrainAdaptation = tag.read(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE);
         this.terrainBox = tag.read(TERRAIN_BOX_KEY, BoundingBox.CODEC);
         this.groundLevelDelta = tag.getIntOr(GROUND_LEVEL_DELTA_KEY, 0);
+        applyProcessors();
     }
 
     private static StructurePlaceSettings readLiquidSettings(CompoundTag tag, StructurePlaceSettings settings) {
@@ -77,9 +92,27 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         return settings;
     }
 
-    // Applied to both the fresh and the reloaded piece, so a partially generated structure finishes the same way it started.
-    private static StructurePlaceSettings prepare(StructurePlaceSettings settings) {
-        return RemoveFoamProcessor.addDefaultIfAbsent(settings);
+    /// For saving processor lists from the registry as ids.
+    protected static DynamicOps<Tag> registryOps(StructurePieceSerializationContext context) {
+        return context.registryAccess().createSerializationContext(NbtOps.INSTANCE);
+    }
+
+    // Runs for both the fresh and the reloaded piece, so a partially generated structure finishes the same way it started.
+    private void applyProcessors() {
+        placeSettings.clearProcessors();
+        InlineFromStructureProcessor.resolve(ownProcessors, structureProcessors).forEach(placeSettings::addProcessor);
+        RemoveFoamProcessor.addDefaultIfAbsent(placeSettings);
+    }
+
+    /// The structure's processors, if the piece runs them.
+    public Optional<Holder<StructureProcessorList>> structureProcessors() {
+        return structureProcessors;
+    }
+
+    /// Ignored if the piece has processors of its own without an [InlineFromStructureProcessor] marker.
+    public void setStructureProcessors(Optional<Holder<StructureProcessorList>> structureProcessors) {
+        this.structureProcessors = InlineFromStructureProcessor.usesStructures(ownProcessors) ? structureProcessors : Optional.empty();
+        applyProcessors();
     }
 
     public Identifier templateId() {
@@ -149,6 +182,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         tag.store(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC, terrainAdaptation);
         terrainBox.ifPresent(box -> tag.store(TERRAIN_BOX_KEY, BoundingBox.CODEC, box));
         tag.putInt(GROUND_LEVEL_DELTA_KEY, groundLevelDelta);
+        structureProcessors.ifPresent(list -> tag.store(STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context), list));
     }
 
     @Override

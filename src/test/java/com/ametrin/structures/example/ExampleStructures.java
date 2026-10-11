@@ -8,7 +8,7 @@ import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.jigsaw.JigsawPools;
 import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.HeightMode;
-import com.ametrin.structures.structure.simple.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;

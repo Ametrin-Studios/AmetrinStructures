@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
@@ -15,12 +16,11 @@ import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSpawnOverride;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 /// Settings shared by every kind of structure in a set
@@ -33,6 +33,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
     private TerrainAdjustment terrainAdaptation = TerrainAdjustment.NONE;
     private int weight = 1;
     private final List<PlacementFilter> filters = new ArrayList<>();
+    private @Nullable Function<HolderGetter<StructureProcessorList>, Holder<StructureProcessorList>> processors;
 
     protected StructureEntryBuilder(String id) {
         this.id = id;
@@ -92,12 +93,30 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return self();
     }
 
+    /// For [ExtendedTemplateStructurePiece]s without processors of their own, see [InlineFromStructureProcessor].
+    public B processors(ResourceKey<StructureProcessorList> processors) {
+        this.processors = lookup -> lookup.getOrThrow(processors);
+        return self();
+    }
+
+    /// For [ExtendedTemplateStructurePiece]s without processors of their own, see [InlineFromStructureProcessor].
+    public B processors(Holder<StructureProcessorList> processors) {
+        this.processors = _ -> processors;
+        return self();
+    }
+
+    /// Stored inline, also in every piece that runs them.
+    public B processors(List<StructureProcessor> processors) {
+        return processors(Holder.direct(new StructureProcessorList(processors)));
+    }
+
     int weight() {
         return weight;
     }
 
-    protected boolean hasFilters() {
-        return !filters.isEmpty();
+    /// Whether filters or processors were set, which only an [ExtendedStructure] takes.
+    protected boolean hasExtendedSettings() {
+        return !filters.isEmpty() || processors != null;
     }
 
     protected void validate() {
@@ -124,6 +143,9 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
 
     Structure bootstrap(BootstrapContext<Structure> context) {
         var settings = new Structure.StructureSettings(biomes.apply(context.lookup(Registries.BIOME)), Map.copyOf(spawnOverrides), step, terrainAdaptation);
-        return create(settings, new ExtendedStructureSettings(filters), context);
+        var resolvedProcessors = processors == null
+                ? Optional.<Holder<StructureProcessorList>>empty()
+                : Optional.of(processors.apply(context.lookup(Registries.PROCESSOR_LIST)));
+        return create(settings, new ExtendedStructureSettings(filters, resolvedProcessors), context);
     }
 }

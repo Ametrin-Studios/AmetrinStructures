@@ -95,7 +95,6 @@ public final class PieceSources {
                 context.origin().offset(entry.offset().rotate(context.rotation())),
                 context.rotation(),
                 entry.processors(),
-                context.structureProcessors(),
                 context.terrainAdaptation(),
                 entry.terrainBox(),
                 -entry.offset().getY());

@@ -36,6 +36,7 @@ import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -225,16 +226,19 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         return new Builder(settings, startPool);
     }
 
-    /// Starts with `extendedSettings`' filters.
+    /// Starts with `extendedSettings`' filters and processors.
     public static Builder builder(StructureSettings settings, ExtendedStructureSettings extendedSettings, Holder<StructureTemplatePool> startPool) {
         var builder = new Builder(settings, startPool);
         extendedSettings.filters().forEach(builder::filter);
+        builder.processors = extendedSettings.processors();
         return builder;
     }
 
     public static class Builder implements ExtendedStructureBuilder<Builder> {
         private final StructureSettings settings;
         private final List<PlacementFilter> filters = new ArrayList<>();
+        // Pool element pieces don't run them, but a subclass's own pieces might.
+        private Optional<Holder<StructureProcessorList>> processors = Optional.empty();
         private final Holder<StructureTemplatePool> startPool;
         private Optional<Identifier> startJigsawName = Optional.empty();
         private IntProvider size = ConstantInt.of(7);
@@ -341,7 +345,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         public ExtendedJigsawStructure build() {
             return new ExtendedJigsawStructure(
                     settings,
-                    new ExtendedStructureSettings(filters),
+                    new ExtendedStructureSettings(filters, processors),
                     startPool,
                     startJigsawName,
                     size,

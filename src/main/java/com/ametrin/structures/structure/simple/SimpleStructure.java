@@ -7,12 +7,10 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -24,9 +22,7 @@ import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
@@ -48,7 +44,6 @@ public class SimpleStructure extends ExtendedStructure {
                     settingsCodec(instance),
                     extendedSettingsCodec(instance),
                     PieceSource.CODEC.fieldOf("pieces").forGetter(SimpleStructure::pieces),
-                    StructureProcessorType.LIST_CODEC.optionalFieldOf("processors").forGetter(SimpleStructure::processors),
                     StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(SimpleStructure::startHeight),
                     HeightMode.CODEC.optionalFieldOf("height_mode", HeightMode.CORNER).forGetter(SimpleStructure::heightMode),
                     LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(SimpleStructure::liquidSettings),
@@ -57,7 +52,6 @@ public class SimpleStructure extends ExtendedStructure {
             .apply(instance, SimpleStructure::new));
 
     private final PieceSource pieces;
-    private final Optional<Holder<StructureProcessorList>> processors;
     private final StartHeight startHeight;
     private final HeightMode heightMode;
     private final LiquidSettings liquidSettings;
@@ -68,7 +62,6 @@ public class SimpleStructure extends ExtendedStructure {
             StructureSettings settings,
             ExtendedStructureSettings extendedSettings,
             PieceSource pieces,
-            Optional<Holder<StructureProcessorList>> processors,
             StartHeight startHeight,
             HeightMode heightMode,
             LiquidSettings liquidSettings,
@@ -76,7 +69,6 @@ public class SimpleStructure extends ExtendedStructure {
             Optional<Rotation> rotation) {
         super(settings, extendedSettings);
         this.pieces = pieces;
-        this.processors = processors;
         this.startHeight = startHeight;
         this.heightMode = heightMode;
         this.liquidSettings = liquidSettings;
@@ -92,7 +84,7 @@ public class SimpleStructure extends ExtendedStructure {
         var unplaced = new BlockPos(chunkPos.getMinBlockX(), 0, chunkPos.getMinBlockZ());
         var created = new ArrayList<StructurePiece>();
         pieces.appendPieces(created, new PieceSource.Context(
-                context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), processors, terrainAdaptation()));
+                context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
         var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
         timer.pieces(System.nanoTime() - start);
         if (unplacedFootprint.isEmpty()) {
@@ -146,11 +138,6 @@ public class SimpleStructure extends ExtendedStructure {
         return pieces;
     }
 
-    /// For templates without their own.
-    public Optional<Holder<StructureProcessorList>> processors() {
-        return processors;
-    }
-
     public StartHeight startHeight() {
         return startHeight;
     }
@@ -188,8 +175,6 @@ public class SimpleStructure extends ExtendedStructure {
 
         @Nullable
         private Function<HolderGetter<StructureProcessorList>, PieceSource> pieces;
-        private Function<HolderGetter<StructureProcessorList>, Optional<Holder<StructureProcessorList>>> processors =
-                _ -> Optional.empty();
         private StartHeight startHeight = ON_SURFACE_START_HEIGHT;
         private HeightMode heightMode = HeightMode.CORNER;
         private LiquidSettings liquidSettings = LiquidSettings.IGNORE_WATERLOGGING;
@@ -240,23 +225,6 @@ public class SimpleStructure extends ExtendedStructure {
         public Builder pieces(Function<HolderGetter<StructureProcessorList>, PieceSource> pieces) {
             this.pieces = pieces;
             return this;
-        }
-
-        /// Processors for templates without their own.
-        public Builder processors(ResourceKey<StructureProcessorList> processors) {
-            this.processors = lookup -> Optional.of(lookup.getOrThrow(processors));
-            return this;
-        }
-
-        /// Processors for templates without their own.
-        public Builder processors(Holder<StructureProcessorList> processors) {
-            this.processors = _ -> Optional.of(processors);
-            return this;
-        }
-
-        /// Processors for templates without their own, stored inline.
-        public Builder processors(List<StructureProcessor> processors) {
-            return processors(Holder.direct(new StructureProcessorList(processors)));
         }
 
         /// Starts on the world surface, which over water is the water's surface.
@@ -353,8 +321,7 @@ public class SimpleStructure extends ExtendedStructure {
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);
             }
-            return new SimpleStructure(settings, extendedSettings, builtPieces, processors.apply(processorLists),
-                    startHeight, heightMode, liquidSettings, foundation, Optional.ofNullable(rotation));
+            return new SimpleStructure(settings, extendedSettings, builtPieces, startHeight, heightMode, liquidSettings, foundation, Optional.ofNullable(rotation));
         }
     }
 }

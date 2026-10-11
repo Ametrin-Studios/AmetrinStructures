@@ -42,7 +42,7 @@ public final class StructureSetBuilder {
         Structure create(Structure.StructureSettings settings, BootstrapContext<Structure> context);
     }
 
-    /// For an [ExtendedStructure], which takes the filters set on the builder.
+    /// For an [ExtendedStructure], which takes the filters and processors set on the builder.
     @FunctionalInterface
     public interface ExtendedStructureFactory {
         ExtendedStructure create(Structure.StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context);

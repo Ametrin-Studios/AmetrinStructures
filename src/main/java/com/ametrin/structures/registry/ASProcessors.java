@@ -4,7 +4,7 @@ import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
 import com.ametrin.structures.processor.ReplaceBlockProcessor;
 import com.ametrin.structures.processor.RetainExistingProcessor;
-import com.ametrin.structures.structure.simple.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.neoforged.neoforge.registries.DeferredHolder;
