@@ -7,6 +7,7 @@
 - `SimpleStructure.builder(id)` and getters on `SimpleStructure` and `ExtendedJigsawStructure`
 - placement builders can be shared between sets
 - update surrounding block shapes when executing a fixture
+- split `SpawnDataBuilder` into `EntityDataBuilder`
 - `SpawnDataBuilder.spawnRules`
 
 ## 0.1.0-beta
