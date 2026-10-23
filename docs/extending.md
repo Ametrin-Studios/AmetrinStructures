@@ -137,7 +137,7 @@ A structure's `processors(...)` run on every template piece that has no processo
 
 `RetainExistingProcessor.ALL` only places blocks where the world has something replaceable, like air, plants or water. Ruins blend into the terrain instead of cutting through it. `RetainExistingProcessor.REPLACEABLE_ONLY` (`"replaceable_only": true`) always places solid blocks and only holds back the template's air, plants and water. A building keeps its walls, but its air doesn't dig into the terrain around it. Water in the world counts as replaceable, so template air still removes it.
 
-`RemoveUnsupportedProcessor.INSTANCE` (`ametrin_structures:remove_unsupported`) removes the sides of glow lichen, resin clumps, sculk veins and similar blocks that touch nothing solid, and the whole block when no side is left, so they don't break and drop as items. Put it after a `ReplaceBlockProcessor` that turns vines into resin clumps with `preserve_state`.
+`RemoveUnsupportedProcessor.INSTANCE` (`ametrin_structures:remove_unsupported`) removes the sides of glow lichen, resin clumps, sculk veins and similar blocks that touch nothing solid, and places air when no side is left, so they don't break and drop as items. Put it after a `ReplaceBlockProcessor` that turns vines into resin clumps with `preserve_state`.
 
 Every piece gets a `RemoveFoamProcessor` automatically. Add one yourself to fill foam with something else, e.g. `RemoveFoamProcessor.WATER` to flood a sunken build.
 

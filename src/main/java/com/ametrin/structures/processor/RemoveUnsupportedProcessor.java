@@ -44,7 +44,6 @@ public final class RemoveUnsupportedProcessor extends StructureProcessor {
             var state = info.state();
             for (var direction : Direction.values()) {
                 if (!MultifaceBlock.hasFace(state, direction)) {
-                    result.add(new StructureTemplate.StructureBlockInfo(info.pos(), Blocks.AIR.defaultBlockState(), info.nbt()));
                     continue;
                 }
                 var neighbourPos = info.pos().relative(direction);
@@ -53,9 +52,9 @@ public final class RemoveUnsupportedProcessor extends StructureProcessor {
                     state = state.setValue(MultifaceBlock.getFaceProperty(direction), false);
                 }
             }
-            if (!MultifaceBlock.availableFaces(state).isEmpty()) {
-                result.add(new StructureTemplate.StructureBlockInfo(info.pos(), state, info.nbt()));
-            }
+            result.add(MultifaceBlock.availableFaces(state).isEmpty()
+                    ? new StructureTemplate.StructureBlockInfo(info.pos(), Blocks.AIR.defaultBlockState(), null)
+                    : new StructureTemplate.StructureBlockInfo(info.pos(), state, info.nbt()));
         }
         return result;
     }
