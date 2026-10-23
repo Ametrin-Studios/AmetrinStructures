@@ -40,7 +40,7 @@ class RemoveUnsupportedProcessorTest {
     @Test
     void templateAirDoesNotSupportEvenOverSolidWorld() {
         var result = process(STONE, info(BlockPos.ZERO, RESIN), info(BlockPos.ZERO.north(), AIR), info(BlockPos.ZERO.above(), AIR));
-        assertEquals(List.of(AIR, AIR), result.stream().map(StructureTemplate.StructureBlockInfo::state).toList(), "a block without sides is removed");
+        assertEquals(List.of(AIR, AIR, AIR), result.stream().map(StructureTemplate.StructureBlockInfo::state).toList(), "a block without sides becomes air");
     }
 
     private static StructureTemplate.StructureBlockInfo info(BlockPos pos, BlockState state) {
