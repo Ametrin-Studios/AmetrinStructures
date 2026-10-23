@@ -12,8 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 /// @param filters    checked in order once the structure has a start position
-/// @param processors for [ExtendedTemplateStructurePiece]s without processors of their own, see [InlineFromStructureProcessor].
-///                   Other pieces, like a jigsaw structure's pool element pieces, don't run them.
+/// @param processors for template pieces without processors of their own, see [InlineFromStructureProcessor]
 public record ExtendedStructureSettings(List<PlacementFilter> filters, Optional<Holder<StructureProcessorList>> processors) {
     public static final ExtendedStructureSettings DEFAULT = new ExtendedStructureSettings(List.of(), Optional.empty());
 

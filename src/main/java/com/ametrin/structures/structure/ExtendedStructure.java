@@ -2,12 +2,14 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.TerrainSampler;
+import com.ametrin.structures.structure.jigsaw.JigsawStructureProcessors;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
@@ -41,7 +43,7 @@ public abstract class ExtendedStructure extends Structure {
         return extendedSettings.filters();
     }
 
-    /// For [ExtendedTemplateStructurePiece]s without processors of their own.
+    /// For template pieces without processors of their own, see [InlineFromStructureProcessor].
     public Optional<Holder<StructureProcessorList>> processors() {
         return extendedSettings.processors();
     }
@@ -109,6 +111,8 @@ public abstract class ExtendedStructure extends Structure {
         for (var piece : builder.build().pieces()) {
             if (piece instanceof ExtendedTemplateStructurePiece template) {
                 template.setStructureProcessors(processors());
+            } else if (piece instanceof PoolElementStructurePiece jigsaw) {
+                JigsawStructureProcessors.set(jigsaw, processors());
             }
         }
     }

@@ -237,7 +237,6 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
     public static class Builder implements ExtendedStructureBuilder<Builder> {
         private final StructureSettings settings;
         private final List<PlacementFilter> filters = new ArrayList<>();
-        // Pool element pieces don't run them, but a subclass's own pieces might.
         private Optional<Holder<StructureProcessorList>> processors = Optional.empty();
         private final Holder<StructureTemplatePool> startPool;
         private Optional<Identifier> startJigsawName = Optional.empty();

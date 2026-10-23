@@ -1,9 +1,13 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.ExtendedStructure;
+import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.filter.PlacementFilters;
+import com.mojang.datafixers.util.Either;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -11,15 +15,23 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,9 +71,48 @@ class ExtendedJigsawStructureTest {
         assertTrue(stub.getPiecesBuilder().isEmpty());
     }
 
+    @Test
+    void theStructuresProcessorsAreHandedToItsPieces(MinecraftServer server) {
+        var mossify = mossify(server);
+        var structure = structure(server, new ExtendedStructureSettings(List.of(), Optional.of(mossify)), _ -> {});
+        var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
+        for (var piece : stub.getPiecesBuilder().build().pieces()) {
+            assertEquals(Optional.of(mossify), JigsawStructureProcessors.get((PoolElementStructurePiece) piece));
+        }
+    }
+
+    @Test
+    void thePiecesKeepTheStructuresProcessorsWhenSaved(MinecraftServer server) {
+        var mossify = mossify(server);
+        var structure = structure(server, new ExtendedStructureSettings(List.of(), Optional.of(mossify)), _ -> {});
+        var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
+        var piece = stub.getPiecesBuilder().build().pieces().getFirst();
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        var reloaded = new PoolElementStructurePiece(context, piece.createTag(context));
+        assertEquals(Optional.of(mossify), JigsawStructureProcessors.get(reloaded));
+    }
+
+    @Test
+    void anElementWithoutProcessorsRunsTheStructuresWhilePlacing(MinecraftServer server) {
+        var mossify = mossify(server);
+        var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), false, Optional.empty());
+        assertTrue(JigsawStructureProcessors.place(Optional.of(mossify),
+                () -> element.getSettings(Rotation.NONE, BoundingBox.infinite(), LiquidSettings.IGNORE_WATERLOGGING, false).getProcessors().containsAll(mossify.value().list())));
+        assertFalse(element.getSettings(Rotation.NONE, BoundingBox.infinite(), LiquidSettings.IGNORE_WATERLOGGING, false).getProcessors().containsAll(mossify.value().list()));
+    }
+
+    private static Holder<StructureProcessorList> mossify(MinecraftServer server) {
+        return server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
+    }
+
     private static ExtendedJigsawStructure structure(MinecraftServer server, Consumer<ExtendedJigsawStructure.Builder> configure) {
+        return structure(server, ExtendedStructureSettings.DEFAULT, configure);
+    }
+
+    private static ExtendedJigsawStructure structure(MinecraftServer server, ExtendedStructureSettings extendedSettings, Consumer<ExtendedJigsawStructure.Builder> configure) {
         var pool = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL).getOrThrow(POOL);
-        var builder = ExtendedJigsawStructure.builder(new Structure.StructureSettings(HolderSet.empty()), pool).size(1).startHeight(64);
+        var builder = ExtendedJigsawStructure.builder(new Structure.StructureSettings(HolderSet.empty()), extendedSettings, pool).size(1).startHeight(64);
         configure.accept(builder);
         return builder.build();
     }

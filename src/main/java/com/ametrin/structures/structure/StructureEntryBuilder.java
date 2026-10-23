@@ -93,13 +93,13 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return self();
     }
 
-    /// For [ExtendedTemplateStructurePiece]s without processors of their own, see [InlineFromStructureProcessor].
+    /// For template pieces without processors of their own, see [InlineFromStructureProcessor].
     public B processors(ResourceKey<StructureProcessorList> processors) {
         this.processors = lookup -> lookup.getOrThrow(processors);
         return self();
     }
 
-    /// For [ExtendedTemplateStructurePiece]s without processors of their own, see [InlineFromStructureProcessor].
+    /// For template pieces without processors of their own, see [InlineFromStructureProcessor].
     public B processors(Holder<StructureProcessorList> processors) {
         this.processors = _ -> processors;
         return self();

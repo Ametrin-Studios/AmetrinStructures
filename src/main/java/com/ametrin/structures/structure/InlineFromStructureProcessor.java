@@ -12,8 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/// A piece's own processors replace the structure's processors.
-/// In an [ExtendedTemplateStructurePiece] this marker pulls them back in. It does nothing anywhere else.
+/// A piece's own processors replace the structure's processors. This marker pulls them back in.
 public final class InlineFromStructureProcessor extends StructureProcessor {
     public static final InlineFromStructureProcessor INSTANCE = new InlineFromStructureProcessor();
     public static final MapCodec<InlineFromStructureProcessor> CODEC = MapCodec.unit(INSTANCE);

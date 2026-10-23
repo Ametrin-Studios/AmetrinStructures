@@ -162,7 +162,7 @@ Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/place
 
 `ReplaceBlockProcessor` replaces random blocks, e.g. to make a build look weathered.
 
-A structure's `processors(...)` run on every `ExtendedTemplateStructurePiece` that has no processors of its own, including the pieces of your own structures. A piece's own processors replace the structure's; add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point. Jigsaw pool element pieces don't run them.
+A structure's `processors(...)` run on every template piece that has no processors of its own: `ExtendedTemplateStructurePiece`s, including the pieces of your own structures, and the single, legacy and list elements of jigsaw structures. A piece's own processors replace the structure's. Add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point.
 
 `RetainExistingProcessor.ALL` only places blocks where the world has something replaceable, like air, plants or water.
 Ruins blend into the terrain instead of cutting through it. `RetainExistingProcessor.REPLACEABLE_ONLY`
