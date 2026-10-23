@@ -53,12 +53,11 @@ public final class ExampleStructures {
 ```
 
 - `registerSet(...)`: declares a structure set and returns the keys of the set and its structures.
-- `evenSpreadPlacement(18, 0.6F)`: attempts are at least 18 chunks apart, about 24 on average, and 60% of them
-  generate.
+- `evenSpreadPlacement(18, 0.6F)`: attempts are at least 18 chunks apart, about 24 on average, and 60% of them generate.
 - `simple(...)`: adds a simple structure to the set.
 - `surface()`: puts the structure's origin on the surface.
 - `single("ruined_tower")`: places the template `examplemod:ruined_tower`.
-- `filterFlatness(3)`: skips spots where the ground varies by more than 3 blocks.
+- `filterFlatness(3)`: skips spots where the ground varies by more than 3 blocks. Use sparingly.
 - `biomes(...)`: where it can generate. Defaults to all overworld biomes.
 
 ## 4. Add it to datagen
@@ -79,15 +78,13 @@ Run datagen and start the game. `/locate structure examplemod:ruined_tower` shou
 
 The builders can do a lot more than this example. Your IDE's completion lists everything. Some highlights:
 
-**Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several
-together. Each template can have its own offset and processors.
+**Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several together. Each template can have its own offset and processors.
 
 **Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. `verticalPlacementMode(...)` sets where the terrain height is measured: at the origin corner, as the average of the corners, or at the lowest corner.
 
 **Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't float on uneven terrain.
 
-**Filters.** Besides flatness there are filters for the height range, water depth, being submerged
-and staying inside the correct biomes.
+**Filters.** Besides flatness there are filters for the height range, water depth, being submerged and staying inside the correct biomes.
 
 **Structure settings.** `terrainAdaptation(...)`, `step(...)` and `noSpawns(...)` work like on vanilla structures.
 
@@ -105,7 +102,7 @@ tower.single(t -> t
 
 ```java
 STRUCTURES.registerSet("graves", set -> set
-        .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
+        .horizontalPlacement(new YourCustomPlacement(...)) // you can also keep using evenSpreadPlacement
         .simple("small", grave -> grave
                 .single("graves/small")
                 .surface()
@@ -115,19 +112,15 @@ STRUCTURES.registerSet("graves", set -> set
                 .surface()));
 ```
 
-Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and `examplemod:graves/large`.
-`horizontalPlacement(...)` takes any vanilla placement.
+Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and `examplemod:graves/large`. `horizontalPlacement(...)` takes any placement, vanilla or your own.
 
-**Jigsaw and custom structures.** For something the simple type can't do, use `jigsaw(...)` or `structure(...)`
-instead of `simple(...)`. They take the same settings, like biomes and weight, and all three can be mixed in one set.
-`JigsawPools` helps you declare template pools in datagen. Its elements run fixtures and remove foam like simple structures do, and `foundation()` on an element extends that piece down to the ground. If you write pools by hand, use `ametrin_structures:single_pool_element` to get the same. Vanilla's element places fixture blocks as they are.
+**Jigsaw and custom structures.** For something the simple type can't do, use `jigsaw(...)` or `structure(...)` instead of `simple(...)`. They take the same settings, like biomes and weight, and all three can be mixed in one set. `JigsawPools` helps you declare template pools in datagen. Its elements run fixtures and remove foam like simple structures do, and `foundation()` on an element extends that piece down to the ground. If you write pools by hand, use `ametrin_structures:single_pool_element` to get the same. Vanilla's element places fixture blocks as they are.
 
 **Fixtures.** A fixture block in a template turns into something else when the structure generates. It can fill a container with loot, spawn an entity, place a spawner, run a feature and more. Place one from the operator items tab and right-click it to configure it. "Generate now" runs it in place so you can test it. If you use the same setup in many places, put it in a [preset](extending.md#fixture-presets).
 
 **Lake proofing.** Lakes don't carve into structures in the `#ametrin_structures:lake_proof` structure tag.
 
-**Updating templates.** Templates saved in an older Minecraft version still load, but the game upgrades them every time it loads them.
-`StructureTemplateUpdater` upgrades them in place during datagen. Pass your resources to the data run as an input:
+**Updating templates.** Templates saved in an older Minecraft version still load, but the game upgrades them every time it loads them. `StructureTemplateUpdater` upgrades them in place during datagen. Pass your resources to the data run as an input:
 
 ```gradle
 programArguments.addAll '--input', file('src/main/resources/').getAbsolutePath()
@@ -140,8 +133,6 @@ event.addProvider(new StructureTemplateUpdater(event.getInputs()));
 
 Then commit the updated files. Running it once after each Minecraft update is enough.
 
-For a real example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a source-available
-mod built on this library. [extending.md](extending.md) covers adding your own building blocks, and
-[debugging.md](debugging.md) the tools for tuning structures.
+For a real example, see [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced), a source-available mod built on this library. [extending.md](extending.md) covers adding your own building blocks, and [debugging.md](debugging.md) the tools for tuning structures.
 
 If you have any questions, ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).

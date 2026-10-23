@@ -13,8 +13,7 @@ Reports where a structure would generate around you and why it doesn't generate 
 - With `set`, it reports all structures in that set, using only that set's placement. This is useful to check how a set spreads, e.g. one whose structures take each other's spots.
 - For a tag or a set, the report also counts the spots per structure.
 - `radius` is in chunks and defaults to 128.
-- The report shows how many candidate chunks the placement picked and how many of them generate, the most common
-  reasons for the rest, the start heights, the average and smallest distance between spots, and the nearest spot.
+- The report shows how many candidate chunks the placement picked and how many of them generate, the most common reasons for the rest, the start heights, the average and smallest distance between spots, and the nearest spot.
 - It also times the slowest structures: the total time and the time per candidate chunk to find spots and build pieces. For this library's structures, the time is split into creating the pieces, finding the start height and each filter. The first report after starting the game also loads templates and warms up the JVM, so run it twice before you trust the numbers. Placing blocks isn't timed, because the report doesn't place anything.
 - This library's simple and jigsaw structures give specific reasons: wrong biome, empty start height range, which filter failed, or another structure in the same set taking the spot. Other structures can only say they found no spot.
 
@@ -27,16 +26,11 @@ To tune filters, change a value, run datagen, reopen the world and run the repor
 /ametrin structures spread placement <placement> [radius] [color]
 ```
 
-Try a placement without running datagen or reopening the world. `<placement>` is the `placement` of a structure set
-written as SNBT, e.g. `{type:"ametrin_structures:even_spread",salt:1,min_distance:20}`.
+Try a placement without running datagen or reopening the world. `<placement>` is the `placement` of a structure set written as SNBT, e.g. `{type:"ametrin_structures:even_spread",salt:1,min_distance:20}`.
 
-- `set … placement` reports the set like above, but with this placement. Press Tab to fill in the set's current
-  placement and edit it.
-- `placement` only reports which chunks the placement picks, no matter what would generate there: how many, their
-  spacing and the nearest one. It's fast even for large radii. Its waypoints and visits are the picked chunks.
-- Each run gets a number and keeps the waypoints of earlier runs, in a random color unless you pass `color`. That way
-  you can compare placements on the map. `rejected` still replaces all waypoints, and `spread clear` resets the
-  numbering.
+- `set … placement` reports the set like above, but with this placement. Press Tab to fill in the set's current placement and edit it.
+- `placement` only reports which chunks the placement picks, no matter what would generate there: how many, their spacing and the nearest one. It's fast even for large radii. Its waypoints and visits are the picked chunks.
+- Each run gets a number and keeps the waypoints of earlier runs, in a random color unless you pass `color`. That way you can compare placements on the map. `rejected` still replaces all waypoints, and `spread clear` resets the numbering.
 - Concentric rings are computed when the world loads, so they can't be tried this way.
 
 ### Visiting spots
@@ -51,8 +45,7 @@ Teleports you through the spots of your last report, nearest first.
 
 With [Xaero's Minimap](https://modrinth.com/mod/xaeros-minimap) installed, the spots also appear as waypoints, named after the structure at each spot. They use `color`, or a color based on the reported id. Reports for different structures, tags or sets stay on the map together, so you can compare them.
 
-- `rejected` adds the failed spots inside the structure's biomes as gray waypoints, named after the reason.
-  `rejected all` adds every failed spot.
+- `rejected` adds the failed spots inside the structure's biomes as gray waypoints, named after the reason. `rejected all` adds every failed spot.
 - Both remove all earlier waypoints first, so the gray spots don't get mixed up with another report's.
 - `/ametrin structures spread clear` removes all of them.
 
@@ -81,8 +74,7 @@ A jigsaw that other pieces attach to isn't checked, because the attached piece r
 
 If a value can't be parsed or isn't accepted, the fixture uses its default instead. Turn on debug logging to see why.
 
-Broken fixture presets are logged as warnings when the server starts: unknown fixture types, fields or presets, values
-that can't be parsed, and presets that use each other in a loop.
+Broken fixture presets are logged as warnings when the server starts: unknown fixture types, fields or presets, values that can't be parsed, and presets that use each other in a loop.
 
 ## Structure blocks
 
@@ -98,12 +90,9 @@ The structure block's name box completes every template id the server can load, 
 
 Copies the templates your structure blocks saved in this world (in `<world>/generated/`) into the project's resources at `data/<namespace>/structure/`, so they ship with the mod. It tells you how many were new, changed or unchanged.
 
-- Only namespaces that already have a `data/<namespace>` folder in your resources are exported. Edited vanilla
-  templates or other mods' templates stay out.
-- The world keeps its saved copies, and the game loads those before the mod's own. Delete them from `generated/` once
-  you're done, otherwise they hide later changes to your resources.
-- By default the resources are `src/main/resources` next to the `run` folder. For a different layout, list the folders
-  in the `ametrin_structures.template_sources` system property, separated like a classpath:
+- Only namespaces that already have a `data/<namespace>` folder in your resources are exported. Edited vanilla templates or other mods' templates stay out.
+- The world keeps its saved copies, and the game loads those before the mod's own. Delete them from `generated/` once you're done, otherwise they hide later changes to your resources.
+- By default the resources are `src/main/resources` next to the `run` folder. For a different layout, list the folders in the `ametrin_structures.template_sources` system property, separated like a classpath:
 
   ```groovy
   configureEach {
