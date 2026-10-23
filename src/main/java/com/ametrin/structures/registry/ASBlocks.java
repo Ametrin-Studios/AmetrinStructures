@@ -4,7 +4,6 @@ import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.fixture.FixtureBlock;
 import com.ametrin.structures.foam.FoamBlock;
 import com.ametrin.structures.foam.FoamSpreaderBlock;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -12,17 +11,8 @@ import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-import java.util.List;
-
 public final class ASBlocks {
     public static final DeferredRegister.Blocks REGISTER = DeferredRegister.createBlocks(AmetrinStructures.MOD_ID);
-
-    static {
-        for (var gel : List.of("blue_gel", "orange_gel", "cyan_gel", "yellow_gel", "red_gel")) {
-            REGISTER.addAlias(Identifier.fromNamespaceAndPath("structure_gel", gel), AmetrinStructures.locate("foam"));
-        }
-        REGISTER.addAlias(Identifier.fromNamespaceAndPath("structure_gel", "data_handler"), AmetrinStructures.locate("fixture"));
-    }
 
     public static final DeferredBlock<FoamBlock> FOAM = REGISTER.registerBlock("foam", FoamBlock::new, ASBlocks::foamProperties);
 

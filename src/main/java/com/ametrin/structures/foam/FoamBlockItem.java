@@ -35,4 +35,18 @@ public class FoamBlockItem extends BlockItem {
         }
         return placed;
     }
+
+    @Override
+    public @Nullable BlockPlaceContext updatePlacementContext(BlockPlaceContext context) {
+        if(context.getLevel().isEmptyBlock(context.getClickedPos())){
+            return context;
+        }
+
+        if(!context.replacingClickedOnBlock()){
+            return null;
+        }
+
+        var next = BlockPlaceContext.at(context, context.getClickedPos().relative(context.getClickedFace()), context.getClickedFace());
+        return next.getLevel().isEmptyBlock(next.getClickedPos()) ? next : null;
+    }
 }

@@ -2,6 +2,7 @@
 - jigsaw size as an `IntProvider`
 - per structure processors for jigsaw structures
 - `RemoveUnsupportedProcessor`
+- Foam blocks placed by players no longer replace replaceable blocks
 
 ## 0.2.0-beta
 - `EvenSpreadPlacement`, now the default placement
