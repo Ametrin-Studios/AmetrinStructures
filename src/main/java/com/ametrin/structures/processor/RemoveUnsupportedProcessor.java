@@ -5,6 +5,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.MultifaceBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
@@ -43,6 +44,7 @@ public final class RemoveUnsupportedProcessor extends StructureProcessor {
             var state = info.state();
             for (var direction : Direction.values()) {
                 if (!MultifaceBlock.hasFace(state, direction)) {
+                    result.add(new StructureTemplate.StructureBlockInfo(info.pos(), Blocks.AIR.defaultBlockState(), info.nbt()));
                     continue;
                 }
                 var neighbourPos = info.pos().relative(direction);
