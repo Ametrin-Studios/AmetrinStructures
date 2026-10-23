@@ -2,15 +2,21 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.TerrainSampler;
+import com.ametrin.structures.structure.jigsaw.JigsawStructureProcessors;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /// Base class for the library's structure types. It finds the generation point in steps, so it can say
@@ -35,6 +41,11 @@ public abstract class ExtendedStructure extends Structure {
 
     public List<PlacementFilter> filters() {
         return extendedSettings.filters();
+    }
+
+    /// For template pieces without processors of their own, see [InlineFromStructureProcessor].
+    public Optional<Holder<StructureProcessorList>> processors() {
+        return extendedSettings.processors();
     }
 
     @Override
@@ -77,7 +88,33 @@ public abstract class ExtendedStructure extends Structure {
                 }
             }
         }
-        return new Evaluation.Generated(candidate.stub().get());
+        return new Evaluation.Generated(withProcessors(candidate.stub().get()));
+    }
+
+    // Hands the structure's processors to its template pieces, without assembling a lazy stub early.
+    private GenerationStub withProcessors(GenerationStub stub) {
+        if (processors().isEmpty()) {
+            return stub;
+        }
+        return new GenerationStub(stub.position(), stub.generator().<Consumer<StructurePiecesBuilder>, StructurePiecesBuilder>mapBoth(
+                generator -> builder -> {
+                    generator.accept(builder);
+                    applyProcessors(builder);
+                },
+                builder -> {
+                    applyProcessors(builder);
+                    return builder;
+                }));
+    }
+
+    private void applyProcessors(StructurePiecesBuilder builder) {
+        for (var piece : builder.build().pieces()) {
+            if (piece instanceof ExtendedTemplateStructurePiece template) {
+                template.setStructureProcessors(processors());
+            } else if (piece instanceof PoolElementStructurePiece jigsaw) {
+                JigsawStructureProcessors.set(jigsaw, processors());
+            }
+        }
     }
 
     /// Lays out the structure and finds its start position, or returns [Evaluation.NoPieces] or [Evaluation.NoStartHeight].

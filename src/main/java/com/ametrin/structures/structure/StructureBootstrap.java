@@ -1,10 +1,14 @@
 package com.ametrin.structures.structure;
 
+import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
+import com.ametrin.structures.structure.simple.SimpleStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.neoforged.neoforge.data.event.DatapackRegistryGatherer;
 import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 
@@ -38,10 +42,42 @@ public final class StructureBootstrap {
         if (structureSets.containsKey(declared.keys().key())) {
             throw new IllegalStateException("structure set " + name + " is registered twice");
         }
+        declared.structures().keySet().forEach(this::checkUnregistered);
         structures.putAll(declared.structures());
         structureSets.put(declared.keys().key(), declared.set());
         sets.add(declared.keys());
         return declared.keys();
+    }
+
+    public ResourceKey<Structure> registerSimple(String name, Consumer<SimpleStructure.Builder> configure) {
+        return register(name, StructureSetBuilder.simpleEntry(namespace, name, configure));
+    }
+
+    public ResourceKey<Structure> registerJigsaw(
+            String name, ResourceKey<StructureTemplatePool> pool, Consumer<ExtendedJigsawStructure.Builder> factory, Consumer<CustomStructureBuilder> configure) {
+        return register(name, StructureSetBuilder.jigsawEntry(name, pool, factory, configure));
+    }
+
+    public ResourceKey<Structure> registerStructure(String name, StructureSetBuilder.StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
+        return register(name, StructureSetBuilder.customEntry(name, factory, configure));
+    }
+
+    public ResourceKey<Structure> registerStructure(String name, StructureSetBuilder.ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
+        return register(name, StructureSetBuilder.customEntry(name, factory, configure));
+    }
+
+    private ResourceKey<Structure> register(String name, StructureEntryBuilder<?> structure) {
+        structure.validate();
+        var key = ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath(namespace, name));
+        checkUnregistered(key);
+        structures.put(key, structure::bootstrap);
+        return key;
+    }
+
+    private void checkUnregistered(ResourceKey<Structure> key) {
+        if (structures.containsKey(key)) {
+            throw new IllegalStateException("structure " + key.identifier() + " is registered twice");
+        }
     }
 
     public String getNamespace() {

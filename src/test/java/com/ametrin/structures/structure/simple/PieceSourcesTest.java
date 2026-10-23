@@ -18,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -91,7 +90,7 @@ class PieceSourcesTest {
     private static List<StructurePiece> appendPieces(MinecraftServer server, PieceSource source, long seed) {
         var generation = GenerationContexts.overPlains(server, seed, biome -> biome.is(Biomes.PLAINS));
         var pieces = new ArrayList<StructurePiece>();
-        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE));
+        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE));
         return pieces;
     }
 }

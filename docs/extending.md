@@ -93,9 +93,28 @@ Use the factory that also takes the extended settings, and the builder accepts f
 
 `SimpleStructure` and `ExtendedJigsawStructure` can be subclassed too. They have getters for all their settings, so a subclass can write its own codec. To create them outside a set, e.g. in your own bootstrap, use `SimpleStructure.builder(id)...build(context)` or `ExtendedJigsawStructure.builder(settings, pool)...build()`.
 
-For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. Other template pieces place fixture blocks as they are.
+For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
 
 Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java), [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java), [`ExtendedJigsawStructure`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedJigsawStructure.java) and [`SimpleStructurePiece`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructurePiece.java).
+
+## Structures without a set
+
+`registerSimple(...)`, `registerJigsaw(...)` and `registerStructure(...)` on the `StructureBootstrap` declare a structure on its own and return its key. 
+
+`existing(...)` adds a structure registered elsewhere to a set, with an optional weight. It can be one of yours or one from vanilla or another mod:
+
+```java
+public static final ResourceKey<Structure> WELL = STRUCTURES.registerSimple("well", well -> well.single("well").surface());
+
+public static final StructureSetKeys VILLAGE_EXTRAS = STRUCTURES.registerSet("village_extras", set -> set
+        .scatteredGridPlacement(24, 0.5F)
+        .existing(WELL, 3)
+        .existing(BuiltinStructures.IGLOO));
+```
+
+The set's keys list these under `existing()` and its own under `declared()`. `structures()` returns both.
+
+Reference: [`StructureBootstrap`](../src/main/java/com/ametrin/structures/structure/StructureBootstrap.java) and [`StructureSetKeys`](../src/main/java/com/ametrin/structures/structure/StructureSetKeys.java).
 
 ## Placements
 
@@ -114,13 +133,15 @@ Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/place
 
 `ReplaceBlockProcessor` replaces random blocks, e.g. to make a build look weathered.
 
-Processors on a template in a simple structure replace the structure's processors. Add `InlineFromStructureProcessor.INSTANCE` to the template's list to run the structure's processors at that point.
+A structure's `processors(...)` run on every template piece that has no processors of its own: `ExtendedTemplateStructurePiece`s, including the pieces of your own structures, and the single, legacy and list elements of jigsaw structures. A piece's own processors replace the structure's. Add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point.
 
 `RetainExistingProcessor.ALL` only places blocks where the world has something replaceable, like air, plants or water. Ruins blend into the terrain instead of cutting through it. `RetainExistingProcessor.REPLACEABLE_ONLY` (`"replaceable_only": true`) always places solid blocks and only holds back the template's air, plants and water. A building keeps its walls, but its air doesn't dig into the terrain around it. Water in the world counts as replaceable, so template air still removes it.
 
+`RemoveUnsupportedProcessor.INSTANCE` (`ametrin_structures:remove_unsupported`) removes the sides of glow lichen, resin clumps, sculk veins and similar blocks that touch nothing solid, and the whole block when no side is left, so they don't break and drop as items. Put it after a `ReplaceBlockProcessor` that turns vines into resin clumps with `preserve_state`.
+
 Every piece gets a `RemoveFoamProcessor` automatically. Add one yourself to fill foam with something else, e.g. `RemoveFoamProcessor.WATER` to flood a sunken build.
 
-Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java), [`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java), [`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/simple/InlineFromStructureProcessor.java) and [`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java).
+Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java), [`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java), [`RemoveUnsupportedProcessor`](../src/main/java/com/ametrin/structures/processor/RemoveUnsupportedProcessor.java), [`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/InlineFromStructureProcessor.java) and [`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java).
 
 ## Fixtures
 

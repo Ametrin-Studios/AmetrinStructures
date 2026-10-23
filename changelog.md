@@ -1,3 +1,8 @@
+## 0.2.1-beta
+- jigsaw size as an `IntProvider`
+- per structure processors for jigsaw structures
+- `RemoveUnsupportedProcessor`
+
 ## 0.2.0-beta
 - `EvenSpreadPlacement`, now the default placement
 - `/ametrin structures spread placement` and `spread set <set> placement` to try placements without datagen

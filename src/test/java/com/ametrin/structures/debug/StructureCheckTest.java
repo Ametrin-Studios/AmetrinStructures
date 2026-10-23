@@ -130,7 +130,6 @@ class StructureCheckTest {
                 new Structure.StructureSettings(HolderSet.empty()),
                 ExtendedStructureSettings.DEFAULT,
                 new PieceSources.SingleSource(TemplateEntry.of(template)),
-                Optional.empty(),
                 SimpleStructure.ON_SURFACE_START_HEIGHT,
                 HeightMode.CORNER,
                 LiquidSettings.IGNORE_WATERLOGGING,

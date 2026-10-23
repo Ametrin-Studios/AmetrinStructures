@@ -1,6 +1,8 @@
 package com.ametrin.structures.structure.simple;
 
+import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
+import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.GenerationContexts;
 import com.ametrin.structures.structure.filter.PlacementFilter;
@@ -11,8 +13,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -93,12 +98,24 @@ class SimpleStructureEvaluateTest {
         assertTrue(structure(AT_64, List.of(new PlacementFilters.HeightRange(200, 300))).findGenerationPoint(context(server)).isEmpty());
     }
 
+    @Test
+    void theStructureHandsItsProcessorsToItsPieces(MinecraftServer server) {
+        var processors = Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE)))));
+        var structure = structure(AT_64, new ExtendedStructureSettings(List.of(), Optional.of(processors)));
+        var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
+        var piece = assertInstanceOf(ExtendedTemplateStructurePiece.class, stub.getPiecesBuilder().build().pieces().getFirst());
+        assertEquals(Optional.of(processors), piece.structureProcessors());
+    }
+
     private static SimpleStructure structure(StartHeight startHeight, List<PlacementFilter> filters) {
+        return structure(startHeight, new ExtendedStructureSettings(filters, Optional.empty()));
+    }
+
+    private static SimpleStructure structure(StartHeight startHeight, ExtendedStructureSettings extendedSettings) {
         return new SimpleStructure(
                 new Structure.StructureSettings(HolderSet.empty()),
-                new ExtendedStructureSettings(filters),
+                extendedSettings,
                 new PieceSources.SingleSource(TemplateEntry.of(Identifier.withDefaultNamespace("igloo/top"))),
-                Optional.empty(),
                 startHeight,
                 HeightMode.CORNER,
                 LiquidSettings.IGNORE_WATERLOGGING,

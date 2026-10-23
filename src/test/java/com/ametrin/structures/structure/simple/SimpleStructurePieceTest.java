@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.structure.GenerationContexts;
+import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
@@ -140,8 +141,10 @@ class SimpleStructurePieceTest {
             Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
         var generation = GenerationContexts.overPlains(server, 0, biome -> biome.is(Biomes.PLAINS));
         var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, structureProcessors, TerrainAdjustment.BEARD_THIN);
-        return (SimpleStructurePiece) PieceSources.createPiece(entry, context);
+        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN);
+        var piece = (SimpleStructurePiece) PieceSources.createPiece(entry, context);
+        piece.setStructureProcessors(structureProcessors);
+        return piece;
     }
 
     private static Optional<Holder<StructureProcessorList>> processors(StructureProcessor... processors) {

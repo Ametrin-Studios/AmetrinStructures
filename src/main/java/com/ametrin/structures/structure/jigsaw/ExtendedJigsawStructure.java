@@ -14,6 +14,10 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.valueproviders.ConstantInt;
+import net.minecraft.util.valueproviders.IntProvider;
+import net.minecraft.util.valueproviders.IntProviders;
+import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
@@ -32,6 +36,7 @@ import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -56,7 +61,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
                                     Identifier.CODEC
                                             .optionalFieldOf("start_jigsaw_name")
                                             .forGetter(ExtendedJigsawStructure::startJigsawName),
-                                    Codec.intRange(JigsawStructure.MIN_DEPTH, JigsawStructure.MAX_DEPTH).fieldOf("size").forGetter(ExtendedJigsawStructure::size),
+                                    IntProviders.codec(JigsawStructure.MIN_DEPTH, JigsawStructure.MAX_DEPTH).fieldOf("size").forGetter(ExtendedJigsawStructure::size),
                                     HeightProvider.CODEC.fieldOf("start_height").forGetter(ExtendedJigsawStructure::startHeight),
                                     Codec.BOOL.fieldOf("use_expansion_hack").forGetter(ExtendedJigsawStructure::useExpansionHack),
                                     Heightmap.Types.CODEC
@@ -79,7 +84,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
 
     private final Holder<StructureTemplatePool> startPool;
     private final Optional<Identifier> startJigsawName;
-    private final int maxDepth;
+    private final IntProvider size;
     private final HeightProvider startHeight;
     private final boolean useExpansionHack;
     private final Optional<Heightmap.Types> projectStartToHeightmap;
@@ -93,7 +98,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             ExtendedStructureSettings extendedSettings,
             Holder<StructureTemplatePool> startPool,
             Optional<Identifier> startJigsawName,
-            int maxDepth,
+            IntProvider size,
             HeightProvider startHeight,
             boolean useExpansionHack,
             Optional<Heightmap.Types> projectStartToHeightmap,
@@ -104,7 +109,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         super(settings, extendedSettings);
         this.startPool = startPool;
         this.startJigsawName = startJigsawName;
-        this.maxDepth = maxDepth;
+        this.size = size;
         this.startHeight = startHeight;
         this.useExpansionHack = useExpansionHack;
         this.projectStartToHeightmap = projectStartToHeightmap;
@@ -134,7 +139,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
                 context,
                 startPool,
                 startJigsawName,
-                maxDepth,
+                size.sample(context.random()),
                 origin,
                 useExpansionHack,
                 projectStartToHeightmap,
@@ -185,8 +190,8 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         return startJigsawName;
     }
 
-    public int size() {
-        return maxDepth;
+    public IntProvider size() {
+        return size;
     }
 
     public HeightProvider startHeight() {
@@ -221,19 +226,21 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         return new Builder(settings, startPool);
     }
 
-    /// Starts with `extendedSettings`' filters.
+    /// Starts with `extendedSettings`' filters and processors.
     public static Builder builder(StructureSettings settings, ExtendedStructureSettings extendedSettings, Holder<StructureTemplatePool> startPool) {
         var builder = new Builder(settings, startPool);
         extendedSettings.filters().forEach(builder::filter);
+        builder.processors = extendedSettings.processors();
         return builder;
     }
 
     public static class Builder implements ExtendedStructureBuilder<Builder> {
         private final StructureSettings settings;
         private final List<PlacementFilter> filters = new ArrayList<>();
+        private Optional<Holder<StructureProcessorList>> processors = Optional.empty();
         private final Holder<StructureTemplatePool> startPool;
         private Optional<Identifier> startJigsawName = Optional.empty();
-        private int size = 7;
+        private IntProvider size = ConstantInt.of(7);
         private HeightProvider startHeight = ConstantHeight.of(VerticalAnchor.absolute(0));
         private boolean useExpansionHack = false;
         private Optional<Heightmap.Types> projectStartToHeightmap = Optional.empty();
@@ -254,6 +261,16 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
 
         /// expansion depth, {@value JigsawStructure#MIN_DEPTH} to {@value JigsawStructure#MAX_DEPTH}.
         public Builder size(int size) {
+            return size(ConstantInt.of(size));
+        }
+
+        /// A random depth from `min` to `max`, picked per structure.
+        public Builder size(int min, int max) {
+            return size(UniformInt.of(min, max));
+        }
+
+        /// Sampled once per structure. Must stay within {@value JigsawStructure#MIN_DEPTH} to {@value JigsawStructure#MAX_DEPTH}.
+        public Builder size(IntProvider size) {
             this.size = size;
             return this;
         }
@@ -327,7 +344,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         public ExtendedJigsawStructure build() {
             return new ExtendedJigsawStructure(
                     settings,
-                    new ExtendedStructureSettings(filters),
+                    new ExtendedStructureSettings(filters, processors),
                     startPool,
                     startJigsawName,
                     size,
