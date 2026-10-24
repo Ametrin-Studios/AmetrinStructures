@@ -2,6 +2,8 @@ package com.ametrin.structures.debug;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.ExtendedStructure;
+import com.ametrin.structures.structure.ExtendedStructureBuilder;
+import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.core.BlockPos;
@@ -11,8 +13,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.LegacyRandomSource;
-import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -40,6 +40,7 @@ final class StructureSpread {
         static final Reason NO_PIECES = new Reason("no_pieces", "");
         static final Reason NO_START_HEIGHT = new Reason("no_start_height", "");
         static final Reason NO_GENERATION_POINT = new Reason("no_generation_point", "");
+        static final Reason NOT_PICKED_FIRST = new Reason("not_picked_first", "");
 
         static final String FILTER = "filter";
 
@@ -220,27 +221,13 @@ final class StructureSpread {
 
     /// What the structure set generates in one chunk, decided like vanilla does: the structures are tried
     /// in a weighted order seeded by the chunk, and the first one that fits wins. If several targets fail,
-    /// the reason comes from the first one that passed its biome check, since that's the most useful.
+    /// the reason comes from the first one that was tried and passed its biome check, since that's the most useful.
+    /// A target skipped by [ExtendedStructureBuilder#onlyWhenPickedFirst] reports the structure that took the spot.
     private static Outcome tryChunk(
             ServerLevel level, ChunkGeneratorStructureState state, StructureSet set, Predicate<Holder<Structure>> targets, ChunkPos chunk,
             Map<Holder<Structure>, Stopwatch> stopwatches) {
-        var options = new ArrayList<>(set.structures());
-        var random = new WorldgenRandom(new LegacyRandomSource(0L));
-        random.setLargeFeatureSeed(state.getLevelSeed(), chunk.x(), chunk.z());
-        int total = options.stream().mapToInt(StructureSet.StructureSelectionEntry::weight).sum();
-
         Outcome.@Nullable Rejected rejected = null;
-        while (!options.isEmpty()) {
-            int choice = random.nextInt(total);
-            int index = 0;
-            for (var option : options) {
-                choice -= option.weight();
-                if (choice < 0) {
-                    break;
-                }
-                index++;
-            }
-            var selected = options.get(index);
+        for (var selected : StructureSetOrder.of(set, state.getLevelSeed(), chunk)) {
             var outcome = attempt(level, state, selected.structure(), chunk, stopwatches.computeIfAbsent(selected.structure(), _ -> new Stopwatch()));
             if (targets.test(selected.structure())) {
                 switch (outcome) {
@@ -248,16 +235,16 @@ final class StructureSpread {
                         return generated;
                     }
                     case Outcome.Rejected failed -> {
-                        if (rejected == null || rejected.reason().equals(Reason.BIOME)) {
+                        if (rejected == null || rejected.reason().equals(Reason.BIOME) || rejected.reason().equals(Reason.NOT_PICKED_FIRST)) {
                             rejected = failed;
                         }
                     }
                 }
             } else if (outcome instanceof Outcome.Generated) {
-                return rejected != null ? rejected : new Outcome.Rejected(Reason.takenBy(name(selected.structure())));
+                return rejected != null && !rejected.reason().equals(Reason.NOT_PICKED_FIRST)
+                        ? rejected
+                        : new Outcome.Rejected(Reason.takenBy(name(selected.structure())));
             }
-            options.remove(index);
-            total -= selected.weight();
         }
         return Objects.requireNonNull(rejected, "the set holds a target");
     }
@@ -289,6 +276,7 @@ final class StructureSpread {
                     Either.right(new Outcome.Rejected(Reason.NO_START_HEIGHT));
             case ExtendedStructure.Evaluation.Filtered filtered -> Either.right(new Outcome.Rejected(
                     Reason.filtered(filterName(filtered.filter())), Optional.of(filtered.origin())));
+            case ExtendedStructure.Evaluation.NotPickedFirst ignored -> Either.right(new Outcome.Rejected(Reason.NOT_PICKED_FIRST));
         };
     }
 

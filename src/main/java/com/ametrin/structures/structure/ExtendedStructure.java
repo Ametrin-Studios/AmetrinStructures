@@ -8,12 +8,16 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +30,7 @@ import java.util.function.Supplier;
 /// The subclass lays out the structure, then this class checks the biome and runs the [PlacementFilter]s.
 public abstract class ExtendedStructure extends Structure {
     private final ExtendedStructureSettings extendedSettings;
+    private volatile @Nullable ContainingSets containingSets;
 
     protected ExtendedStructure(StructureSettings settings, ExtendedStructureSettings extendedSettings) {
         super(settings);
@@ -69,8 +74,31 @@ public abstract class ExtendedStructure extends Structure {
 
     /// As [#evaluateGenerationPoint(GenerationContext)], telling `timer` how long each step took.
     public Evaluation evaluateGenerationPoint(GenerationContext context, Timer timer) {
+        if (extendedSettings.onlyWhenPickedFirst() && !isPickedFirst(context)) {
+            return new Evaluation.NotPickedFirst();
+        }
         return layOut(context, timer).map(candidate -> evaluate(context, candidate, timer), rejection -> rejection);
     }
+
+    // A structure outside any set counts as picked.
+    private boolean isPickedFirst(GenerationContext context) {
+        var sets = containingSets(context.registryAccess());
+        return sets.isEmpty() || sets.stream().anyMatch(set -> StructureSetOrder.of(set, context.seed(), context.chunkPos()).getFirst().structure().value() == this);
+    }
+
+    private List<StructureSet> containingSets(RegistryAccess registries) {
+        var cached = containingSets;
+        if (cached == null || cached.registries() != registries) {
+            var sets = registries.lookupOrThrow(Registries.STRUCTURE_SET).stream()
+                    .filter(set -> set.structures().stream().anyMatch(entry -> entry.structure().value() == this))
+                    .toList();
+            cached = new ContainingSets(registries, sets);
+            containingSets = cached;
+        }
+        return cached.sets();
+    }
+
+    private record ContainingSets(RegistryAccess registries, List<StructureSet> sets) {}
 
     private Evaluation evaluate(GenerationContext context, Candidate candidate, Timer timer) {
         var origin = candidate.origin();
@@ -136,6 +164,9 @@ public abstract class ExtendedStructure extends Structure {
         record WrongBiome(BlockPos origin) implements Evaluation {}
 
         record Filtered(PlacementFilter filter, BlockPos origin) implements Evaluation {}
+
+        /// See [ExtendedStructureBuilder#onlyWhenPickedFirst].
+        record NotPickedFirst() implements Evaluation {}
     }
 
     /// Receives how long each step of [#evaluateGenerationPoint(GenerationContext, Timer)] took, in nanoseconds.

@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure.simple;
 
+import com.ametrin.structures.structure.CustomStructureBuilder;
 import com.ametrin.structures.structure.StructureBootstrap;
 import com.ametrin.structures.structure.StructureSetBuilder;
 import com.ametrin.structures.structure.StructureSetKeys;
@@ -74,6 +75,11 @@ class SimpleStructureBuilderTest {
     @Test
     void filtersOnAPlainCustomStructureFail() {
         assertNamedFailure(() -> register(set -> set.structure((settings, context) -> null, custom -> custom.filterFlatness(2))));
+    }
+
+    @Test
+    void onlyWhenPickedFirstOnAPlainCustomStructureFails() {
+        assertNamedFailure(() -> register(set -> set.structure((settings, context) -> null, CustomStructureBuilder::onlyWhenPickedFirst)));
     }
 
     @Test

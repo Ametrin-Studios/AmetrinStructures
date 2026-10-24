@@ -33,6 +33,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
     private TerrainAdjustment terrainAdaptation = TerrainAdjustment.NONE;
     private final List<PlacementFilter> filters = new ArrayList<>();
     private @Nullable Function<HolderGetter<StructureProcessorList>, Holder<StructureProcessorList>> processors;
+    private boolean onlyWhenPickedFirst;
 
     protected StructureEntryBuilder(String id) {
         this.id = id;
@@ -86,6 +87,12 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return self();
     }
 
+    @Override
+    public B onlyWhenPickedFirst() {
+        onlyWhenPickedFirst = true;
+        return self();
+    }
+
     /// For template pieces without processors of their own, see [InlineFromStructureProcessor].
     public B processors(ResourceKey<StructureProcessorList> processors) {
         this.processors = lookup -> lookup.getOrThrow(processors);
@@ -103,9 +110,9 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return processors(Holder.direct(new StructureProcessorList(processors)));
     }
 
-    /// Whether filters or processors were set, which only an [ExtendedStructure] takes.
+    /// Whether settings were set that only an [ExtendedStructure] takes.
     protected boolean hasExtendedSettings() {
-        return !filters.isEmpty() || processors != null;
+        return !filters.isEmpty() || processors != null || onlyWhenPickedFirst;
     }
 
     protected void validate() {}
@@ -131,6 +138,6 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         var resolvedProcessors = processors == null
                 ? Optional.<Holder<StructureProcessorList>>empty()
                 : Optional.of(processors.apply(context.lookup(Registries.PROCESSOR_LIST)));
-        return create(settings, new ExtendedStructureSettings(filters, resolvedProcessors), context);
+        return create(settings, new ExtendedStructureSettings(filters, resolvedProcessors, onlyWhenPickedFirst), context);
     }
 }

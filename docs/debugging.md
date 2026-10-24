@@ -15,7 +15,7 @@ Reports where a structure would generate around you and why it doesn't generate 
 - `radius` is in chunks and defaults to 128.
 - The report shows how many candidate chunks the placement picked and how many of them generate, the most common reasons for the rest, the start heights, the average and smallest distance between spots, and the nearest spot.
 - It also times the slowest structures: the total time and the time per candidate chunk to find spots and build pieces. For this library's structures, the time is split into the biome pre-check, creating the pieces, finding the start height and each filter. The first report after starting the game also loads templates and warms up the JVM, so run it twice before you trust the numbers. Placing blocks isn't timed, because the report doesn't place anything.
-- This library's simple and jigsaw structures give specific reasons: wrong biome, empty start height range, which filter failed, or another structure in the same set taking the spot. Other structures can only say they found no spot.
+- This library's simple and jigsaw structures give specific reasons: wrong biome, empty start height range, which filter failed, another structure in the same set taking the spot, or another structure being picked first for one with `onlyWhenPickedFirst()`. Other structures can only say they found no spot.
 
 To tune filters, change a value, run datagen, reopen the world and run the report again. The report doesn't depend on which chunks exist, so you can keep using the same world.
 

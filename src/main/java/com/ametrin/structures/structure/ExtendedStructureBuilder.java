@@ -10,6 +10,11 @@ import java.util.Optional;
 public interface ExtendedStructureBuilder<B extends ExtendedStructureBuilder<B>> {
     B filter(PlacementFilter filter);
 
+    /// Only generates where its structure set tries it first, not as a fallback after another structure of the set didn't fit.
+    /// Can be used to optimize variants that fail at the same spots. Each spot is then measured once and locating one skips the spots of the others without loading chunks.
+    /// This option makes the structure generate less often.
+    B onlyWhenPickedFirst();
+
     default B filterHeightRange(int min, int max) {
         var filter = new PlacementFilters.HeightRange(min, max);
         if (filter.validate().isError()) {

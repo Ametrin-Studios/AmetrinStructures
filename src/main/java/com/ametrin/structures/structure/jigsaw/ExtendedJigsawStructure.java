@@ -226,11 +226,12 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         return new Builder(settings, startPool);
     }
 
-    /// Starts with `extendedSettings`' filters and processors.
+    /// Starts with `extendedSettings`.
     public static Builder builder(StructureSettings settings, ExtendedStructureSettings extendedSettings, Holder<StructureTemplatePool> startPool) {
         var builder = new Builder(settings, startPool);
         extendedSettings.filters().forEach(builder::filter);
         builder.processors = extendedSettings.processors();
+        builder.onlyWhenPickedFirst = extendedSettings.onlyWhenPickedFirst();
         return builder;
     }
 
@@ -238,6 +239,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         private final StructureSettings settings;
         private final List<PlacementFilter> filters = new ArrayList<>();
         private Optional<Holder<StructureProcessorList>> processors = Optional.empty();
+        private boolean onlyWhenPickedFirst;
         private final Holder<StructureTemplatePool> startPool;
         private Optional<Identifier> startJigsawName = Optional.empty();
         private IntProvider size = ConstantInt.of(7);
@@ -299,20 +301,20 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             return this;
         }
 
-        public Builder onSurface() {
-            return projectStartToHeightmap(Heightmap.Types.WORLD_SURFACE_WG);
+        public Builder surface() {
+            return surface(0);
         }
 
-        public Builder onOceanFloor() {
-            return projectStartToHeightmap(Heightmap.Types.OCEAN_FLOOR_WG);
+        public Builder surface(int offset) {
+            return projectStartToHeightmap(Heightmap.Types.WORLD_SURFACE_WG).startHeight(offset);
         }
 
-        public Builder onSurface(int y) {
-            return onSurface().startHeight(y);
+        public Builder oceanFloor() {
+            return oceanFloor(0);
         }
 
-        public Builder onOceanFloor(int y) {
-            return onOceanFloor().startHeight(y);
+        public Builder oceanFloor(int offset) {
+            return projectStartToHeightmap(Heightmap.Types.OCEAN_FLOOR_WG).startHeight(offset);
         }
 
         public Builder maxDistanceFromCenter(int maxDistanceFromCenter) {
@@ -349,10 +351,16 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             return this;
         }
 
+        @Override
+        public Builder onlyWhenPickedFirst() {
+            onlyWhenPickedFirst = true;
+            return this;
+        }
+
         public ExtendedJigsawStructure build() {
             return new ExtendedJigsawStructure(
                     settings,
-                    new ExtendedStructureSettings(filters, processors),
+                    new ExtendedStructureSettings(filters, processors, onlyWhenPickedFirst),
                     startPool,
                     startJigsawName,
                     size,

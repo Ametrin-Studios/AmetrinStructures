@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure;
 
 import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
@@ -30,9 +31,15 @@ public final class GenerationContexts {
 
     public static Structure.GenerationContext create(
             MinecraftServer server, ChunkGenerator generator, BiomeSource biomes, long seed, Predicate<Holder<Biome>> validBiome) {
-        var registries = server.registryAccess();
-        var settings = registries.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-        var randomState = RandomState.create(registries.lookupOrThrow(Registries.NOISE), seed, settings);
+        return create(server, server.registryAccess(), generator, biomes, seed, validBiome);
+    }
+
+    /// @param registries what the structure sees, the noise settings still come from the server
+    public static Structure.GenerationContext create(
+            MinecraftServer server, RegistryAccess registries, ChunkGenerator generator, BiomeSource biomes, long seed, Predicate<Holder<Biome>> validBiome) {
+        var serverRegistries = server.registryAccess();
+        var settings = serverRegistries.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
+        var randomState = RandomState.create(serverRegistries.lookupOrThrow(Registries.NOISE), seed, settings);
         return new Structure.GenerationContext(
                 registries,
                 generator,

@@ -5,12 +5,17 @@ import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.GenerationContexts;
+import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.PlacementFilters;
+import com.mojang.serialization.Lifecycle;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.QuartPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -20,12 +25,16 @@ import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.heightproviders.ConstantHeight;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
@@ -46,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(EphemeralTestServerProvider.class)
 class SimpleStructureEvaluateTest {
     private static final StartHeight AT_64 = StartHeight.at(HeightAnchor.absolute(64));
+    private static final ExtendedStructureSettings ONLY_WHEN_PICKED_FIRST = new ExtendedStructureSettings(List.of(), Optional.empty(), true);
 
     @Test
     void generatesAtTheStartHeight(MinecraftServer server) {
@@ -166,6 +176,26 @@ class SimpleStructureEvaluateTest {
     }
 
     @Test
+    void onlyWhenPickedFirstGeneratesOnlyWhereTheSetTriesItFirst(MinecraftServer server) {
+        var first = structure(AT_64, ONLY_WHEN_PICKED_FIRST);
+        var second = structure(AT_64, ONLY_WHEN_PICKED_FIRST);
+        var set = new StructureSet(
+                List.of(StructureSet.entry(Holder.direct(first)), StructureSet.entry(Holder.direct(second))),
+                new RandomSpreadStructurePlacement(8, 4, RandomSpreadType.LINEAR, 0));
+        var context = context(server, registriesWith(set), new FixedBiomeSource(plains(server)), biome -> true);
+        var firstIsPicked = StructureSetOrder.of(set, context.seed(), context.chunkPos()).getFirst().structure().value() == first;
+        var picked = firstIsPicked ? first : second;
+        var other = firstIsPicked ? second : first;
+        assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, picked.evaluateGenerationPoint(context));
+        assertInstanceOf(ExtendedStructure.Evaluation.NotPickedFirst.class, other.evaluateGenerationPoint(context));
+    }
+
+    @Test
+    void onlyWhenPickedFirstOutsideASetGenerates(MinecraftServer server) {
+        assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure(AT_64, ONLY_WHEN_PICKED_FIRST).evaluateGenerationPoint(context(server)));
+    }
+
+    @Test
     void theStructureHandsItsProcessorsToItsPieces(MinecraftServer server) {
         var processors = Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE)))));
         var structure = structure(AT_64, new ExtendedStructureSettings(List.of(), Optional.of(processors)));
@@ -198,8 +228,22 @@ class SimpleStructureEvaluateTest {
     }
 
     private static Structure.GenerationContext context(MinecraftServer server, BiomeSource biomeSource, Predicate<Holder<Biome>> validBiome) {
-        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        return GenerationContexts.create(server, new DebugLevelSource(plains), biomeSource, 0, validBiome);
+        return context(server, server.registryAccess(), biomeSource, validBiome);
+    }
+
+    private static Structure.GenerationContext context(
+            MinecraftServer server, RegistryAccess registries, BiomeSource biomeSource, Predicate<Holder<Biome>> validBiome) {
+        return GenerationContexts.create(server, registries, new DebugLevelSource(plains(server)), biomeSource, 0, validBiome);
+    }
+
+    private static Holder.Reference<Biome> plains(MinecraftServer server) {
+        return server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
+    }
+
+    private static RegistryAccess registriesWith(StructureSet set) {
+        var sets = new MappedRegistry<>(Registries.STRUCTURE_SET, Lifecycle.stable());
+        Registry.register(sets, Identifier.fromNamespaceAndPath("test", "set"), set);
+        return new RegistryAccess.ImmutableRegistryAccess(List.of(sets));
     }
 
     private static BiomeSource plainsOnlyAt(int y, Holder<Biome> plains, Holder<Biome> other) {

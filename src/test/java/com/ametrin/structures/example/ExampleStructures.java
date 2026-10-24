@@ -59,11 +59,11 @@ final class ExampleStructures {
             .simple(crypt -> crypt
                     // Every template gets mossy. The large one also gets cobwebs where its foam was.
                     .weighted(weighted -> weighted
-                            .single("crypt/small", 3)
-                            .single(template -> template.template("crypt/large").processors(List.of(
+                            .single(3, "crypt/small")
+                            .single(1, template -> template.template("crypt/large").processors(List.of(
                                     InlineFromStructureProcessor.INSTANCE,
                                     new ReplaceBlockProcessor(
-                                            ReplaceBlockProcessor.Condition.of(Blocks.AIR), 0.05F, Blocks.COBWEB.defaultBlockState()))), 1))
+                                            ReplaceBlockProcessor.Condition.of(Blocks.AIR), 0.05F, Blocks.COBWEB.defaultBlockState())))))
                     .processors(ProcessorLists.MOSSIFY_20_PERCENT)
                     .between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
@@ -106,7 +106,7 @@ final class ExampleStructures {
             .structure("", 4, (settings, context) -> ExtendedJigsawStructure.builder(
                                     settings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(CastlePools.START))
                             .size(8)
-                            .onSurface()
+                            .surface()
                             .build(),
                     castle -> castle.biomes(BiomeTags.IS_TAIGA).terrainAdaptation(TerrainAdjustment.BEARD_THIN))
             .simple("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
