@@ -8,6 +8,7 @@
 - Foam blocks placed by players no longer replace replaceable blocks
 - Check biomes in the origin column before sampling terrain height
 - `onlyWhenPickedFirst()` keeps a structure from being tried as a fallback
+- show pool completions in jigsaw blocks
 
 ## 0.2.0-beta
 - `EvenSpreadPlacement`, now the default placement

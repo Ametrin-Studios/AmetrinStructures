@@ -78,7 +78,7 @@ Broken fixture presets are logged as warnings when the server starts: unknown fi
 
 ## Structure blocks
 
-The structure block's name box completes every template id the server can load, from mods, datapacks and the world's saved templates.
+The structure block's name box completes every template id the server can load, from mods, datapacks and the world's saved templates. The jigsaw block's pool box completes the server's template pools.
 
 `/ametrin structures save [radius]` saves every structure block in save mode within `radius` blocks (64 by default), as if you pressed each one's save button.
 
