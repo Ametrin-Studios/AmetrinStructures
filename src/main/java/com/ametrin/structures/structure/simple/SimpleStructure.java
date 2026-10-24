@@ -164,7 +164,7 @@ public class SimpleStructure extends ExtendedStructure {
         return new Builder(id.getNamespace(), id.getPath());
     }
 
-    public static class Builder extends StructureEntryBuilder<Builder> {
+    public static class Builder extends StructureBuilder<Builder> {
         private final String namespace;
 
         @Nullable

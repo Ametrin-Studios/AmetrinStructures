@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
+import com.ametrin.structures.structure.filter.PlacementFilters;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
@@ -12,6 +13,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSpawnOverride;
@@ -21,10 +23,11 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProc
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
-/// Settings shared by every kind of structure in a set
-public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> implements ExtendedStructureBuilder<B> {
+/// Settings shared by every kind of structure
+public abstract class StructureBuilder<B extends StructureBuilder<B>> {
     protected final String id;
 
     private Function<HolderGetter<Biome>, HolderSet<Biome>> biomes = lookup -> lookup.getOrThrow(BiomeTags.IS_OVERWORLD);
@@ -35,7 +38,7 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
     private @Nullable Function<HolderGetter<StructureProcessorList>, Holder<StructureProcessorList>> processors;
     private boolean onlyWhenPickedFirst;
 
-    protected StructureEntryBuilder(String id) {
+    protected StructureBuilder(String id) {
         this.id = id;
     }
 
@@ -81,13 +84,80 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
     }
 
     /// Checked in order once the structure has a start position. Only an [ExtendedStructure] runs them.
-    @Override
     public B filter(PlacementFilter filter) {
         filters.add(filter);
         return self();
     }
 
-    @Override
+    public B filterHeightRange(int min, int max) {
+        var filter = new PlacementFilters.HeightRange(min, max);
+        if (filter.validate().isError()) {
+            throw new IllegalArgumentException("height range " + min + " to " + max + " is not a valid range");
+        }
+        return filter(filter);
+    }
+
+    public B filterGroundCheck(TagKey<Block> blocks) {
+        return filter(new PlacementFilters.GroundCheck(blocks));
+    }
+
+    public B filterFlatness(int maxVariance) {
+        return filterFlatness(maxVariance, 0);
+    }
+
+    /// @param margin negative values allowed
+    public B filterFlatness(int maxVariance, int margin) {
+        if (maxVariance < 0 || maxVariance > PlacementFilters.Flatness.MAX_VARIANCE) {
+            throw new IllegalArgumentException("flatness variance " + maxVariance + " is outside 0 to " + PlacementFilters.Flatness.MAX_VARIANCE);
+        }
+        if (Math.abs(margin) > PlacementFilters.Flatness.MAX_MARGIN) {
+            throw new IllegalArgumentException("flatness margin " + margin + " is outside -" + PlacementFilters.Flatness.MAX_MARGIN + " to " + PlacementFilters.Flatness.MAX_MARGIN);
+        }
+        return filter(new PlacementFilters.Flatness(maxVariance, margin));
+    }
+
+    /// Requires at least `minDepth` blocks of fluid above the structure.
+    public B filterSubmerged(int minDepth) {
+        if (minDepth < 0) {
+            throw new IllegalArgumentException("submerged depth " + minDepth + " is negative");
+        }
+        return filter(new PlacementFilters.Submerged(minDepth));
+    }
+
+    /// Keeps the structure out of water deeper than `maxDepth`.
+    public B filterMaxWaterDepth(int maxDepth) {
+        return filterWaterDepth(0, maxDepth);
+    }
+
+    public B filterMinWaterDepth(int minDepth) {
+        if (minDepth < 0) {
+            throw new IllegalArgumentException("water depth " + minDepth + " is not a valid range");
+        }
+        return filter(new PlacementFilters.WaterDepth(minDepth, Optional.empty()));
+    }
+
+    public B filterWaterDepth(int minDepth, int maxDepth) {
+        var filter = new PlacementFilters.WaterDepth(minDepth, Optional.of(maxDepth));
+        if (minDepth < 0 || filter.validate().isError()) {
+            throw new IllegalArgumentException("water depth " + minDepth + " to " + maxDepth + " is not a valid range");
+        }
+        return filter(filter);
+    }
+
+    public B filterWithinBiome() {
+        return filterWithinBiome(0);
+    }
+
+    public B filterWithinBiome(int margin) {
+        if (margin < 0 || margin > PlacementFilters.WithinBiome.MAX_MARGIN) {
+            throw new IllegalArgumentException("biome margin " + margin + " is outside 0 to " + PlacementFilters.WithinBiome.MAX_MARGIN);
+        }
+        return filter(new PlacementFilters.WithinBiome(Optional.empty(), margin));
+    }
+
+    /// Only generates where its structure set tries it first, not as a fallback after another structure of the set didn't fit.
+    /// Can be used to optimize variants that fail at the same spots. Each spot is then measured once and locating one skips the spots of the others without loading chunks.
+    /// This option makes the structure generate less often.
     public B onlyWhenPickedFirst() {
         onlyWhenPickedFirst = true;
         return self();
@@ -131,6 +201,16 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
 
     protected IllegalStateException fail(String message, Throwable cause) {
         return new IllegalStateException("structure " + id + ": " + message, cause);
+    }
+
+    // Names the structure when a setter rejects its argument.
+    static <B extends StructureBuilder<B>> B configured(B builder, Consumer<? super B> configure) {
+        try {
+            configure.accept(builder);
+        } catch (IllegalArgumentException exception) {
+            throw builder.fail(exception.getMessage(), exception);
+        }
+        return builder;
     }
 
     Structure bootstrap(BootstrapContext<Structure> context) {

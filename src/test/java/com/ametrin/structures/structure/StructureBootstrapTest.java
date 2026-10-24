@@ -48,7 +48,7 @@ class StructureBootstrapTest {
     void aStructureWithoutASetCanJoinOneLater() {
         var structures = new StructureBootstrap("test");
         var tower = structures.registerSimple("tower", builder -> builder.single("tower"));
-        var shrine = structures.registerJigsaw("shrine", Pools.EMPTY, jigsaw -> jigsaw.size(1), _ -> {});
+        var shrine = structures.registerJigsaw("shrine", Pools.EMPTY, jigsaw -> jigsaw.size(1));
         var keys = structures.registerSet("towers", set -> set.existing(tower).existing(shrine, 2));
 
         var registries = build(structures);
@@ -81,6 +81,17 @@ class StructureBootstrapTest {
     @Test
     void aStructureWithoutASetIsCheckedRightAway() {
         assertThrows(IllegalStateException.class, () -> new StructureBootstrap("test").registerSimple("tower", builder -> builder.surface()));
+    }
+
+    @Test
+    void extendedSettingsNeedAnExtendedStructure() {
+        var structures = new StructureBootstrap("test");
+        structures.registerStructure("plain", (settings, _, _) -> null, custom -> custom.filterFlatness(2));
+        Throwable failure = assertThrows(RuntimeException.class, () -> build(structures));
+        while (!(failure instanceof IllegalStateException) && failure.getCause() != null) {
+            failure = failure.getCause();
+        }
+        assertTrue(failure.getMessage().contains("plain"), failure.getMessage());
     }
 
     private static HolderLookup.Provider build(StructureBootstrap structures) {

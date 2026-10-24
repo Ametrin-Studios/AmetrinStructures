@@ -16,12 +16,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.structures.IglooStructure;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.data.event.DatapackRegistryGatherer;
 import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
@@ -103,13 +105,16 @@ final class ExampleStructures {
     // A jigsaw castle, sometimes replaced by a simple ruin.
     static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
-            .structure("", 4, (settings, context) -> ExtendedJigsawStructure.builder(
-                                    settings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(CastlePools.START))
-                            .size(8)
-                            .surface()
-                            .build(),
-                    castle -> castle.biomes(BiomeTags.IS_TAIGA).terrainAdaptation(TerrainAdjustment.BEARD_THIN))
+            .jigsaw("", 4, CastlePools.START, castle -> castle
+                    .size(8)
+                    .biomes(BiomeTags.IS_TAIGA)
+                    .terrainAdaptation(TerrainAdjustment.BEARD_THIN))
             .simple("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
+
+    // Any structure type, here vanilla's igloo in snowy taigas and groves.
+    static final StructureSetKeys IGLOO = STRUCTURES.registerSet("igloo", set -> set
+            .evenSpreadPlacement(24, 0.5F)
+            .structure((settings, _, _) -> new IglooStructure(settings), igloo -> igloo.biomes(Biomes.SNOWY_TAIGA, Biomes.GROVE)));
 
     static final class CastlePools {
         static final ResourceKey<StructureTemplatePool> START = JigsawPools.key(MODID, "castle/start");
