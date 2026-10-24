@@ -7,6 +7,7 @@
 - `HeightMode` is now specified by the `HeightAnchor` and not the structure
 - Foam blocks placed by players no longer replace replaceable blocks
 - Check biomes in the origin column before sampling terrain height
+- `onlyWhenPickedFirst()` keeps a structure from being tried as a fallback
 
 ## 0.2.0-beta
 - `EvenSpreadPlacement`, now the default placement
