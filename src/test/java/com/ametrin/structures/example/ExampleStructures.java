@@ -2,13 +2,13 @@ package com.ametrin.structures.example;
 
 import com.ametrin.structures.foam.RemoveFoamProcessor;
 import com.ametrin.structures.processor.ReplaceBlockProcessor;
+import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.StructureBootstrap;
 import com.ametrin.structures.structure.StructureSetKeys;
 import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.jigsaw.JigsawPools;
 import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.HeightMode;
-import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -45,7 +45,7 @@ final class ExampleStructures {
             .evenSpreadPlacement(18, 0.6F)
             .simple(tower -> tower
                     .single("ruined_tower")
-                    .surface(0, HeightMode.MEAN)
+                    .surface(0, HeightMode.CORNERS_MEAN)
                     // At the mean height some corners float above the ground. The foundation fills under them.
                     .foundation()
                     .filterFlatness(3)
@@ -80,7 +80,7 @@ final class ExampleStructures {
                                     0.3F,
                                     Blocks.MOSSY_STONE_BRICK_STAIRS.defaultBlockState(),
                                     true))))
-                    .oceanFloor(0, HeightMode.LOWEST)
+                    .oceanFloor(0, HeightMode.LOWEST_CORNER)
                     .filterSubmerged(6)
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
                     .biomes(BiomeTags.IS_DEEP_OCEAN)));

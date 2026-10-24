@@ -307,6 +307,14 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             return projectStartToHeightmap(Heightmap.Types.OCEAN_FLOOR_WG);
         }
 
+        public Builder onSurface(int y) {
+            return onSurface().startHeight(y);
+        }
+
+        public Builder onOceanFloor(int y) {
+            return onOceanFloor().startHeight(y);
+        }
+
         public Builder maxDistanceFromCenter(int maxDistanceFromCenter) {
             return maxDistanceFromCenter(new JigsawStructure.MaxDistance(maxDistanceFromCenter));
         }

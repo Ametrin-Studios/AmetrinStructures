@@ -14,9 +14,11 @@ public enum HeightMode implements StringRepresentable {
     /// At the structure's origin. The cheapest.
     ORIGIN("origin"),
     /// The mean of the four footprint corners, like vanilla's igloo.
-    MEAN("mean"),
+    CORNERS_MEAN("corners_mean"),
     /// The lowest of the four footprint corners, so no corner floats.
-    LOWEST("lowest");
+    LOWEST_CORNER("lowest_corner"),
+    /// The highest of the four footprint corners.
+    HIGHEST_CORNER("highest_corner");
 
     public static final Codec<HeightMode> CODEC = StringRepresentable.fromEnum(HeightMode::values);
 
@@ -30,12 +32,20 @@ public enum HeightMode implements StringRepresentable {
         if (this == ORIGIN) {
             return terrain.surfaceHeight(heightmap, origin.getX(), origin.getZ());
         }
+
         var corners = IntStream.of(
                 terrain.surfaceHeight(heightmap, footprint.minX(), footprint.minZ()),
                 terrain.surfaceHeight(heightmap, footprint.minX(), footprint.maxZ()),
                 terrain.surfaceHeight(heightmap, footprint.maxX(), footprint.minZ()),
-                terrain.surfaceHeight(heightmap, footprint.maxX(), footprint.maxZ()));
-        return this == LOWEST ? corners.min().orElseThrow() : corners.sum() / 4;
+                terrain.surfaceHeight(heightmap, footprint.maxX(), footprint.maxZ())
+        );
+
+        return switch (this) {
+            case LOWEST_CORNER -> corners.min().orElseThrow();
+            case HIGHEST_CORNER -> corners.max().orElseThrow();
+            case CORNERS_MEAN -> corners.sum() / 4;
+            case ORIGIN -> throw new RuntimeException();
+        };
     }
 
     @Override

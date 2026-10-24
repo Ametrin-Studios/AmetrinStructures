@@ -21,7 +21,7 @@ class StartHeightTest {
     private static final int LOWEST_CORNER = 60;
     private static final HeightAnchor.Terrain TERRAIN = (type, mode) -> type == Heightmap.Types.OCEAN_FLOOR_WG
             ? OCEAN_FLOOR
-            : mode == HeightMode.LOWEST ? LOWEST_CORNER : SURFACE;
+            : mode == HeightMode.LOWEST_CORNER ? LOWEST_CORNER : SURFACE;
 
     @Test
     void oneAnchorIsEitherVanillasOrAHeightmap() {
@@ -33,13 +33,13 @@ class StartHeightTest {
     @Test
     void aHeightmapAnchorMeasuresAtTheOriginUnlessToldOtherwise() {
         assertEquals(HeightMode.ORIGIN, assertInstanceOf(HeightAnchor.OnHeightmap.class, HeightAnchor.surface(0)).mode());
-        assertEquals(StartHeight.at(HeightAnchor.surface(2, HeightMode.LOWEST)),
+        assertEquals(StartHeight.at(HeightAnchor.surface(2, HeightMode.LOWEST_CORNER)),
                 parse("{\"heightmap\":\"WORLD_SURFACE_WG\",\"offset\":2,\"mode\":\"lowest\"}"));
     }
 
     @Test
     void eachEndOfARangeUsesItsOwnMode() {
-        var range = StartHeight.between(HeightAnchor.surface(0, HeightMode.LOWEST), HeightAnchor.surface(LOWEST_CORNER - SURFACE));
+        var range = StartHeight.between(HeightAnchor.surface(0, HeightMode.LOWEST_CORNER), HeightAnchor.surface(LOWEST_CORNER - SURFACE));
         assertEquals(OptionalInt.of(LOWEST_CORNER), sample(range, RandomSource.create(1)));
     }
 
