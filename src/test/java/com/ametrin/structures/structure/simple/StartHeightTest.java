@@ -34,7 +34,7 @@ class StartHeightTest {
     void aHeightmapAnchorMeasuresAtTheOriginUnlessToldOtherwise() {
         assertEquals(HeightMode.ORIGIN, assertInstanceOf(HeightAnchor.OnHeightmap.class, HeightAnchor.surface(0)).mode());
         assertEquals(StartHeight.at(HeightAnchor.surface(2, HeightMode.LOWEST_CORNER)),
-                parse("{\"heightmap\":\"WORLD_SURFACE_WG\",\"offset\":2,\"mode\":\"lowest\"}"));
+                parse("{\"heightmap\":\"WORLD_SURFACE_WG\",\"offset\":2,\"mode\":\"lowest_corner\"}"));
     }
 
     @Test

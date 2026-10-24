@@ -101,7 +101,16 @@ class SimpleStructureEvaluateTest {
     }
 
     @Test
-    void aChunkWithoutAValidBiomeIsRejectedBeforeLayingOut(MinecraftServer server) {
+    void aChunkWithoutAValidBiomeIsRejectedBeforeMeasuringTheTerrain(MinecraftServer server) {
+        assertEquals(List.of("biome_precheck"), stepsInAWrongBiome(server, SimpleStructure.ON_SURFACE_START_HEIGHT));
+    }
+
+    @Test
+    void aStartHeightWithoutTerrainSkipsThePrecheck(MinecraftServer server) {
+        assertEquals(List.of("pieces", "start_height"), stepsInAWrongBiome(server, AT_64));
+    }
+
+    private static List<String> stepsInAWrongBiome(MinecraftServer server, StartHeight startHeight) {
         var steps = new ArrayList<String>();
         var timer = new SimpleStructure.Timer() {
             @Override
@@ -113,10 +122,15 @@ class SimpleStructureEvaluateTest {
             public void pieces(long nanos) {
                 steps.add("pieces");
             }
+
+            @Override
+            public void startHeight(long nanos) {
+                steps.add("start_height");
+            }
         };
-        var result = structure(SimpleStructure.ON_SURFACE_START_HEIGHT, List.of()).evaluateGenerationPoint(context(server, biome -> false), timer);
+        var result = structure(startHeight, List.of()).evaluateGenerationPoint(context(server, biome -> false), timer);
         assertInstanceOf(SimpleStructure.Evaluation.WrongBiome.class, result);
-        assertEquals(List.of("biome_precheck"), steps);
+        return steps;
     }
 
     @Test
