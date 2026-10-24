@@ -8,7 +8,6 @@ import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 
 import java.util.Optional;
-import java.util.function.ToIntFunction;
 
 /// A vanilla [VerticalAnchor], or a heightmap plus an offset.
 public sealed interface HeightAnchor {
@@ -33,24 +32,42 @@ public sealed interface HeightAnchor {
     }
 
     static HeightAnchor heightmap(Heightmap.Types heightmap, int offset) {
-        return new OnHeightmap(heightmap, offset);
+        return heightmap(heightmap, offset, HeightMode.ORIGIN);
+    }
+
+    static HeightAnchor heightmap(Heightmap.Types heightmap, int offset, HeightMode mode) {
+        return new OnHeightmap(heightmap, offset, mode);
     }
 
     static HeightAnchor surface(int offset) {
-        return heightmap(Heightmap.Types.WORLD_SURFACE_WG, offset);
+        return surface(offset, HeightMode.ORIGIN);
+    }
+
+    static HeightAnchor surface(int offset, HeightMode mode) {
+        return heightmap(Heightmap.Types.WORLD_SURFACE_WG, offset, mode);
     }
 
     static HeightAnchor oceanFloor(int offset) {
-        return heightmap(Heightmap.Types.OCEAN_FLOOR_WG, offset);
+        return oceanFloor(offset, HeightMode.ORIGIN);
     }
 
-    int resolve(WorldGenerationContext world, ToIntFunction<Heightmap.Types> heightSampler);
+    static HeightAnchor oceanFloor(int offset, HeightMode mode) {
+        return heightmap(Heightmap.Types.OCEAN_FLOOR_WG, offset, mode);
+    }
+
+    int resolve(WorldGenerationContext world, Terrain terrain);
 
     Optional<Heightmap.Types> heightmap();
 
+    /// The terrain height under the structure.
+    @FunctionalInterface
+    interface Terrain {
+        int height(Heightmap.Types heightmap, HeightMode mode);
+    }
+
     record Fixed(VerticalAnchor anchor) implements HeightAnchor {
         @Override
-        public int resolve(WorldGenerationContext world, ToIntFunction<Heightmap.Types> heightSampler) {
+        public int resolve(WorldGenerationContext world, Terrain terrain) {
             return anchor.resolveY(world);
         }
 
@@ -60,15 +77,16 @@ public sealed interface HeightAnchor {
         }
     }
 
-    record OnHeightmap(Heightmap.Types type, int offset) implements HeightAnchor {
+    record OnHeightmap(Heightmap.Types type, int offset, HeightMode mode) implements HeightAnchor {
         public static final Codec<OnHeightmap> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Heightmap.Types.CODEC.fieldOf("heightmap").forGetter(OnHeightmap::type),
-                        Codec.INT.optionalFieldOf("offset", 0).forGetter(OnHeightmap::offset))
+                        Codec.INT.optionalFieldOf("offset", 0).forGetter(OnHeightmap::offset),
+                        HeightMode.CODEC.optionalFieldOf("mode", HeightMode.ORIGIN).forGetter(OnHeightmap::mode))
                 .apply(instance, OnHeightmap::new));
 
         @Override
-        public int resolve(WorldGenerationContext world, ToIntFunction<Heightmap.Types> heightSampler) {
-            return heightSampler.applyAsInt(type) + offset;
+        public int resolve(WorldGenerationContext world, Terrain terrain) {
+            return terrain.height(type, mode) + offset;
         }
 
         @Override

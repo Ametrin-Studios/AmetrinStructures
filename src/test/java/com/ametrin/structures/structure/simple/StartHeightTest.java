@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.function.ToIntFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,14 +18,29 @@ import static org.junit.jupiter.api.Assertions.*;
 class StartHeightTest {
     private static final int SURFACE = 70;
     private static final int OCEAN_FLOOR = 40;
-    private static final ToIntFunction<Heightmap.Types> TERRAIN =
-            type -> type == Heightmap.Types.OCEAN_FLOOR_WG ? OCEAN_FLOOR : SURFACE;
+    private static final int LOWEST_CORNER = 60;
+    private static final HeightAnchor.Terrain TERRAIN = (type, mode) -> type == Heightmap.Types.OCEAN_FLOOR_WG
+            ? OCEAN_FLOOR
+            : mode == HeightMode.LOWEST ? LOWEST_CORNER : SURFACE;
 
     @Test
     void oneAnchorIsEitherVanillasOrAHeightmap() {
         assertEquals(StartHeight.at(HeightAnchor.surface(0)), parse("{\"heightmap\":\"WORLD_SURFACE_WG\"}"));
         assertEquals(StartHeight.at(HeightAnchor.oceanFloor(-3)), parse("{\"heightmap\":\"OCEAN_FLOOR_WG\",\"offset\":-3}"));
         assertEquals(StartHeight.at(HeightAnchor.absolute(10)), parse("{\"absolute\":10}"));
+    }
+
+    @Test
+    void aHeightmapAnchorMeasuresAtTheOriginUnlessToldOtherwise() {
+        assertEquals(HeightMode.ORIGIN, assertInstanceOf(HeightAnchor.OnHeightmap.class, HeightAnchor.surface(0)).mode());
+        assertEquals(StartHeight.at(HeightAnchor.surface(2, HeightMode.LOWEST)),
+                parse("{\"heightmap\":\"WORLD_SURFACE_WG\",\"offset\":2,\"mode\":\"lowest\"}"));
+    }
+
+    @Test
+    void eachEndOfARangeUsesItsOwnMode() {
+        var range = StartHeight.between(HeightAnchor.surface(0, HeightMode.LOWEST), HeightAnchor.surface(LOWEST_CORNER - SURFACE));
+        assertEquals(OptionalInt.of(LOWEST_CORNER), sample(range, RandomSource.create(1)));
     }
 
     @Test

@@ -45,8 +45,7 @@ final class ExampleStructures {
             .evenSpreadPlacement(18, 0.6F)
             .simple(tower -> tower
                     .single("ruined_tower")
-                    .surface()
-                    .verticalPlacementMode(HeightMode.MEAN)
+                    .surface(0, HeightMode.MEAN)
                     // At the mean height some corners float above the ground. The foundation fills under them.
                     .foundation()
                     .filterFlatness(3)
@@ -81,8 +80,7 @@ final class ExampleStructures {
                                     0.3F,
                                     Blocks.MOSSY_STONE_BRICK_STAIRS.defaultBlockState(),
                                     true))))
-                    .oceanFloor()
-                    .verticalPlacementMode(HeightMode.LOWEST)
+                    .oceanFloor(0, HeightMode.LOWEST)
                     .filterSubmerged(6)
                     .step(GenerationStep.Decoration.UNDERGROUND_STRUCTURES)
                     .biomes(BiomeTags.IS_DEEP_OCEAN)));

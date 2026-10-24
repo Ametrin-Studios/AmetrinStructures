@@ -45,7 +45,6 @@ public class SimpleStructure extends ExtendedStructure {
                     extendedSettingsCodec(instance),
                     PieceSource.CODEC.fieldOf("pieces").forGetter(SimpleStructure::pieces),
                     StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(SimpleStructure::startHeight),
-                    HeightMode.CODEC.optionalFieldOf("height_mode", HeightMode.CORNER).forGetter(SimpleStructure::heightMode),
                     LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(SimpleStructure::liquidSettings),
                     Foundation.CODEC.optionalFieldOf("foundation").forGetter(SimpleStructure::foundation),
                     Rotation.CODEC.optionalFieldOf("rotation").forGetter(SimpleStructure::rotation))
@@ -53,7 +52,6 @@ public class SimpleStructure extends ExtendedStructure {
 
     private final PieceSource pieces;
     private final StartHeight startHeight;
-    private final HeightMode heightMode;
     private final LiquidSettings liquidSettings;
     private final Optional<Foundation> foundation;
     private final Optional<Rotation> rotation;
@@ -63,14 +61,12 @@ public class SimpleStructure extends ExtendedStructure {
             ExtendedStructureSettings extendedSettings,
             PieceSource pieces,
             StartHeight startHeight,
-            HeightMode heightMode,
             LiquidSettings liquidSettings,
             Optional<Foundation> foundation,
             Optional<Rotation> rotation) {
         super(settings, extendedSettings);
         this.pieces = pieces;
         this.startHeight = startHeight;
-        this.heightMode = heightMode;
         this.liquidSettings = liquidSettings;
         this.foundation = foundation;
         this.rotation = rotation;
@@ -94,7 +90,7 @@ public class SimpleStructure extends ExtendedStructure {
         start = System.nanoTime();
         var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
         var sampled = startHeight.sample(context.random(), new WorldGenerationContext(context.chunkGenerator(), context.heightAccessor()),
-                heightmap -> terrainHeight(terrain, heightmap, unplaced, unplacedFootprint.get()));
+                (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint.get()));
         timer.startHeight(System.nanoTime() - start);
         if (sampled.isEmpty()) {
             return Either.right(new Evaluation.NoStartHeight());
@@ -119,31 +115,12 @@ public class SimpleStructure extends ExtendedStructure {
         return new GenerationStub(origin, Either.right(builder));
     }
 
-    private int terrainHeight(TerrainSampler terrain, Heightmap.Types type, BlockPos origin, BoundingBox footprint) {
-        if (heightMode == HeightMode.CORNER) {
-            return terrain.surfaceHeight(type, origin.getX(), origin.getZ());
-        }
-        int[] corners = {
-                terrain.surfaceHeight(type, footprint.minX(), footprint.minZ()),
-                terrain.surfaceHeight(type, footprint.minX(), footprint.maxZ()),
-                terrain.surfaceHeight(type, footprint.maxX(), footprint.minZ()),
-                terrain.surfaceHeight(type, footprint.maxX(), footprint.maxZ())
-        };
-        return heightMode == HeightMode.LOWEST
-                ? Arrays.stream(corners).min().orElseThrow()
-                : Arrays.stream(corners).sum() / corners.length;
-    }
-
     public PieceSource pieces() {
         return pieces;
     }
 
     public StartHeight startHeight() {
         return startHeight;
-    }
-
-    public HeightMode heightMode() {
-        return heightMode;
     }
 
     public LiquidSettings liquidSettings() {
@@ -176,7 +153,6 @@ public class SimpleStructure extends ExtendedStructure {
         @Nullable
         private Function<HolderGetter<StructureProcessorList>, PieceSource> pieces;
         private StartHeight startHeight = ON_SURFACE_START_HEIGHT;
-        private HeightMode heightMode = HeightMode.CORNER;
         private LiquidSettings liquidSettings = LiquidSettings.IGNORE_WATERLOGGING;
         private Optional<Foundation> foundation = Optional.empty();
         private @Nullable Rotation rotation;
@@ -237,6 +213,10 @@ public class SimpleStructure extends ExtendedStructure {
             return verticalPlacement(HeightAnchor.surface(offset));
         }
 
+        public Builder surface(int offset, HeightMode mode) {
+            return verticalPlacement(HeightAnchor.surface(offset, mode));
+        }
+
         /// Starts on the ground, under any water.
         public Builder oceanFloor() {
             return oceanFloor(0);
@@ -245,6 +225,10 @@ public class SimpleStructure extends ExtendedStructure {
         /// Starts `offset` blocks above the ground, under any water.
         public Builder oceanFloor(int offset) {
             return verticalPlacement(HeightAnchor.oceanFloor(offset));
+        }
+
+        public Builder oceanFloor(int offset, HeightMode mode) {
+            return verticalPlacement(HeightAnchor.oceanFloor(offset, mode));
         }
 
         public Builder between(HeightAnchor min, HeightAnchor max) {
@@ -261,12 +245,6 @@ public class SimpleStructure extends ExtendedStructure {
 
         public Builder verticalPlacement(StartHeight startHeight) {
             this.startHeight = startHeight;
-            return this;
-        }
-
-        /// How heightmap anchors measure the terrain under the structure. Defaults to [HeightMode#CORNER].
-        public Builder verticalPlacementMode(HeightMode heightMode) {
-            this.heightMode = heightMode;
             return this;
         }
 
@@ -321,7 +299,7 @@ public class SimpleStructure extends ExtendedStructure {
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);
             }
-            return new SimpleStructure(settings, extendedSettings, builtPieces, startHeight, heightMode, liquidSettings, foundation, Optional.ofNullable(rotation));
+            return new SimpleStructure(settings, extendedSettings, builtPieces, startHeight, liquidSettings, foundation, Optional.ofNullable(rotation));
         }
     }
 }

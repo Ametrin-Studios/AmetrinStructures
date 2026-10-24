@@ -2,7 +2,6 @@ package com.ametrin.structures.debug;
 
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
-import com.ametrin.structures.structure.simple.HeightMode;
 import com.ametrin.structures.structure.simple.PieceSources;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import com.ametrin.structures.structure.simple.TemplateEntry;
@@ -132,7 +131,6 @@ class StructureCheckTest {
                 ExtendedStructureSettings.DEFAULT,
                 new PieceSources.SingleSource(TemplateEntry.of(template)),
                 SimpleStructure.ON_SURFACE_START_HEIGHT,
-                HeightMode.CORNER,
                 LiquidSettings.IGNORE_WATERLOGGING,
                 Optional.<Foundation>empty(),
                 Optional.empty());

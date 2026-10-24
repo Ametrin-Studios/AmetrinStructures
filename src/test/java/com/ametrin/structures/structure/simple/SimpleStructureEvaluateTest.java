@@ -123,7 +123,6 @@ class SimpleStructureEvaluateTest {
                 extendedSettings,
                 new PieceSources.SingleSource(TemplateEntry.of(Identifier.withDefaultNamespace("igloo/top"))),
                 startHeight,
-                HeightMode.CORNER,
                 LiquidSettings.IGNORE_WATERLOGGING,
                 Optional.<Foundation>empty(),
                 Optional.empty());
