@@ -165,7 +165,7 @@ public abstract class ExtendedStructure extends Structure {
 
         record Filtered(PlacementFilter filter, BlockPos origin) implements Evaluation {}
 
-        /// See [ExtendedStructureBuilder#onlyWhenPickedFirst].
+        /// See [StructureBuilder#onlyWhenPickedFirst].
         record NotPickedFirst() implements Evaluation {}
     }
 

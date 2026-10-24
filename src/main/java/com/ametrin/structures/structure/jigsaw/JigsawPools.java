@@ -116,7 +116,7 @@ public final class JigsawPools {
 
         public Pool element(Identifier template, UnaryOperator<Element> configure) {
             var element = configure.apply(defaultElementSettings.apply(new Element()));
-            return add(element.build(template), element.weight);
+            return add(element.weight, element.build(template));
         }
 
         public Pool elements(List<String> names) {
@@ -129,17 +129,17 @@ public final class JigsawPools {
             return this;
         }
 
-        public Pool elementsI(List<Identifier> names, UnaryOperator<Element> configure) {
-            names.forEach(name -> element(name, configure));
+        public Pool elementIdentifiers(List<Identifier> templates, UnaryOperator<Element> configure) {
+            templates.forEach(template -> element(template, configure));
             return this;
         }
 
         public Pool empty(int weight) {
-            return add(StructurePoolElement.empty(), weight);
+            return add(weight, StructurePoolElement.empty());
         }
 
         /// Any other kind of element, such as a feature or list element.
-        public Pool add(Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> element, int weight) {
+        public Pool add(int weight, Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> element) {
             elements.add(Pair.of(element, weight));
             return this;
         }

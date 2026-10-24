@@ -2,7 +2,7 @@ package com.ametrin.structures.debug;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.ExtendedStructure;
-import com.ametrin.structures.structure.ExtendedStructureBuilder;
+import com.ametrin.structures.structure.StructureBuilder;
 import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.mojang.datafixers.util.Either;
@@ -221,7 +221,7 @@ final class StructureSpread {
     /// What the structure set generates in one chunk, decided like vanilla does: the structures are tried
     /// in a weighted order seeded by the chunk, and the first one that fits wins. If several targets fail,
     /// the reason comes from the first one that was tried and passed its biome check, since that's the most useful.
-    /// A target skipped by [ExtendedStructureBuilder#onlyWhenPickedFirst] reports the structure that took the spot.
+    /// A target skipped by [StructureBuilder#onlyWhenPickedFirst] reports the structure that took the spot.
     private static Outcome tryChunk(
             ServerLevel level, ChunkGeneratorStructureState state, StructureSet set, Predicate<Holder<Structure>> targets, ChunkPos chunk,
             Map<Holder<Structure>, Stopwatch> stopwatches) {

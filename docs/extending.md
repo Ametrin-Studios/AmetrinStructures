@@ -45,12 +45,12 @@ Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/si
 
 ## Structures of your own
 
-A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual:
+A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual. A structure that isn't an `ExtendedStructure` ignores the extended settings:
 
 ```java
 STRUCTURES.registerSet("castle", set -> set
         .scatteredGridPlacement(40, 0.5F)
-        .structure((settings, context) -> new CastleStructure(settings), castle -> castle.biomes(BiomeTags.IS_TAIGA)));
+        .structure((settings, _, context) -> new CastleStructure(settings), castle -> castle.biomes(BiomeTags.IS_TAIGA)));
 ```
 
 Register its structure type and piece types with your own `DeferredRegister`s.
@@ -86,14 +86,14 @@ public class CastleStructure extends ExtendedStructure {
 
 The biome is checked at the origin once `layOut` returns. If laying out is slow and you know the origin's X and Z before its Y, return `Evaluation.WrongBiome` early when `hasValidBiome(context, x, z, minY, maxY)` is false for the Ys the origin can have. Simple structures do this before measuring the terrain.
 
-Use the factory that also takes the extended settings, and the builder accepts filters like a simple structure's:
+Pass the extended settings on, and filters, processors and `onlyWhenPickedFirst()` work like on a simple structure. On a structure that isn't an `ExtendedStructure` they fail in datagen:
 
 ```java
 .structure((settings, extendedSettings, context) -> new CastleStructure(settings, extendedSettings),
         castle -> castle.biomes(BiomeTags.IS_TAIGA).filterFlatness(4))
 ```
 
-`SimpleStructure` and `ExtendedJigsawStructure` can be subclassed too. They have getters for all their settings, so a subclass can write its own codec. To create them outside a set, e.g. in your own bootstrap, use `SimpleStructure.builder(id)...build(context)` or `ExtendedJigsawStructure.builder(settings, pool)...build()`.
+`SimpleStructure` and `ExtendedJigsawStructure` can be subclassed too. They have getters for all their settings, so a subclass can write its own codec. To create them outside a set, e.g. in your own bootstrap, use `SimpleStructure.builder(id)...build(context)` or `ExtendedJigsawStructure.builder(id, pool)...build(context)`.
 
 For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
 

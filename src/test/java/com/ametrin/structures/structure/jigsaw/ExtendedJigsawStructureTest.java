@@ -1,12 +1,14 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.ExtendedStructure;
-import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.filter.PlacementFilters;
 import com.mojang.datafixers.util.Either;
+import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderSet;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -17,6 +19,7 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -72,9 +75,15 @@ class ExtendedJigsawStructureTest {
     }
 
     @Test
+    void theLastVerticalPlacementWins(MinecraftServer server) {
+        assertEquals(Optional.empty(), structure(server, builder -> builder.surface(3).verticalPlacement(64)).projectStartToHeightmap());
+        assertEquals(Optional.of(Heightmap.Types.OCEAN_FLOOR_WG), structure(server, builder -> builder.verticalPlacement(64).oceanFloor(3)).projectStartToHeightmap());
+    }
+
+    @Test
     void theStructuresProcessorsAreHandedToItsPieces(MinecraftServer server) {
         var mossify = mossify(server);
-        var structure = structure(server, new ExtendedStructureSettings(List.of(), Optional.of(mossify)), _ -> {});
+        var structure = structure(server, builder -> builder.processors(mossify));
         var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
         for (var piece : stub.getPiecesBuilder().build().pieces()) {
             assertEquals(Optional.of(mossify), JigsawStructureProcessors.get((PoolElementStructurePiece) piece));
@@ -84,7 +93,7 @@ class ExtendedJigsawStructureTest {
     @Test
     void thePiecesKeepTheStructuresProcessorsWhenSaved(MinecraftServer server) {
         var mossify = mossify(server);
-        var structure = structure(server, new ExtendedStructureSettings(List.of(), Optional.of(mossify)), _ -> {});
+        var structure = structure(server, builder -> builder.processors(mossify));
         var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
         var piece = stub.getPiecesBuilder().build().pieces().getFirst();
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
@@ -107,14 +116,19 @@ class ExtendedJigsawStructureTest {
     }
 
     private static ExtendedJigsawStructure structure(MinecraftServer server, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        return structure(server, ExtendedStructureSettings.DEFAULT, configure);
-    }
-
-    private static ExtendedJigsawStructure structure(MinecraftServer server, ExtendedStructureSettings extendedSettings, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        var pool = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL).getOrThrow(POOL);
-        var builder = ExtendedJigsawStructure.builder(new Structure.StructureSettings(HolderSet.empty()), extendedSettings, pool).size(1).startHeight(64);
+        var builder = ExtendedJigsawStructure.builder(Identifier.fromNamespaceAndPath("test", "town"), POOL).size(1).verticalPlacement(64);
         configure.accept(builder);
-        return builder.build();
+        return builder.build(new BootstrapContext<>() {
+            @Override
+            public Holder.Reference<Structure> register(ResourceKey<Structure> key, Structure value, Lifecycle lifecycle) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public <S> HolderGetter<S> lookup(ResourceKey<? extends Registry<? extends S>> key) {
+                return server.registryAccess().lookupOrThrow(key);
+            }
+        });
     }
 
     private static Structure.GenerationContext context(MinecraftServer server) {

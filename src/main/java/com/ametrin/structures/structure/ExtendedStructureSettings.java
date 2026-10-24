@@ -13,7 +13,7 @@ import java.util.Optional;
 
 /// @param filters    checked in order once the structure has a start position
 /// @param processors for template pieces without processors of their own, see [InlineFromStructureProcessor]
-/// @param onlyWhenPickedFirst see [ExtendedStructureBuilder#onlyWhenPickedFirst]
+/// @param onlyWhenPickedFirst see [StructureBuilder#onlyWhenPickedFirst]
 public record ExtendedStructureSettings(List<PlacementFilter> filters, Optional<Holder<StructureProcessorList>> processors, boolean onlyWhenPickedFirst) {
     public static final ExtendedStructureSettings DEFAULT = new ExtendedStructureSettings(List.of(), Optional.empty());
 

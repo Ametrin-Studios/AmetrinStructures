@@ -103,12 +103,10 @@ final class ExampleStructures {
     // A jigsaw castle, sometimes replaced by a simple ruin.
     static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
-            .structure("", 4, (settings, context) -> ExtendedJigsawStructure.builder(
-                                    settings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(CastlePools.START))
-                            .size(8)
-                            .surface()
-                            .build(),
-                    castle -> castle.biomes(BiomeTags.IS_TAIGA).terrainAdaptation(TerrainAdjustment.BEARD_THIN))
+            .jigsaw("", 4, CastlePools.START, castle -> castle
+                    .size(8)
+                    .biomes(BiomeTags.IS_TAIGA)
+                    .terrainAdaptation(TerrainAdjustment.BEARD_THIN))
             .simple("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
 
     static final class CastlePools {

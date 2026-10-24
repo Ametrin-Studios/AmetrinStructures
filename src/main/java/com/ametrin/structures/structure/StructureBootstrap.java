@@ -49,23 +49,18 @@ public final class StructureBootstrap {
     }
 
     public ResourceKey<Structure> registerSimple(String name, Consumer<SimpleStructure.Builder> configure) {
-        return register(name, StructureSetBuilder.simpleEntry(namespace, name, configure));
+        return register(name, StructureBuilder.configured(new SimpleStructure.Builder(namespace, name), configure));
     }
 
-    public ResourceKey<Structure> registerJigsaw(
-            String name, ResourceKey<StructureTemplatePool> pool, Consumer<ExtendedJigsawStructure.Builder> factory, Consumer<CustomStructureBuilder> configure) {
-        return register(name, StructureSetBuilder.jigsawEntry(name, pool, factory, configure));
+    public ResourceKey<Structure> registerJigsaw(String name, ResourceKey<StructureTemplatePool> startPool, Consumer<ExtendedJigsawStructure.Builder> configure) {
+        return register(name, StructureBuilder.configured(new ExtendedJigsawStructure.Builder(name, startPool), configure));
     }
 
-    public ResourceKey<Structure> registerStructure(String name, StructureSetBuilder.StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-        return register(name, StructureSetBuilder.customEntry(name, factory, configure));
+    public ResourceKey<Structure> registerStructure(String name, CustomStructureBuilder.Factory factory, Consumer<CustomStructureBuilder> configure) {
+        return register(name, StructureBuilder.configured(new CustomStructureBuilder(name, factory), configure));
     }
 
-    public ResourceKey<Structure> registerStructure(String name, StructureSetBuilder.ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-        return register(name, StructureSetBuilder.customEntry(name, factory, configure));
-    }
-
-    private ResourceKey<Structure> register(String name, StructureEntryBuilder<?> structure) {
+    private ResourceKey<Structure> register(String name, StructureBuilder<?> structure) {
         structure.validate();
         var key = ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath(namespace, name));
         checkUnregistered(key);
@@ -79,16 +74,16 @@ public final class StructureBootstrap {
         }
     }
 
-    public String getNamespace() {
+    public String namespace() {
         return namespace;
     }
 
     /// In the order they were registered.
-    public List<StructureSetKeys> getSets() {
+    public List<StructureSetKeys> sets() {
         return Collections.unmodifiableList(sets);
     }
 
-    public Stream<ResourceKey<Structure>> getStructures() {
+    public Stream<ResourceKey<Structure>> structures() {
         return structures.keySet().stream().sorted();
     }
 

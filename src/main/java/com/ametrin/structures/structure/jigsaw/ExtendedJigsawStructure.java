@@ -2,9 +2,8 @@ package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.ExtendedStructure;
-import com.ametrin.structures.structure.ExtendedStructureBuilder;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
-import com.ametrin.structures.structure.filter.PlacementFilter;
+import com.ametrin.structures.structure.StructureBuilder;
 import com.ametrin.structures.structure.filter.TerrainSampler;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
@@ -13,7 +12,10 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.util.valueproviders.IntProviders;
@@ -24,8 +26,8 @@ import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.heightproviders.ConstantHeight;
 import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
-import net.minecraft.world.level.levelgen.heightproviders.UniformHeight;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
@@ -36,10 +38,9 @@ import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -222,38 +223,33 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         return liquidSettings;
     }
 
-    public static Builder builder(StructureSettings settings, Holder<StructureTemplatePool> startPool) {
-        return new Builder(settings, startPool);
+    /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap].
+    /// Create it with [Builder#build(BootstrapContext)].
+    public static Builder builder(Identifier id, ResourceKey<StructureTemplatePool> startPool) {
+        return new Builder(id.toString(), startPool);
     }
 
-    /// Starts with `extendedSettings`.
-    public static Builder builder(StructureSettings settings, ExtendedStructureSettings extendedSettings, Holder<StructureTemplatePool> startPool) {
-        var builder = new Builder(settings, startPool);
-        extendedSettings.filters().forEach(builder::filter);
-        builder.processors = extendedSettings.processors();
-        builder.onlyWhenPickedFirst = extendedSettings.onlyWhenPickedFirst();
-        return builder;
-    }
-
-    public static class Builder implements ExtendedStructureBuilder<Builder> {
-        private final StructureSettings settings;
-        private final List<PlacementFilter> filters = new ArrayList<>();
-        private Optional<Holder<StructureProcessorList>> processors = Optional.empty();
-        private boolean onlyWhenPickedFirst;
-        private final Holder<StructureTemplatePool> startPool;
+    public static class Builder extends StructureBuilder<Builder> {
+        private final ResourceKey<StructureTemplatePool> startPool;
         private Optional<Identifier> startJigsawName = Optional.empty();
         private IntProvider size = ConstantInt.of(7);
         private HeightProvider startHeight = ConstantHeight.of(VerticalAnchor.absolute(0));
+        private Optional<Heightmap.Types> projectStartToHeightmap = Optional.of(Heightmap.Types.WORLD_SURFACE_WG);
         private boolean useExpansionHack = false;
-        private Optional<Heightmap.Types> projectStartToHeightmap = Optional.empty();
         private JigsawStructure.MaxDistance maxDistanceFromCenter = new JigsawStructure.MaxDistance(80);
         private List<PoolAliasBinding> poolAliases = List.of();
         private DimensionPadding dimensionPadding = JigsawStructure.DEFAULT_DIMENSION_PADDING;
         private LiquidSettings liquidSettings = LiquidSettings.IGNORE_WATERLOGGING;
 
-        public Builder(StructureSettings settings, Holder<StructureTemplatePool> startPool) {
-            this.settings = settings;
+        @ApiStatus.Internal
+        public Builder(String id, ResourceKey<StructureTemplatePool> startPool) {
+            super(id);
             this.startPool = startPool;
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
         }
 
         public Builder startJigsawName(Identifier name) {
@@ -277,44 +273,48 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
             return this;
         }
 
-        public Builder startHeight(HeightProvider startHeight) {
-            this.startHeight = startHeight;
+        /// Starts on the world surface at the start piece's center, which over water is the water's surface. The default.
+        public Builder surface() {
+            return surface(0);
+        }
+
+        /// Starts `offset` blocks above the world surface at the start piece's center.
+        public Builder surface(int offset) {
+            return verticalPlacement(Heightmap.Types.WORLD_SURFACE_WG, offset);
+        }
+
+        /// Starts on the ground at the start piece's center, under any water.
+        public Builder oceanFloor() {
+            return oceanFloor(0);
+        }
+
+        /// Starts `offset` blocks above the ground at the start piece's center, under any water.
+        public Builder oceanFloor(int offset) {
+            return verticalPlacement(Heightmap.Types.OCEAN_FLOOR_WG, offset);
+        }
+
+        /// Starts `offset` blocks above `heightmap` at the start piece's center.
+        public Builder verticalPlacement(Heightmap.Types heightmap, int offset) {
+            this.startHeight = ConstantHeight.of(VerticalAnchor.absolute(offset));
+            this.projectStartToHeightmap = Optional.of(heightmap);
             return this;
         }
 
-        public Builder startHeight(int y) {
-            return startHeight(ConstantHeight.of(VerticalAnchor.absolute(y)));
+        public Builder verticalPlacement(int y) {
+            return verticalPlacement(ConstantHeight.of(VerticalAnchor.absolute(y)));
         }
 
-        public Builder startHeight(int minY, int maxY) {
-            return startHeight(UniformHeight.of(VerticalAnchor.absolute(minY), VerticalAnchor.absolute(maxY)));
+        /// Starts at a height from `startHeight`, ignoring the terrain.
+        public Builder verticalPlacement(HeightProvider startHeight) {
+            this.startHeight = startHeight;
+            this.projectStartToHeightmap = Optional.empty();
+            return this;
         }
 
         /// Expands the bounding box of flat pieces (16 blocks tall or less) upward to fit the tallest piece their inward-facing jigsaws can attach. This lets layouts like village streets have taller buildings inside their footprint.
         public Builder useExpansionHack(boolean useExpansionHack) {
             this.useExpansionHack = useExpansionHack;
             return this;
-        }
-
-        public Builder projectStartToHeightmap(Heightmap.Types heightmap) {
-            this.projectStartToHeightmap = Optional.of(heightmap);
-            return this;
-        }
-
-        public Builder surface() {
-            return surface(0);
-        }
-
-        public Builder surface(int offset) {
-            return projectStartToHeightmap(Heightmap.Types.WORLD_SURFACE_WG).startHeight(offset);
-        }
-
-        public Builder oceanFloor() {
-            return oceanFloor(0);
-        }
-
-        public Builder oceanFloor(int offset) {
-            return projectStartToHeightmap(Heightmap.Types.OCEAN_FLOOR_WG).startHeight(offset);
         }
 
         public Builder maxDistanceFromCenter(int maxDistanceFromCenter) {
@@ -346,22 +346,16 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
         }
 
         @Override
-        public Builder filter(PlacementFilter filter) {
-            filters.add(filter);
-            return this;
+        public ExtendedJigsawStructure build(BootstrapContext<Structure> context) {
+            return (ExtendedJigsawStructure) super.build(context);
         }
 
         @Override
-        public Builder onlyWhenPickedFirst() {
-            onlyWhenPickedFirst = true;
-            return this;
-        }
-
-        public ExtendedJigsawStructure build() {
+        protected ExtendedJigsawStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
             return new ExtendedJigsawStructure(
                     settings,
-                    new ExtendedStructureSettings(filters, processors, onlyWhenPickedFirst),
-                    startPool,
+                    extendedSettings,
+                    context.lookup(Registries.TEMPLATE_POOL).getOrThrow(startPool),
                     startJigsawName,
                     size,
                     startHeight,
