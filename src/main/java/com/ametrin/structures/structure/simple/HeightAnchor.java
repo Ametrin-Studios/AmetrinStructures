@@ -57,6 +57,12 @@ public sealed interface HeightAnchor {
 
     int resolve(WorldGenerationContext world, Terrain terrain);
 
+    /// The lowest Y [#resolve] can return.
+    int lowest(WorldGenerationContext world);
+
+    /// The highest Y [#resolve] can return.
+    int highest(WorldGenerationContext world);
+
     Optional<Heightmap.Types> heightmap();
 
     /// The terrain height under the structure.
@@ -68,6 +74,16 @@ public sealed interface HeightAnchor {
     record Fixed(VerticalAnchor anchor) implements HeightAnchor {
         @Override
         public int resolve(WorldGenerationContext world, Terrain terrain) {
+            return anchor.resolveY(world);
+        }
+
+        @Override
+        public int lowest(WorldGenerationContext world) {
+            return anchor.resolveY(world);
+        }
+
+        @Override
+        public int highest(WorldGenerationContext world) {
             return anchor.resolveY(world);
         }
 
@@ -87,6 +103,17 @@ public sealed interface HeightAnchor {
         @Override
         public int resolve(WorldGenerationContext world, Terrain terrain) {
             return terrain.height(type, mode) + offset;
+        }
+
+        // A heightmap ranges from the bottom of the world to one above its top.
+        @Override
+        public int lowest(WorldGenerationContext world) {
+            return world.getMinGenY() + offset;
+        }
+
+        @Override
+        public int highest(WorldGenerationContext world) {
+            return world.getMinGenY() + world.getGenDepth() + offset;
         }
 
         @Override

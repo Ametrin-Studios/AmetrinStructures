@@ -11,6 +11,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -74,10 +75,22 @@ public class SimpleStructure extends ExtendedStructure {
 
     @Override
     protected Either<Candidate, Evaluation> layOut(GenerationContext context, Timer timer) {
-        // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
-        long start = System.nanoTime();
         var chunkPos = context.chunkPos();
         var unplaced = new BlockPos(chunkPos.getMinBlockX(), 0, chunkPos.getMinBlockZ());
+        var world = new WorldGenerationContext(context.chunkGenerator(), context.heightAccessor());
+
+        // Measuring the terrain is by far the slowest step, so first rule out chunks where no possible start height is in a valid biome.
+        long start = System.nanoTime();
+        var bounds = startHeight.bounds(world);
+        var mayFit = bounds.isEmpty() || hasValidBiome(context, unplaced.getX(), unplaced.getZ(), bounds.get().minInclusive(), bounds.get().maxInclusive());
+        timer.biomePrecheck(System.nanoTime() - start);
+        if (!mayFit) {
+            var y = Mth.clamp(context.chunkGenerator().getSeaLevel(), bounds.get().minInclusive(), bounds.get().maxInclusive());
+            return Either.right(new Evaluation.WrongBiome(unplaced.atY(y)));
+        }
+
+        // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
+        start = System.nanoTime();
         var created = new ArrayList<StructurePiece>();
         pieces.appendPieces(created, new PieceSource.Context(
                 context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
@@ -89,8 +102,7 @@ public class SimpleStructure extends ExtendedStructure {
 
         start = System.nanoTime();
         var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
-        var sampled = startHeight.sample(context.random(), new WorldGenerationContext(context.chunkGenerator(), context.heightAccessor()),
-                (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint.get()));
+        var sampled = startHeight.sample(context.random(), world, (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint.get()));
         timer.startHeight(System.nanoTime() - start);
         if (sampled.isEmpty()) {
             return Either.right(new Evaluation.NoStartHeight());

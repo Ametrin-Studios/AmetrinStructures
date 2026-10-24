@@ -6,20 +6,27 @@ import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.PlacementFilters;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.VerticalAnchor;
+import net.minecraft.world.level.levelgen.WorldGenerationContext;
+import net.minecraft.world.level.levelgen.heightproviders.ConstantHeight;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
@@ -33,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -93,6 +101,47 @@ class SimpleStructureEvaluateTest {
     }
 
     @Test
+    void aChunkWithoutAValidBiomeIsRejectedBeforeLayingOut(MinecraftServer server) {
+        var steps = new ArrayList<String>();
+        var timer = new SimpleStructure.Timer() {
+            @Override
+            public void biomePrecheck(long nanos) {
+                steps.add("biome_precheck");
+            }
+
+            @Override
+            public void pieces(long nanos) {
+                steps.add("pieces");
+            }
+        };
+        var result = structure(SimpleStructure.ON_SURFACE_START_HEIGHT, List.of()).evaluateGenerationPoint(context(server, biome -> false), timer);
+        assertInstanceOf(SimpleStructure.Evaluation.WrongBiome.class, result);
+        assertEquals(List.of("biome_precheck"), steps);
+    }
+
+    @Test
+    void thePrecheckFindsAValidBiomeAnywhereInTheRange(MinecraftServer server) {
+        var biomes = server.registryAccess().lookupOrThrow(Registries.BIOME);
+        var plains = biomes.getOrThrow(Biomes.PLAINS);
+        var desert = biomes.getOrThrow(Biomes.DESERT);
+        for (int y : new int[]{-64, 63, 319}) {
+            var context = context(server, plainsOnlyAt(y, plains, desert), biome -> biome.is(Biomes.PLAINS));
+            assertTrue(ExtendedStructure.hasValidBiome(context, 0, 0, -64, 319), "plains at " + y);
+            assertFalse(ExtendedStructure.hasValidBiome(context, 0, 0, y + 4, y + 100), "range above plains at " + y);
+            assertFalse(ExtendedStructure.hasValidBiome(context, 0, 0, y - 100, y - 4), "range below plains at " + y);
+        }
+    }
+
+    @Test
+    void heightmapAnchorsCanStartAnywhereOnTheirHeightmap(MinecraftServer server) {
+        var world = new WorldGenerationContext(context(server).chunkGenerator(), LevelHeightAccessor.create(-64, 384));
+        var range = StartHeight.between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24)).bounds(world).orElseThrow();
+        assertEquals(world.getMinGenY() + 8, range.minInclusive());
+        assertEquals(world.getMinGenY() + world.getGenDepth() - 24, range.maxInclusive());
+        assertEquals(Optional.empty(), StartHeight.of(ConstantHeight.of(VerticalAnchor.absolute(0))).bounds(world));
+    }
+
+    @Test
     void findValidGenerationPointNeedsTheBiome(MinecraftServer server) {
         assertTrue(structure(AT_64, List.of()).findValidGenerationPoint(context(server)).isPresent());
         assertTrue(structure(AT_64, List.of()).findValidGenerationPoint(context(server, biome -> false)).isEmpty());
@@ -134,15 +183,39 @@ class SimpleStructureEvaluateTest {
 
     private static Structure.GenerationContext context(MinecraftServer server, Predicate<Holder<Biome>> validBiome) {
         var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
+        return context(server, new FixedBiomeSource(plains), validBiome);
+    }
+
+    private static Structure.GenerationContext context(MinecraftServer server, BiomeSource biomeSource, Predicate<Holder<Biome>> validBiome) {
+        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
         return new Structure.GenerationContext(
                 server.registryAccess(),
                 new DebugLevelSource(plains),
-                new FixedBiomeSource(plains),
+                biomeSource,
                 RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 0,
                 new ChunkPos(0, 0),
                 LevelHeightAccessor.create(-64, 384),
                 validBiome);
+    }
+
+    private static BiomeSource plainsOnlyAt(int y, Holder<Biome> plains, Holder<Biome> other) {
+        return new BiomeSource() {
+            @Override
+            protected MapCodec<? extends BiomeSource> codec() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            protected Stream<Holder<Biome>> collectPossibleBiomes() {
+                return Stream.of(plains, other);
+            }
+
+            @Override
+            public Holder<Biome> getNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler) {
+                return quartY == QuartPos.fromBlock(y) ? plains : other;
+            }
+        };
     }
 }
