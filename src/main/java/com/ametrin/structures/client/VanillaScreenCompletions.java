@@ -5,7 +5,9 @@ import com.ametrin.structures.network.ASPayloads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.JigsawBlockEditScreen;
 import net.minecraft.client.gui.screens.inventory.StructureBlockEditScreen;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
@@ -15,37 +17,41 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-/// Completes template ids in the structure block's name box, from every template the server can load.
+import java.util.List;
+
+/// Completes ids in vanilla's structure block and jigsaw block screens, from what the server knows about.
 @ApiStatus.Internal
 @EventBusSubscriber(modid = AmetrinStructures.MOD_ID, value = Dist.CLIENT)
-public final class StructureBlockCompletions {
-    private static final String NAME_BOX_KEY = "structure_block.structure_name";
+public final class VanillaScreenCompletions {
+    // The boxes are private, so they're found by their label instead.
+    private record CompletedBox(Class<? extends Screen> screen, String label, Identifier keys) {}
+
+    private static final List<CompletedBox> BOXES = List.of(
+            new CompletedBox(StructureBlockEditScreen.class, "structure_block.structure_name", ASPayloads.RequestRegistryKeys.STRUCTURE_TEMPLATES),
+            new CompletedBox(JigsawBlockEditScreen.class, "jigsaw_block.pool", Registries.TEMPLATE_POOL.identifier()));
 
     private static @Nullable Screen screen;
     private static @Nullable CompletionPopup completions;
 
-    private StructureBlockCompletions() {}
+    private VanillaScreenCompletions() {}
 
     @SubscribeEvent
     static void onInit(ScreenEvent.Init.Post event) {
         screen = null;
         completions = null;
-        if (!(event.getScreen() instanceof StructureBlockEditScreen structureBlock)) {
-            return;
-        }
-        // The box is private, so it's found by its label instead.
-        for (var child : structureBlock.children()) {
-            if (child instanceof EditBox box
-                    && box.getMessage().getContents() instanceof TranslatableContents label
-                    && label.getKey().equals(NAME_BOX_KEY)) {
-                RegistryKeyCache.refresh();
-                screen = structureBlock;
-                completions = new CompletionPopup(Minecraft.getInstance().font);
-                completions.attach(box, () -> RegistryKeyCache.get(ASPayloads.RequestRegistryKeys.STRUCTURE_TEMPLATES)
-                        .stream()
-                        .map(Identifier::toString)
-                        .toList());
-                return;
+        var current = event.getScreen();
+        for (var child : current.children()) {
+            if (!(child instanceof EditBox box) || !(box.getMessage().getContents() instanceof TranslatableContents label)) {
+                continue;
+            }
+            for (var target : BOXES) {
+                if (target.screen().isInstance(current) && label.getKey().equals(target.label())) {
+                    RegistryKeyCache.refresh();
+                    screen = current;
+                    completions = new CompletionPopup(Minecraft.getInstance().font);
+                    completions.attach(box, () -> RegistryKeyCache.get(target.keys()).stream().map(Identifier::toString).toList());
+                    return;
+                }
             }
         }
     }
