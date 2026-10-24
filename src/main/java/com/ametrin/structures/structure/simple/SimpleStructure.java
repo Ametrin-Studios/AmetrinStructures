@@ -27,7 +27,10 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProc
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -95,8 +98,7 @@ public class SimpleStructure extends ExtendedStructure {
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
         var created = new ArrayList<StructurePiece>();
-        pieces.appendPieces(created, new PieceSource.Context(
-                context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
+        pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
         var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
         timer.pieces(System.nanoTime() - start);
         if (unplacedFootprint.isEmpty()) {

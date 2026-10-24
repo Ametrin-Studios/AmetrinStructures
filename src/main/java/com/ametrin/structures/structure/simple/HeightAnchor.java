@@ -55,7 +55,7 @@ public sealed interface HeightAnchor {
         return heightmap(Heightmap.Types.OCEAN_FLOOR_WG, offset, mode);
     }
 
-    int resolve(WorldGenerationContext world, Terrain terrain);
+    int resolve(WorldGenerationContext world, Terrain terrainSampler);
 
     /// The lowest Y [#resolve] can return.
     int lowest(WorldGenerationContext world);
@@ -73,7 +73,7 @@ public sealed interface HeightAnchor {
 
     record Fixed(VerticalAnchor anchor) implements HeightAnchor {
         @Override
-        public int resolve(WorldGenerationContext world, Terrain terrain) {
+        public int resolve(WorldGenerationContext world, Terrain terrainSampler) {
             return anchor.resolveY(world);
         }
 
@@ -101,8 +101,8 @@ public sealed interface HeightAnchor {
                 .apply(instance, OnHeightmap::new));
 
         @Override
-        public int resolve(WorldGenerationContext world, Terrain terrain) {
-            return terrain.height(type, mode) + offset;
+        public int resolve(WorldGenerationContext world, Terrain terrainSampler) {
+            return terrainSampler.height(type, mode) + offset;
         }
 
         // A heightmap ranges from the bottom of the world to one above its top.
