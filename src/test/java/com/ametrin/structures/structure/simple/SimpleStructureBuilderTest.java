@@ -46,7 +46,7 @@ class SimpleStructureBuilderTest {
 
     @Test
     void weightBelowOneFails() {
-        assertNamedFailure(() -> register(set -> set.simple(tower -> tower.single(b -> b.template(TEMPLATE)).weight(0))));
+        assertNamedFailure(() -> register(set -> set.simple("tower", 0, tower -> tower.single(b -> b.template(TEMPLATE)))));
     }
 
     @Test
@@ -98,8 +98,8 @@ class SimpleStructureBuilderTest {
     @Test
     void theKeysNameEveryStructure() {
         var keys = register(set -> set
-                .simple("small", tower -> tower.single("tower"))
-                .simple("large", tower -> tower.single("tower")));
+                .simple("small", 1, tower -> tower.single("tower"))
+                .simple("large", 1, tower -> tower.single("tower")));
         assertEquals("test:tower", keys.key().identifier().toString());
         assertEquals("test:tower/large", keys.structure("large").identifier().toString());
         assertEquals(List.of("small", "large"), List.copyOf(keys.declared().keySet()));

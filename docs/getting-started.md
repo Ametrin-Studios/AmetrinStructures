@@ -98,23 +98,22 @@ tower.single(t -> t
 
 `TerrainBox.footprint()` only uses the blocks at and below ground level. `TerrainBox.of(minX, minY, minZ, maxX, maxY, maxZ)` takes a box in template coordinates, as the structure block shows them. The terrain meets the structure at the bottom of the box.
 
-**Several structures per set.** A set can hold more than one structure. They're tried in weighted order at each spot, and if one doesn't fit, the next one gets a chance:
+**Several structures per set.** A set can hold more than one structure. They're tried in weighted order at each spot, and if one doesn't fit, the next one gets a chance. The weight goes after the suffix, like for `existing(...)`:
 
 ```java
 STRUCTURES.registerSet("graves", set -> set
         .horizontalPlacement(new YourCustomPlacement(...)) // you can also keep using evenSpreadPlacement
-        .simple("small", grave -> grave
+        .simple("small", 3, grave -> grave
                 .single("graves/small")
-                .surface()
-                .weight(3))
-        .simple("large", grave -> grave
+                .surface())
+        .simple("large", 1, grave -> grave
                 .single("graves/large")
                 .surface()));
 ```
 
 Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and `examplemod:graves/large`. `horizontalPlacement(...)` takes any placement, vanilla or your own.
 
-**Jigsaw and custom structures.** For something the simple type can't do, use `jigsaw(...)` or `structure(...)` instead of `simple(...)`. They take the same settings, like biomes and weight, and all three can be mixed in one set. `JigsawPools` helps you declare template pools in datagen. Its elements run fixtures and remove foam like simple structures do, and `foundation()` on an element extends that piece down to the ground. If you write pools by hand, use `ametrin_structures:single_pool_element` to get the same. Vanilla's element places fixture blocks as they are.
+**Jigsaw and custom structures.** For something the simple type can't do, use `jigsaw(...)` or `structure(...)` instead of `simple(...)`. They take the same settings and weight argument as `simple(...)`, and all three can be mixed in one set. `JigsawPools` helps you declare template pools in datagen. Its elements run fixtures and remove foam like simple structures do, and `foundation()` on an element extends that piece down to the ground. If you write pools by hand, use `ametrin_structures:single_pool_element` to get the same. Vanilla's element places fixture blocks as they are.
 
 **Fixtures.** A fixture block in a template turns into something else when the structure generates. It can fill a container with loot, spawn an entity, place a spawner, run a feature and more. Place one from the operator items tab and right-click it to configure it. "Generate now" runs it in place so you can test it. If you use the same setup in many places, put it in a [preset](extending.md#fixture-presets).
 
