@@ -89,13 +89,12 @@ final class ExampleStructures {
     // other one if the first doesn't fit.
     static final StructureSetKeys GRAVES = STRUCTURES.registerSet("graves", set -> set
             .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
-            .simple("small", grave -> grave
+            .simple("small", 3, grave -> grave
                     .surface()
                     .filterFlatness(2)
                     .single("graves/small")
-                    .weight(3)
             )
-            .simple("large", grave -> grave
+            .simple("large", 1, grave -> grave
                     .surface()
                     .filterFlatness(1)
                     .single("graves/large")
@@ -104,13 +103,13 @@ final class ExampleStructures {
     // A jigsaw castle, sometimes replaced by a simple ruin.
     static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
-            .structure((settings, context) -> ExtendedJigsawStructure.builder(
+            .structure("", 4, (settings, context) -> ExtendedJigsawStructure.builder(
                                     settings, context.lookup(Registries.TEMPLATE_POOL).getOrThrow(CastlePools.START))
                             .size(8)
                             .onSurface()
                             .build(),
-                    castle -> castle.biomes(BiomeTags.IS_TAIGA).terrainAdaptation(TerrainAdjustment.BEARD_THIN).weight(4))
-            .simple("ruin", ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
+                    castle -> castle.biomes(BiomeTags.IS_TAIGA).terrainAdaptation(TerrainAdjustment.BEARD_THIN))
+            .simple("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
 
     static final class CastlePools {
         static final ResourceKey<StructureTemplatePool> START = JigsawPools.key(MODID, "castle/start");

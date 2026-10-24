@@ -45,7 +45,7 @@ Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/si
 
 ## Structures of your own
 
-A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, weight, step, terrain adaptation and spawn overrides are set on the builder as usual:
+A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual:
 
 ```java
 STRUCTURES.registerSet("castle", set -> set

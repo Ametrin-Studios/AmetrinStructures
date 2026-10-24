@@ -31,7 +31,6 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
     private final Map<MobCategory, StructureSpawnOverride> spawnOverrides = new EnumMap<>(MobCategory.class);
     private GenerationStep.Decoration step = GenerationStep.Decoration.SURFACE_STRUCTURES;
     private TerrainAdjustment terrainAdaptation = TerrainAdjustment.NONE;
-    private int weight = 1;
     private final List<PlacementFilter> filters = new ArrayList<>();
     private @Nullable Function<HolderGetter<StructureProcessorList>, Holder<StructureProcessorList>> processors;
 
@@ -80,12 +79,6 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return self();
     }
 
-    /// Relative chance to be tried first among the set's structures. Defaults to 1.
-    public B weight(int weight) {
-        this.weight = weight;
-        return self();
-    }
-
     /// Checked in order once the structure has a start position. Only an [ExtendedStructure] runs them.
     @Override
     public B filter(PlacementFilter filter) {
@@ -110,20 +103,12 @@ public abstract class StructureEntryBuilder<B extends StructureEntryBuilder<B>> 
         return processors(Holder.direct(new StructureProcessorList(processors)));
     }
 
-    int weight() {
-        return weight;
-    }
-
     /// Whether filters or processors were set, which only an [ExtendedStructure] takes.
     protected boolean hasExtendedSettings() {
         return !filters.isEmpty() || processors != null;
     }
 
-    protected void validate() {
-        if (weight < 1) {
-            throw fail("weight " + weight + " must be at least 1");
-        }
-    }
+    protected void validate() {}
 
     /// Validates and creates the structure, for use outside a [StructureBootstrap].
     public Structure build(BootstrapContext<Structure> context) {

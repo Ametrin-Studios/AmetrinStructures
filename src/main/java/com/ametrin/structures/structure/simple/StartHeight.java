@@ -36,7 +36,7 @@ public sealed interface StartHeight {
     }
 
     /// Empty when the lower anchor is above the upper one.
-    OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain);
+    OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrainSampler);
 
     /// The Ys [#sample] can return. Empty when they're unknown or there are none.
     Optional<InclusiveRange<Integer>> bounds(WorldGenerationContext world);
@@ -46,8 +46,8 @@ public sealed interface StartHeight {
 
     record At(HeightAnchor anchor) implements StartHeight {
         @Override
-        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain) {
-            return OptionalInt.of(anchor.resolve(world, terrain));
+        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrainSampler) {
+            return OptionalInt.of(anchor.resolve(world, terrainSampler));
         }
 
         @Override
@@ -68,9 +68,9 @@ public sealed interface StartHeight {
                 .apply(instance, Between::new));
 
         @Override
-        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain) {
-            int low = min.resolve(world, terrain);
-            int high = max.resolve(world, terrain);
+        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrainSampler) {
+            int low = min.resolve(world, terrainSampler);
+            int high = max.resolve(world, terrainSampler);
             return low > high ? OptionalInt.empty() : OptionalInt.of(random.nextIntBetweenInclusive(low, high));
         }
 
@@ -89,7 +89,7 @@ public sealed interface StartHeight {
 
     record Provider(HeightProvider provider) implements StartHeight {
         @Override
-        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain) {
+        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrainSampler) {
             return OptionalInt.of(provider.sample(random, world));
         }
 

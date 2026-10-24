@@ -27,7 +27,10 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProc
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -80,20 +83,22 @@ public class SimpleStructure extends ExtendedStructure {
         var world = new WorldGenerationContext(context.chunkGenerator(), context.heightAccessor());
 
         // Measuring the terrain is by far the slowest step, so first rule out chunks where no possible start height is in a valid biome.
-        long start = System.nanoTime();
-        var bounds = startHeight.bounds(world);
-        var mayFit = bounds.isEmpty() || hasValidBiome(context, unplaced.getX(), unplaced.getZ(), bounds.get().minInclusive(), bounds.get().maxInclusive());
-        timer.biomePrecheck(System.nanoTime() - start);
-        if (!mayFit) {
-            var y = Mth.clamp(context.chunkGenerator().getSeaLevel(), bounds.get().minInclusive(), bounds.get().maxInclusive());
-            return Either.right(new Evaluation.WrongBiome(unplaced.atY(y)));
+        // Without terrain, the check at the origin is cheaper.
+        if (startHeight.groundHeightmap().isPresent()) {
+            long precheckStart = System.nanoTime();
+            var bounds = startHeight.bounds(world);
+            var mayFit = bounds.isEmpty() || hasValidBiome(context, unplaced.getX(), unplaced.getZ(), bounds.get().minInclusive(), bounds.get().maxInclusive());
+            timer.biomePrecheck(System.nanoTime() - precheckStart);
+            if (!mayFit) {
+                var y = Mth.clamp(context.chunkGenerator().getSeaLevel(), bounds.get().minInclusive(), bounds.get().maxInclusive());
+                return Either.right(new Evaluation.WrongBiome(unplaced.atY(y)));
+            }
         }
 
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
-        start = System.nanoTime();
+        long start = System.nanoTime();
         var created = new ArrayList<StructurePiece>();
-        pieces.appendPieces(created, new PieceSource.Context(
-                context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
+        pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
         var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
         timer.pieces(System.nanoTime() - start);
         if (unplacedFootprint.isEmpty()) {

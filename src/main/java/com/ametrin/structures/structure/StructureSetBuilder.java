@@ -27,7 +27,7 @@ public final class StructureSetBuilder {
     private final String namespace;
     private final String name;
 
-    private final Map<String, StructureEntryBuilder<?>> structures = new LinkedHashMap<>();
+    private final Map<String, Entry> structures = new LinkedHashMap<>();
     // Registered elsewhere, with their weights.
     private final Map<ResourceKey<Structure>, Integer> existing = new LinkedHashMap<>();
     // Takes the namespace and set name, for the default salt.
@@ -51,37 +51,37 @@ public final class StructureSetBuilder {
         ExtendedStructure create(Structure.StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context);
     }
 
-    public StructureSetBuilder simple(String suffix, Consumer<SimpleStructure.Builder> configure) {
-        return add(suffix, simpleEntry(namespace, compose(suffix), configure));
+    public StructureSetBuilder simple(String suffix, int weight, Consumer<SimpleStructure.Builder> configure) {
+        return add(suffix, weight, simpleEntry(namespace, compose(suffix), configure));
     }
 
     public StructureSetBuilder simple(Consumer<SimpleStructure.Builder> configure) {
-        return simple("", configure);
+        return simple("", 1, configure);
     }
 
-    public StructureSetBuilder jigsaw(String suffix, ResourceKey<StructureTemplatePool> pool, Consumer<ExtendedJigsawStructure.Builder> factory, Consumer<CustomStructureBuilder> configure) {
-        return add(suffix, jigsawEntry(compose(suffix), pool, factory, configure));
+    public StructureSetBuilder jigsaw(String suffix, int weight, ResourceKey<StructureTemplatePool> pool, Consumer<ExtendedJigsawStructure.Builder> factory, Consumer<CustomStructureBuilder> configure) {
+        return add(suffix, weight, jigsawEntry(compose(suffix), pool, factory, configure));
     }
 
     public StructureSetBuilder jigsaw(ResourceKey<StructureTemplatePool> pool, Consumer<ExtendedJigsawStructure.Builder> factory, Consumer<CustomStructureBuilder> configure) {
-        return jigsaw("", pool, factory, configure);
+        return jigsaw("", 1, pool, factory, configure);
     }
 
-    /// For a structure without filters or processors; see [#structure(String, ExtendedStructureFactory, Consumer)].
-    public StructureSetBuilder structure(String suffix, StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-        return add(suffix, customEntry(compose(suffix), factory, configure));
+    /// For a structure without filters or processors. see [#structure(String, int, ExtendedStructureFactory, Consumer)].
+    public StructureSetBuilder structure(String suffix, int weight, StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
+        return add(suffix, weight, customEntry(compose(suffix), factory, configure));
     }
 
     public StructureSetBuilder structure(StructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-        return structure("", factory, configure);
+        return structure("", 1, factory, configure);
     }
 
-    public StructureSetBuilder structure(String suffix, ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-        return add(suffix, customEntry(compose(suffix), factory, configure));
+    public StructureSetBuilder structure(String suffix, int weight, ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
+        return add(suffix, weight, customEntry(compose(suffix), factory, configure));
     }
 
     public StructureSetBuilder structure(ExtendedStructureFactory factory, Consumer<CustomStructureBuilder> configure) {
-        return structure("", factory, configure);
+        return structure("", 1, factory, configure);
     }
 
     /// Adds a structure registered elsewhere, like a vanilla one or one from [StructureBootstrap#registerSimple].
@@ -91,20 +91,27 @@ public final class StructureSetBuilder {
 
     /// @param weight relative chance to be tried first among the set's structures
     public StructureSetBuilder existing(ResourceKey<Structure> structure, int weight) {
-        if (weight < 1) {
-            throw fail("gives " + structure.identifier() + " weight " + weight + ", which must be at least 1");
-        }
+        checkWeight(structure.identifier().toString(), weight);
         if (existing.putIfAbsent(structure, weight) != null) {
             throw fail("adds " + structure.identifier() + " twice");
         }
         return this;
     }
 
-    private StructureSetBuilder add(String suffix, StructureEntryBuilder<?> structure) {
-        if (structures.putIfAbsent(suffix, structure) != null) {
+    private StructureSetBuilder add(String suffix, int weight, StructureEntryBuilder<?> structure) {
+        checkWeight(StructureSetKeys.describe(suffix), weight);
+        if (structures.putIfAbsent(suffix, new Entry(structure, weight)) != null) {
             throw fail("declares the structure " + StructureSetKeys.describe(suffix) + " twice");
         }
         return this;
+    }
+
+    private record Entry(StructureEntryBuilder<?> structure, int weight) {}
+
+    private void checkWeight(String structure, int weight) {
+        if (weight < 1) {
+            throw fail("gives " + structure + " weight " + weight + ", which must be at least 1");
+        }
     }
 
     static SimpleStructure.Builder simpleEntry(String namespace, String id, Consumer<SimpleStructure.Builder> configure) {
@@ -201,20 +208,20 @@ public final class StructureSetBuilder {
         if (structures.isEmpty() && existing.isEmpty()) {
             throw fail("has no structures");
         }
-        structures.values().forEach(StructureEntryBuilder::validate);
+        structures.values().forEach(entry -> entry.structure().validate());
         var resolvedPlacement = resolvePlacement();
 
         var keys = new LinkedHashMap<String, ResourceKey<Structure>>();
         var bootstraps = new LinkedHashMap<ResourceKey<Structure>, Function<BootstrapContext<Structure>, Structure>>();
         var weights = new LinkedHashMap<>(existing);
-        structures.forEach((suffix, structure) -> {
+        structures.forEach((suffix, entry) -> {
             var key = ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath(namespace, compose(suffix)));
             if (existing.containsKey(key)) {
                 throw fail("declares " + key.identifier() + " and also adds it as an existing structure");
             }
             keys.put(suffix, key);
-            bootstraps.put(key, structure::bootstrap);
-            weights.put(key, structure.weight());
+            bootstraps.put(key, entry.structure()::bootstrap);
+            weights.put(key, entry.weight());
         });
 
         Function<BootstrapContext<StructureSet>, StructureSet> set = context -> {
