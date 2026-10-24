@@ -80,7 +80,7 @@ The builders can do a lot more than this example. Your IDE's completion lists ev
 
 **Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several together. Each template can have its own offset and processors.
 
-**Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. A `HeightMode` on a heightmap anchor, e.g. `surface(0, HeightMode.LOWEST)`, sets where the terrain height is measured: at the origin, as the average of the corners, or at the lowest corner.
+**Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. A `HeightMode` on a heightmap anchor, e.g. `surface(0, HeightMode.LOWEST_CORNER)`, sets where the terrain height is measured: at the origin, as the average of the corners, or at the lowest corner.
 
 **Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't float on uneven terrain.
 
@@ -112,6 +112,8 @@ STRUCTURES.registerSet("graves", set -> set
 ```
 
 Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` and `examplemod:graves/large`. `horizontalPlacement(...)` takes any placement, vanilla or your own.
+
+`onlyWhenPickedFirst()` keeps a structure from being tried as a fallback when another one of the set didn't fit. It can be used to optimize variants that fail at the same spots: each spot is measured once, and locating one no longer stops at the others' spots.
 
 **Jigsaw and custom structures.** For something the simple type can't do, use `jigsaw(...)` or `structure(...)` instead of `simple(...)`. They take the same settings and weight argument as `simple(...)`, and all three can be mixed in one set. `JigsawPools` helps you declare template pools in datagen. Its elements run fixtures and remove foam like simple structures do, and `foundation()` on an element extends that piece down to the ground. If you write pools by hand, use `ametrin_structures:single_pool_element` to get the same. Vanilla's element places fixture blocks as they are.
 

@@ -68,6 +68,7 @@
   "commands.ametrin_structures.spread.reason.filter": "filter %s",
   "commands.ametrin_structures.spread.reason.taken": "another structure of the set, %s",
   "commands.ametrin_structures.spread.reason.no_generation_point": "no generation point or wrong biome",
+  "commands.ametrin_structures.spread.reason.not_picked_first": "another structure of the set is tried first",
   "commands.ametrin_structures.spread.heights": " Start height: average %s, lowest %s, highest %s",
   "commands.ametrin_structures.spread.spacing": " Distance to the nearest other: average %s, closest %s blocks",
   "commands.ametrin_structures.spread.nearest": " Nearest: %s blocks away at %s",

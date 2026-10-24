@@ -136,25 +136,25 @@ public final class PieceSources {
             super(defaultNamespace, processorsGetter);
         }
 
-        public WeightedBuilder add(PieceSource source, int weight) {
+        public WeightedBuilder add(int weight, PieceSource source) {
             builder.add(source, weight);
             return this;
         }
 
-        public WeightedBuilder single(Consumer<TemplateEntry.Builder> configure, int weight) {
-            return add(makeSingle(configure), weight);
+        public WeightedBuilder single(int weight, Consumer<TemplateEntry.Builder> configure) {
+            return add(weight, makeSingle(configure));
         }
 
-        public WeightedBuilder single(String template, int weight) {
-            return single(b -> b.template(template), weight);
+        public WeightedBuilder single(int weight, String template) {
+            return single(weight, b -> b.template(template));
         }
 
-        public WeightedBuilder weighted(Consumer<WeightedBuilder> configure, int weight) {
-            return add(makeWeighted(configure), weight);
+        public WeightedBuilder weighted(int weight, Consumer<WeightedBuilder> configure) {
+            return add(weight, makeWeighted(configure));
         }
 
-        public WeightedBuilder compound(Consumer<CompoundBuilder> configure, int weight) {
-            return add(makeCompound(configure), weight);
+        public WeightedBuilder compound(int weight, Consumer<CompoundBuilder> configure) {
+            return add(weight, makeCompound(configure));
         }
 
         public WeightedSource build() {

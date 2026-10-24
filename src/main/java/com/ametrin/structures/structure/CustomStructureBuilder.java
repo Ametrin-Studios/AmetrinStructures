@@ -25,7 +25,7 @@ public final class CustomStructureBuilder extends StructureEntryBuilder<CustomSt
     protected void validate() {
         super.validate();
         if (hasExtendedSettings() && !takesFilters) {
-            throw fail("filters and processors need a factory that takes ExtendedStructureSettings");
+            throw fail("filters, processors and onlyWhenPickedFirst need a factory that takes ExtendedStructureSettings");
         }
     }
 
