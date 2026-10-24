@@ -84,6 +84,8 @@ public class CastleStructure extends ExtendedStructure {
 }
 ```
 
+The biome is checked at the origin once `layOut` returns. If laying out is slow and you know the origin's X and Z before its Y, return `Evaluation.WrongBiome` early when `hasValidBiome(context, x, z, minY, maxY)` is false for the Ys the origin can have. Simple structures do this before measuring the terrain.
+
 Use the factory that also takes the extended settings, and the builder accepts filters like a simple structure's:
 
 ```java

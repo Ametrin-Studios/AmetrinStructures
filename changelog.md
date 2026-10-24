@@ -1,8 +1,12 @@
-## 0.2.1-beta
+## 0.3.0-beta
 - jigsaw size as an `IntProvider`
 - per structure processors for jigsaw structures
 - `RemoveUnsupportedProcessor`
+- renamed `HeightMode` types
+- added `HeightMode.HIGHEST_CORNER`
+- `HeightMode` is now specified by the `HeightAnchor` and not the structure
 - Foam blocks placed by players no longer replace replaceable blocks
+- Check biomes in the origin column before sampling terrain height
 
 ## 0.2.0-beta
 - `EvenSpreadPlacement`, now the default placement

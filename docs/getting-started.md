@@ -76,7 +76,7 @@ The builders can do a lot more than this example. Your IDE's completion lists ev
 
 **Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several together. Each template can have its own offset and processors.
 
-**Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. `verticalPlacementMode(...)` sets where the terrain height is measured: at the origin corner, as the average of the corners, or at the lowest corner.
+**Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. A `HeightMode` on a heightmap anchor, e.g. `surface(0, HeightMode.LOWEST)`, sets where the terrain height is measured: at the origin, as the average of the corners, or at the lowest corner.
 
 **Foundations.** `foundation()` extends the bottom of the structure down to the ground, so it doesn't float on uneven terrain.
 

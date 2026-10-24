@@ -181,7 +181,7 @@ public final class PlacementFilters {
         }
     }
 
-    /// Requires every biome within the structure's box, widened by `margin`, to be in `biomes`, or in the structure's biomes when empty.
+    /// Requires every biome at the bottom and top of the structure's box, widened by `margin`, to be in `biomes`, or in the structure's biomes when empty.
     public record WithinBiome(Optional<HolderSet<Biome>> biomes, int margin) implements PlacementFilter {
         public static final int MAX_MARGIN = 64;
 

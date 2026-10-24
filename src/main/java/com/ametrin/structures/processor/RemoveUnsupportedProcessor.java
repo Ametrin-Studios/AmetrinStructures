@@ -31,6 +31,9 @@ public final class RemoveUnsupportedProcessor implements StructureProcessor {
             List<StructureTemplate.StructureBlockInfo> original,
             List<StructureTemplate.StructureBlockInfo> processed,
             StructurePlaceSettings settings) {
+        if (processed.stream().noneMatch(info -> info.state().getBlock() instanceof MultifaceBlock)) {
+            return processed;
+        }
         var placed = new HashMap<BlockPos, BlockState>();
         processed.forEach(info -> placed.put(info.pos(), info.state()));
         var result = new ArrayList<StructureTemplate.StructureBlockInfo>(processed.size());

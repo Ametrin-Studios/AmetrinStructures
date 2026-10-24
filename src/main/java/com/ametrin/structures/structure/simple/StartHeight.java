@@ -3,6 +3,7 @@ package com.ametrin.structures.structure.simple;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.InclusiveRange;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
@@ -10,7 +11,6 @@ import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
 
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.function.ToIntFunction;
 
 /// Where a structure generates vertically: a [HeightAnchor], a random height between two anchors, or a [HeightProvider].
 public sealed interface StartHeight {
@@ -36,17 +36,23 @@ public sealed interface StartHeight {
     }
 
     /// Empty when the lower anchor is above the upper one.
-    ///
-    /// @param terrainSampler the terrain height on a heightmap
-    OptionalInt sample(RandomSource random, WorldGenerationContext world, ToIntFunction<Heightmap.Types> terrainSampler);
+    OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain);
+
+    /// The Ys [#sample] can return. Empty when they're unknown or there are none.
+    Optional<InclusiveRange<Integer>> bounds(WorldGenerationContext world);
 
     /// The heightmap the structure stands on, if any.
     Optional<Heightmap.Types> groundHeightmap();
 
     record At(HeightAnchor anchor) implements StartHeight {
         @Override
-        public OptionalInt sample(RandomSource random, WorldGenerationContext world, ToIntFunction<Heightmap.Types> terrainSampler) {
-            return OptionalInt.of(anchor.resolve(world, terrainSampler));
+        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain) {
+            return OptionalInt.of(anchor.resolve(world, terrain));
+        }
+
+        @Override
+        public Optional<InclusiveRange<Integer>> bounds(WorldGenerationContext world) {
+            return Optional.of(new InclusiveRange<>(anchor.lowest(world), anchor.highest(world)));
         }
 
         @Override
@@ -62,10 +68,17 @@ public sealed interface StartHeight {
                 .apply(instance, Between::new));
 
         @Override
-        public OptionalInt sample(RandomSource random, WorldGenerationContext world, ToIntFunction<Heightmap.Types> terrainSampler) {
-            int low = min.resolve(world, terrainSampler);
-            int high = max.resolve(world, terrainSampler);
+        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain) {
+            int low = min.resolve(world, terrain);
+            int high = max.resolve(world, terrain);
             return low > high ? OptionalInt.empty() : OptionalInt.of(random.nextIntBetweenInclusive(low, high));
+        }
+
+        @Override
+        public Optional<InclusiveRange<Integer>> bounds(WorldGenerationContext world) {
+            int low = min.lowest(world);
+            int high = max.highest(world);
+            return low > high ? Optional.empty() : Optional.of(new InclusiveRange<>(low, high));
         }
 
         @Override
@@ -76,8 +89,13 @@ public sealed interface StartHeight {
 
     record Provider(HeightProvider provider) implements StartHeight {
         @Override
-        public OptionalInt sample(RandomSource random, WorldGenerationContext world, ToIntFunction<Heightmap.Types> terrainSampler) {
+        public OptionalInt sample(RandomSource random, WorldGenerationContext world, HeightAnchor.Terrain terrain) {
             return OptionalInt.of(provider.sample(random, world));
+        }
+
+        @Override
+        public Optional<InclusiveRange<Integer>> bounds(WorldGenerationContext world) {
+            return Optional.empty();
         }
 
         @Override

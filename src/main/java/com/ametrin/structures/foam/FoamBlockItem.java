@@ -38,11 +38,10 @@ public class FoamBlockItem extends BlockItem {
 
     @Override
     public @Nullable BlockPlaceContext updatePlacementContext(BlockPlaceContext context) {
-        if(context.getLevel().isEmptyBlock(context.getClickedPos())){
+        if (context.getLevel().isEmptyBlock(context.getClickedPos())) {
             return context;
         }
-
-        if(!context.replacingClickedOnBlock()){
+        if (!context.replacingClickedOnBlock()) {
             return null;
         }
 

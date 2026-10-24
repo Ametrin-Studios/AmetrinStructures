@@ -8,6 +8,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -141,6 +142,9 @@ public abstract class ExtendedStructure extends Structure {
     public interface Timer {
         Timer NONE = new Timer() {};
 
+        /// Checking the biome before laying out, see [#hasValidBiome].
+        default void biomePrecheck(long nanos) {}
+
         /// Creating the pieces, which loads their templates the first time.
         default void pieces(long nanos) {}
 
@@ -150,8 +154,29 @@ public abstract class ExtendedStructure extends Structure {
     }
 
     public static boolean isValidBiome(GenerationContext context, BlockPos start) {
+        return isValidBiome(context, QuartPos.fromBlock(start.getX()), QuartPos.fromBlock(start.getY()), QuartPos.fromBlock(start.getZ()));
+    }
+
+    /// Whether [#isValidBiome(GenerationContext, BlockPos)] passes for any Y from `minY` to `maxY` at `x`, `z`.
+    /// Rejects a chunk before an expensive layout when the start's X and Z are known first.
+    public static boolean hasValidBiome(GenerationContext context, int x, int z, int minY, int maxY) {
+        int quartX = QuartPos.fromBlock(x);
+        int quartZ = QuartPos.fromBlock(z);
+        int bottom = QuartPos.fromBlock(minY);
+        int top = QuartPos.fromBlock(maxY);
+        // Outward from sea level, where most structures start, so a valid biome is usually found with the first samples.
+        int start = Mth.clamp(QuartPos.fromBlock(context.chunkGenerator().getSeaLevel()), bottom, top);
+        for (int distance = 0; start - distance >= bottom || start + distance <= top; distance++) {
+            if (start + distance <= top && isValidBiome(context, quartX, start + distance, quartZ)
+                    || distance > 0 && start - distance >= bottom && isValidBiome(context, quartX, start - distance, quartZ)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isValidBiome(GenerationContext context, int quartX, int quartY, int quartZ) {
         // based on GenerationContext#isValidBiome, which takes a finished stub.
-        return context.validBiome().test(context.biomeResolver().getNoiseBiome(
-                QuartPos.fromBlock(start.getX()), QuartPos.fromBlock(start.getY()), QuartPos.fromBlock(start.getZ())));
+        return context.validBiome().test(context.biomeResolver().getNoiseBiome(quartX, quartY, quartZ));
     }
 }

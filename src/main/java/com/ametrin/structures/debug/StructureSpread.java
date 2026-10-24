@@ -68,6 +68,7 @@ final class StructureSpread {
 
     /// @param argument names a filter or is empty
     public record Step(String key, String argument) {
+        static final Step BIOME_PRECHECK = new Step("biome_precheck", "");
         static final Step PIECES = new Step("pieces", "");
         static final Step START_HEIGHT = new Step("start_height", "");
 
@@ -114,6 +115,11 @@ final class StructureSpread {
         void attempted(long nanos) {
             this.nanos += nanos;
             attempts++;
+        }
+
+        @Override
+        public void biomePrecheck(long nanos) {
+            steps.merge(Step.BIOME_PRECHECK, nanos, Long::sum);
         }
 
         @Override

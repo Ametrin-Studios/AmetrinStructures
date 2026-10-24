@@ -79,6 +79,7 @@
   "commands.ametrin_structures.spread.timing.steps": "  %s",
   "commands.ametrin_structures.spread.timing.step": "%s %s (%s%%)",
   "commands.ametrin_structures.spread.timing.limited": " Times show the %s slowest structures",
+  "commands.ametrin_structures.spread.step.biome_precheck": "biome pre-check",
   "commands.ametrin_structures.spread.step.pieces": "pieces",
   "commands.ametrin_structures.spread.step.start_height": "start height",
   "commands.ametrin_structures.spread.step.filter": "filter %s",
