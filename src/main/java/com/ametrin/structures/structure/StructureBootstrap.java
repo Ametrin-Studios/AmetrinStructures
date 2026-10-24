@@ -87,6 +87,7 @@ public final class StructureBootstrap {
     public List<StructureSetKeys> getSets() {
         return Collections.unmodifiableList(sets);
     }
+
     public Stream<ResourceKey<Structure>> getStructures() {
         return structures.keySet().stream().sorted();
     }
