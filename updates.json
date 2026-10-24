@@ -1,11 +1,12 @@
 {
   "homepage": "https://www.curseforge.com/minecraft/mc-mods/dungeonsenhanced",
   "promos": {
-    "26.1.2-latest": "0.2.0-beta",
-    "26.1.2-recommended": "0.2.0-beta"
+    "26.1.2-latest": "0.3.0-beta",
+    "26.1.2-recommended": "0.3.0-beta"
   },
   "26.1.2": {
-    "0.2.0-beta": "initial release",
+    "0.3.0-beta": "lots of additions and changes",
+    "0.2.0-beta": "lots of additions and changes",
     "0.1.0-beta": "initial release"
   }
 }
