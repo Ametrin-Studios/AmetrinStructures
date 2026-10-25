@@ -129,6 +129,21 @@ The library has two placements:
 
 `StructurePlacements.hasStructureChunkInRange(...)` checks if a structure, holder set or tag has a spot nearby. `LakeProof` checks if a position is inside a structure. Both are useful for placements and features that should keep away from structures.
 
+### Excluding dimensions
+
+Biomes keep most structures in the right dimension. When a dimension reuses vanilla's biomes the `ametrin_structures:excluded_dimensions` data map takes structure sets out of it. It works for any set, vanilla and modded, e.g. in `data/<namespace>/data_maps/worldgen/structure_set/excluded_dimensions.json`:
+
+```json
+{
+  "values": {
+    "minecraft:villages": ["examplemod:example_dimension"],
+    "minecraft:igloos": ["examplemod:example_dimension"]
+  }
+}
+```
+
+The set's structures don't generate there, and `/locate`, explorer maps and the spread report skip them. Lists from several packs are combined. Changes need a server restart.
+
 Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java), [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java), [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java) and [`LakeProof`](../src/main/java/com/ametrin/structures/placement/LakeProof.java).
 
 ## Processors

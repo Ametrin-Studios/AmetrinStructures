@@ -31,6 +31,7 @@ public class AmetrinStructures {
     public AmetrinStructures(IEventBus modBus, ModContainer container) {
         modBus.addListener(ASRegistries::register);
         modBus.addListener(ASRegistries::registerDatapackRegistries);
+        modBus.addListener(ASDataMaps::register);
         modBus.addListener(AmetrinStructures::registerPayloads);
         modBus.addListener(ASDataComponents::registerTooltips);
         modBus.addListener(AmetrinStructures::addToCreativeTabs);
