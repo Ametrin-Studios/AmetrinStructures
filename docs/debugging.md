@@ -76,6 +76,12 @@ If a value can't be parsed or isn't accepted, the fixture uses its default inste
 
 Broken fixture presets are logged as warnings when the server starts: unknown fixture types, fields or presets, values that can't be parsed, and presets that use each other in a loop.
 
+## Loot tables
+
+`/ametrin loot_stats <loot_table> [samples]` rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. For each item it shows how many a chest has on average, how many chests have at least one, and the fewest and most seen in one chest. The table can also be inline JSON, like for `/loot`.
+
+The counts are what the table produces. A real chest can hold fewer when the items don't fit.
+
 ## Structure blocks
 
 The structure block's name box completes every template id the server can load, from mods, datapacks and the world's saved templates. The jigsaw block's pool box completes the server's template pools.

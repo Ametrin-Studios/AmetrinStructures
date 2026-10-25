@@ -3,6 +3,7 @@ package com.ametrin.structures.debug;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -45,7 +46,7 @@ class ExportTemplatesCommandTest {
     void theCommandsJoinAnAmetrinCommandRegisteredBefore() {
         var dispatcher = new CommandDispatcher<CommandSourceStack>();
         dispatcher.register(Commands.literal("ametrin").then(Commands.literal("other")));
-        StructuresCommand.register(dispatcher);
+        StructuresCommand.register(dispatcher, Commands.createValidationContext(VanillaRegistries.createLookup()));
         var ametrin = dispatcher.getRoot().getChild("ametrin");
         assertNotNull(ametrin.getChild("other"));
         assertNotNull(ametrin.getChild("structures").getChild("check"));
