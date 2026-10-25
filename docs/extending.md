@@ -142,6 +142,19 @@ Biomes keep most structures in the right dimension. When a dimension reuses vani
 }
 ```
 
+Or with a `DataMapProvider`:
+
+```java
+static final ResourceKey<Level> EXAMPLE_DIMENSION = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("examplemod", "example_dimension"));
+
+@Override
+protected void gather(HolderLookup.Provider provider) {
+    builder(ASDataMaps.EXCLUDED_DIMENSIONS)
+            .add(BuiltinStructureSets.VILLAGES, List.of(EXAMPLE_DIMENSION), false)
+            .add(BuiltinStructureSets.IGLOOS, List.of(EXAMPLE_DIMENSION), false);
+}
+```
+
 The set's structures don't generate there, and `/locate`, explorer maps and the spread report skip them. Lists from several packs are combined. Changes need a server restart.
 
 Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java), [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java), [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java) and [`LakeProof`](../src/main/java/com/ametrin/structures/placement/LakeProof.java).
