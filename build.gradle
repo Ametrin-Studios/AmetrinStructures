@@ -19,6 +19,11 @@ sourceSets.main.resources {
     exclude("src/generated/**/.cache") // datagen cache files
 }
 
+// part of the mod in dev runs, left out of the jar.
+sourceSets {
+    gametest
+}
+
 repositories {
     mavenCentral()
     exclusiveContent {
@@ -49,6 +54,7 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'ametrin_structures.template_sources', files('src/main/resources', 'src/gametest/resources').asPath
         }
 
         server {
@@ -74,9 +80,12 @@ neoForge {
         }
     }
 
+    addModdingDependenciesTo(sourceSets.gametest)
+
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            sourceSet(sourceSets.gametest)
         }
     }
 
@@ -98,6 +107,8 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testImplementation "net.neoforged:testframework:${neo_version}"
+
+    gametestImplementation sourceSets.main.output
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
