@@ -3,6 +3,8 @@
   "package": "com.ametrin.structures.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "ChunkGeneratorStructureStateAccessor",
+    "ChunkMapMixin",
     "LakeFeatureMixin",
     "MinecartSpawnerMixin",
     "PoolElementStructurePieceMixin",
