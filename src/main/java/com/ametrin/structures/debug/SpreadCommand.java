@@ -68,7 +68,7 @@ public final class SpreadCommand {
     private static final int MAX_RADIUS = 1024;
     private static final String VISIT_NEXT = "/ametrin structures visit next";
 
-    private static final DynamicCommandExceptionType INVALID_STRUCTURE = new DynamicCommandExceptionType(
+    static final DynamicCommandExceptionType INVALID_STRUCTURE = new DynamicCommandExceptionType(
             id -> Component.translatableEscape("commands.locate.structure.invalid", id));
     private static final DynamicCommandExceptionType INVALID_SET = new DynamicCommandExceptionType(
             id -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_set", id));

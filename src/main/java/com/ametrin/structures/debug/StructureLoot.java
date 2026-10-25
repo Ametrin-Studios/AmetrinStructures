@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /// The loot containers in real layouts of a structure, without placing it.
 ///
@@ -42,14 +43,16 @@ final class StructureLoot {
 
     record Container(ResourceKey<LootTable> lootTable, BlockPos pos) {}
 
-    /// Lays out `structure` at up to `count` spots its sets pick within `radius` chunks of `center`, nearest first, and returns each layout's containers.
-    /// A spot another structure of the set takes is skipped.
-    static List<List<Container>> layouts(ServerLevel level, Holder<Structure> structure, ChunkPos center, int radius, int count, RandomSource random) {
+    record Layout(Holder<Structure> structure, List<Container> containers) {}
+
+    /// Lays out the structures `structures` accepts at up to `count` spots their sets pick within `radius` chunks of `center`, nearest first.
+    /// A spot a structure `structures` rejects takes is skipped.
+    static List<Layout> layouts(ServerLevel level, Predicate<Holder<Structure>> structures, ChunkPos center, int radius, int count, RandomSource random) {
         var state = level.getChunkSource().getGeneratorState();
         record Spot(ChunkPos chunk, StructureSet set) {}
         var spots = new ArrayList<Spot>();
         for (var set : state.possibleStructureSets()) {
-            if (set.value().structures().stream().noneMatch(entry -> entry.structure().value() == structure.value())) {
+            if (set.value().structures().stream().noneMatch(entry -> structures.test(entry.structure()))) {
                 continue;
             }
             for (int x = center.x() - radius; x <= center.x() + radius; x++) {
@@ -62,17 +65,17 @@ final class StructureLoot {
         }
         spots.sort(Comparator.comparingInt(spot -> spot.chunk().distanceSquared(center)));
 
-        var layouts = new ArrayList<List<Container>>();
+        var layouts = new ArrayList<Layout>();
         for (var spot : spots) {
             if (layouts.size() == count) {
                 break;
             }
             for (var option : StructureSetOrder.of(spot.set(), state.getLevelSeed(), spot.chunk())) {
-                var candidate = option.structure().value();
-                var stub = candidate.findValidGenerationPoint(StructureSpread.context(level, state, candidate, spot.chunk()));
+                var candidate = option.structure();
+                var stub = candidate.value().findValidGenerationPoint(StructureSpread.context(level, state, candidate.value(), spot.chunk()));
                 if (stub.isPresent()) {
-                    if (candidate == structure.value()) {
-                        layouts.add(containers(level, stub.get().getPiecesBuilder().build(), random));
+                    if (structures.test(candidate)) {
+                        layouts.add(new Layout(candidate, containers(level, stub.get().getPiecesBuilder().build(), random)));
                     }
                     break;
                 }

@@ -7,19 +7,22 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.ResourceKeyArgument;
+import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
 import net.minecraft.commands.arguments.ResourceOrIdArgument;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -29,11 +32,13 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.IntFunction;
+import java.util.stream.Collectors;
 
 /// Rolls loot as if the caller opened chests, luck included, and reports how often each item comes up.
 ///
 /// - `/ametrin loot_stats table <loot_table> [samples]`: one chest where the caller stands.
 /// - `/ametrin loot_stats structure <structure> [layouts] [radius]`: every chest in layouts of the structure near the caller, see [StructureLoot].
+///   For a structure tag, the layouts of all its structures together.
 public final class LootStatsCommand {
     private static final int DEFAULT_SAMPLES = 10_000;
     private static final int MAX_SAMPLES = 100_000;
@@ -41,6 +46,17 @@ public final class LootStatsCommand {
     private static final int MAX_LAYOUTS = 1_000;
     private static final int DEFAULT_RADIUS = 128;
     private static final int MAX_RADIUS = 512;
+    private static final int SHOWN_ITEMS = 10;
+    private static final int KEPT_REPORTS = 16;
+
+    // The item lines `[+N more]` prints, for the latest few reports.
+    private static final Map<Integer, List<Component>> HIDDEN_LINES = new LinkedHashMap<>() {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<Integer, List<Component>> eldest) {
+            return size() > KEPT_REPORTS;
+        }
+    };
+    private static int nextReport;
 
     private LootStatsCommand() {}
 
@@ -53,13 +69,16 @@ public final class LootStatsCommand {
                                 .then(Commands.argument("samples", IntegerArgumentType.integer(1, MAX_SAMPLES))
                                         .executes(command -> table(command, IntegerArgumentType.getInteger(command, "samples"))))))
                 .then(Commands.literal("structure")
-                        .then(Commands.argument("structure", ResourceKeyArgument.key(Registries.STRUCTURE))
+                        .then(Commands.argument("structure", ResourceOrTagKeyArgument.resourceOrTagKey(Registries.STRUCTURE))
                                 .executes(command -> structure(command, DEFAULT_LAYOUTS, DEFAULT_RADIUS))
                                 .then(Commands.argument("layouts", IntegerArgumentType.integer(1, MAX_LAYOUTS))
                                         .executes(command -> structure(command, IntegerArgumentType.getInteger(command, "layouts"), DEFAULT_RADIUS))
                                         .then(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS))
                                                 .executes(command -> structure(command,
-                                                        IntegerArgumentType.getInteger(command, "layouts"), IntegerArgumentType.getInteger(command, "radius")))))));
+                                                        IntegerArgumentType.getInteger(command, "layouts"), IntegerArgumentType.getInteger(command, "radius")))))))
+                .then(Commands.literal("more")
+                        .then(Commands.argument("report", IntegerArgumentType.integer(0))
+                                .executes(command -> more(command.getSource(), IntegerArgumentType.getInteger(command, "report")))));
     }
 
     /// @param total       over all samples
@@ -121,19 +140,23 @@ public final class LootStatsCommand {
         var stats = sample(table.value(), params, samples, source.getLevel().getRandom().fork());
 
         var name = table.unwrapKey().map(key -> key.identifier().toString()).orElse("inline");
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.summary",
-                name, samples, format(luck(player)), percent(stats.empty(), samples)), false);
-        sendItems(source, stats, "commands.ametrin_structures.loot_stats.item");
+        var summary = Component.translatable("commands.ametrin_structures.loot_stats.summary", name, samples, format(luck(player)), percent(stats.empty(), samples));
+        sendReport(source, summary, List.of(), stats, "chest", "");
         return stats.items().size();
     }
 
     private static int structure(CommandContext<CommandSourceStack> command, int count, int radius) throws CommandSyntaxException {
         var source = command.getSource();
         var level = source.getLevel();
-        Holder<Structure> structure = ResourceKeyArgument.getStructure(command, "structure");
-        var name = structure.unwrapKey().map(key -> key.identifier().toString()).orElse("?");
+        var structures = ResourceOrTagKeyArgument.getResourceOrTagKey(command, "structure", Registries.STRUCTURE, SpreadCommand.INVALID_STRUCTURE);
+        var registry = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+        boolean exists = structures.unwrap().map(key -> registry.get(key).isPresent(), tag -> registry.get(tag).isPresent());
+        if (!exists) {
+            throw SpreadCommand.INVALID_STRUCTURE.create(structures.asPrintable());
+        }
+        var name = structures.asPrintable();
         var random = level.getRandom().fork();
-        var layouts = StructureLoot.layouts(level, structure, ChunkPos.containing(BlockPos.containing(source.getPosition())), radius, count, random);
+        var layouts = StructureLoot.layouts(level, structures, ChunkPos.containing(BlockPos.containing(source.getPosition())), radius, count, random);
         if (layouts.isEmpty()) {
             source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.no_layouts", name, radius));
             return 0;
@@ -143,27 +166,45 @@ public final class LootStatsCommand {
         var lootTables = level.getServer().reloadableRegistries();
         var stats = sample(layouts.size(), layout -> {
             var items = new ArrayList<ItemStack>();
-            for (var container : layouts.get(layout)) {
+            for (var container : layouts.get(layout).containers()) {
                 items.addAll(lootTables.getLootTable(container.lootTable()).getRandomItems(chestParams(source, container.pos(), player), random));
             }
             return items;
         });
         var tables = count(layouts.stream().map(layout -> {
             var perTable = new HashMap<ResourceKey<LootTable>, Integer>();
-            layout.forEach(container -> perTable.merge(container.lootTable(), 1, Integer::sum));
+            layout.containers().forEach(container -> perTable.merge(container.lootTable(), 1, Integer::sum));
             return (Map<ResourceKey<LootTable>, Integer>) perTable;
         }).toList());
 
         int samples = layouts.size();
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.structure_summary",
-                name, samples, radius, format(luck(player)), percent(stats.empty(), samples)), false);
-        tables.entrySet().stream()
-                .sorted(Map.Entry.<ResourceKey<LootTable>, Counts>comparingByValue(Comparator.comparingLong(Counts::total)).reversed())
-                .forEach(entry -> source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.table",
-                        entry.getKey().identifier().toString(),
-                        format((double) entry.getValue().total() / samples),
-                        percent(entry.getValue().samplesWith(), samples)), false));
-        sendItems(source, stats, "commands.ametrin_structures.loot_stats.structure_item");
+        var summary = Component.translatable("commands.ametrin_structures.loot_stats.structure_summary",
+                name, samples, radius, format(luck(player)), percent(stats.empty(), samples));
+        var extraLines = new ArrayList<Component>();
+        if (structures.unwrap().right().isPresent()) {
+            var mix = layouts.stream()
+                    .collect(Collectors.groupingBy(layout -> layout.structure().unwrapKey().map(key -> key.identifier().toString()).orElse("?"), Collectors.counting()))
+                    .entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .map(entry -> entry.getKey() + " " + entry.getValue())
+                    .collect(Collectors.joining(", "));
+            extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.structure_mix", mix));
+        }
+        var sortedTables = sortedByTotal(tables);
+        var tableList = Component.empty();
+        var tableRows = new StringBuilder("\nloot table\tper structure\tshare of structures\n");
+        for (var entry : sortedTables) {
+            var id = entry.getKey().identifier().toString();
+            var counts = entry.getValue();
+            if (!tableList.getSiblings().isEmpty()) {
+                tableList.append("\n");
+            }
+            tableList.append(Component.translatable("commands.ametrin_structures.loot_stats.line", average(counts, samples), id, percent(counts.samplesWith(), samples)));
+            tableRows.append(id).append('\t').append(average(counts, samples)).append('\t').append(percent(counts.samplesWith(), samples)).append('\n');
+        }
+        extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.tables", sortedTables.size())
+                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(tableList))));
+        sendReport(source, summary, extraLines, stats, "structure", tableRows.toString());
         return stats.items().size();
     }
 
@@ -184,18 +225,62 @@ public final class LootStatsCommand {
         return params.create(LootContextParamSets.CHEST);
     }
 
-    private static void sendItems(CommandSourceStack source, Stats stats, String key) {
-        stats.items().entrySet().stream()
-                .sorted(Map.Entry.<Item, Counts>comparingByValue(Comparator.comparingLong(Counts::total)).reversed())
-                .forEach(entry -> {
-                    var counts = entry.getValue();
-                    source.sendSuccess(() -> Component.translatable(key,
-                            entry.getKey().getDefaultInstance().getHoverName(),
-                            format((double) counts.total() / stats.samples()),
-                            percent(counts.samplesWith(), stats.samples()),
-                            counts.min(),
-                            counts.max()), false);
-                });
+    /// Sends the summary with a copy button, then the most common items. The rest are kept for `[+N more]`.
+    ///
+    /// @param per         what one sample is, "chest" or "structure"
+    /// @param extraTsv    appended to the copied items, e.g. the loot tables
+    private static void sendReport(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, Stats stats, String per, String extraTsv) {
+        var items = sortedByTotal(stats.items());
+        var tsv = new StringBuilder("item\tper " + per + "\tshare of " + per + "s\tfewest\tmost\n");
+        var lines = new ArrayList<Component>();
+        for (var entry : items) {
+            var id = BuiltInRegistries.ITEM.getKey(entry.getKey()).toString();
+            var counts = entry.getValue();
+            tsv.append(id).append('\t').append(average(counts, stats.samples())).append('\t').append(percent(counts.samplesWith(), stats.samples()))
+                    .append('\t').append(counts.min()).append('\t').append(counts.max()).append('\n');
+            var name = entry.getKey().getDefaultInstance().getHoverName();
+            var details = Component.empty().append(name)
+                    .append(Component.literal("\n" + id).withStyle(ChatFormatting.DARK_GRAY))
+                    .append("\n").append(Component.translatable("commands.ametrin_structures.loot_stats.range_" + per, counts.min(), counts.max()));
+            lines.add(Component.translatable("commands.ametrin_structures.loot_stats.line", average(counts, stats.samples()), name, percent(counts.samplesWith(), stats.samples()))
+                    .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
+        }
+        tsv.append(extraTsv);
+
+        var copy = Component.translatable("commands.ametrin_structures.loot_stats.copy").withStyle(style -> style
+                .withColor(ChatFormatting.GREEN)
+                .withClickEvent(new ClickEvent.CopyToClipboard(tsv.toString()))
+                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("commands.ametrin_structures.loot_stats.copy_hover"))));
+        source.sendSuccess(() -> summary.append(" ").append(copy), false);
+        extraLines.forEach(line -> source.sendSuccess(() -> line, false));
+        lines.stream().limit(SHOWN_ITEMS).forEach(line -> source.sendSuccess(() -> line, false));
+        if (lines.size() > SHOWN_ITEMS) {
+            int report = nextReport++;
+            HIDDEN_LINES.put(report, List.copyOf(lines.subList(SHOWN_ITEMS, lines.size())));
+            source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.more", lines.size() - SHOWN_ITEMS).withStyle(style -> style
+                    .withColor(ChatFormatting.GREEN)
+                    .withClickEvent(new ClickEvent.RunCommand("/ametrin loot_stats more " + report))), false);
+        }
+    }
+
+    private static int more(CommandSourceStack source, int report) {
+        var lines = HIDDEN_LINES.remove(report);
+        if (lines == null) {
+            source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.gone"));
+            return 0;
+        }
+        lines.forEach(line -> source.sendSuccess(() -> line, false));
+        return lines.size();
+    }
+
+    private static <K> List<Map.Entry<K, Counts>> sortedByTotal(Map<K, Counts> counts) {
+        return counts.entrySet().stream()
+                .sorted(Map.Entry.<K, Counts>comparingByValue(Comparator.comparingLong(Counts::total)).reversed())
+                .toList();
+    }
+
+    private static String average(Counts counts, int samples) {
+        return format((double) counts.total() / samples);
     }
 
     private static String percent(long part, int whole) {

@@ -78,11 +78,11 @@ Broken fixture presets are logged as warnings when the server starts: unknown fi
 
 ## Loot tables
 
-`/ametrin loot_stats table <loot_table> [samples]` rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. For each item it shows how many a chest has on average, how many chests have at least one, and the fewest and most seen in one chest. The table can also be inline JSON, like for `/loot`.
+`/ametrin loot_stats table <loot_table> [samples]` rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. For each item it shows how many a chest has on average and how many chests have at least one. Hover an item for the fewest and most seen in one chest. Only the 10 most common items are listed, click `[+N more]` for the rest. `[copy]` copies the whole report as tab-separated values, e.g. to paste into a spreadsheet. The table can also be inline JSON, like for `/loot`.
 
 The counts are what the table produces. A real chest can hold fewer when the items don't fit.
 
-`/ametrin loot_stats structure <structure> [layouts] [radius]` does the same for all chests of a structure. It lays out the structure at up to 100 spots, or `layouts` spots, where it would generate within 128 chunks, or `radius` chunks, nearest first. It lists how often each loot table appears per structure, then the items per structure. Containers with a loot table count, and so do loot container fixtures, drawn like generation would draw them.
+`/ametrin loot_stats structure <structure> [layouts] [radius]` does the same for all chests of a structure. It lays out the structure at up to 100 spots, or `layouts` spots, where it would generate within 128 chunks, or `radius` chunks, nearest first. It shows the items per structure. Hover the loot tables line to see how often each table appears per structure. A structure tag, like `#minecraft:village`, counts all its structures together, as they come up around you, and lists how many layouts each one contributed. Containers with a loot table count, and so do loot container fixtures, drawn like generation would draw them.
 
 The structure isn't placed, so processors that would remove or replace a chest don't, and fixture conditions are checked at the marker. Only template pieces are read: pieces that place their chests in code, like most vanilla structures from before jigsaws, show none. Suspicious blocks, vaults, spawners and mobs aren't counted.
 
