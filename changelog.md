@@ -1,5 +1,6 @@
 ## 0.3.1-beta
 - `excluded_dimenstion` structure set data map
+- `ametrin loot_stats` command
 
 ## 0.3.0-beta
 - jigsaw size as an `IntProvider`

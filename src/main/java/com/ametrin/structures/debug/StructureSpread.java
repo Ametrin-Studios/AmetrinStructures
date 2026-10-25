@@ -292,7 +292,7 @@ final class StructureSpread {
         return new Outcome.Generated(new Found(structure, origin, box, visit));
     }
 
-    private static Structure.GenerationContext context(ServerLevel level, ChunkGeneratorStructureState state, Structure structure, ChunkPos chunk) {
+    static Structure.GenerationContext context(ServerLevel level, ChunkGeneratorStructureState state, Structure structure, ChunkPos chunk) {
         var generator = level.getChunkSource().getGenerator();
         var randomState = level.getChunkSource().randomState();
         return new Structure.GenerationContext(

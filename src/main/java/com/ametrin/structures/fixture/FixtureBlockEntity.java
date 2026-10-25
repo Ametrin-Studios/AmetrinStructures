@@ -21,7 +21,6 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -41,7 +40,6 @@ import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 @ApiStatus.Internal
 public class FixtureBlockEntity extends BlockEntity {
@@ -177,10 +175,6 @@ public class FixtureBlockEntity extends BlockEntity {
             stack.applyComponents(collectComponents());
         }
         return stack;
-    }
-
-    public Optional<WeightedFixture> draw(Predicate<WeightedFixture> eligible, RandomSource random) {
-        return WeightedFixture.draw(fixtures, eligible, random);
     }
 
     // The offset turns with the structure like any other template position.

@@ -45,8 +45,8 @@ import java.util.function.Function;
 ///
 /// The markers are written into the test area and captured into a template, so the fixtures are defined here with their codecs instead of in a hand-made file.
 final class FixtureLayout {
-    static final Identifier STRUCTURE = FixtureGameTests.id("fixture_layout");
-    private static final Identifier TEMPLATE = FixtureGameTests.id("fixture_layout_captured");
+    static final Identifier STRUCTURE = ASGameTests.id("fixture_layout");
+    private static final Identifier TEMPLATE = ASGameTests.id("fixture_layout_captured");
     // The size of the fixture_layout structure: a stone floor at Y 0.
     private static final Vec3i SIZE = new Vec3i(43, 10, 5);
     private static final ResourceKey<TrialSpawnerConfig> TRIAL_HUSK =
