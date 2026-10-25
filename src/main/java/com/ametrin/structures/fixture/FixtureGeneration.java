@@ -20,6 +20,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 @ApiStatus.Internal
@@ -71,19 +73,13 @@ public final class FixtureGeneration {
         // After the marker is removed, so it doesn't stop the fall to the ground and conditions don't see it.
         var actionPos = actionPosition(markerPos, marker, level);
         var actionBlockPos = BlockPos.containing(actionPos);
-        var conditionContext = new FixtureCondition.Context(level, actionBlockPos);
-        Predicate<WeightedFixture> eligible = alternative -> alternative.conditionsPass(conditionContext);
-        var drawn = marker.draw(eligible, random).flatMap(fixture -> FixturePresets.resolve(fixture, FixturePresets.lookup(level.registryAccess()), eligible, random));
+        var drawn = draw(marker.fixtures(), new FixtureCondition.Context(level, actionBlockPos), random, force);
         if (drawn.isEmpty()) {
             return;
         }
-        var fixture = drawn.get().fixture();
+        var fixture = drawn.get();
         if (fixture instanceof Fixture.Unreadable unreadable) {
             ASLog.warn("fixture at {} doesn't decode: {}", markerPos, unreadable.error());
-            return;
-        }
-        var chance = drawn.get().generationChance();
-        if (!force && chance < 1.0F && random.nextFloat() >= chance) {
             return;
         }
 
@@ -97,6 +93,17 @@ public final class FixtureGeneration {
         if (marker.markPostProcessing()) {
             level.getChunk(actionBlockPos).markPosForPostprocessing(actionBlockPos);
         }
+    }
+
+    /// Draws one of `alternatives` whose conditions pass at `conditions`, resolves presets and rolls the generation chance unless `force`.
+    /// Empty when nothing generates.
+    public static Optional<Fixture> draw(List<WeightedFixture> alternatives, FixtureCondition.Context conditions, RandomSource random, boolean force) {
+        Predicate<WeightedFixture> eligible = alternative -> alternative.conditionsPass(conditions);
+        var presets = FixturePresets.lookup(conditions.level().registryAccess());
+        return WeightedFixture.draw(alternatives, eligible, random)
+                .flatMap(drawn -> FixturePresets.resolve(drawn, presets, eligible, random))
+                .filter(drawn -> force || drawn.generationChance() >= 1.0F || random.nextFloat() < drawn.generationChance())
+                .map(WeightedFixture::fixture);
     }
 
     private static Vec3 actionPosition(BlockPos markerPos, FixtureBlockEntity marker, WorldGenLevel level) {
