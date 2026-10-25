@@ -81,7 +81,7 @@ final class StructureLoot {
         return layouts;
     }
 
-    private static List<Container> containers(ServerLevel level, PiecesContainer pieces, RandomSource random) {
+    static List<Container> containers(ServerLevel level, PiecesContainer pieces, RandomSource random) {
         var containers = new ArrayList<Container>();
         for (var piece : pieces.pieces()) {
             switch (piece) {
