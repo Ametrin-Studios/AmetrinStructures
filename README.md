@@ -2,6 +2,8 @@
 
 An open source library mod for Minecraft structure mod developers.
 
+**The library is in beta.** Any update can contain breaking changes, so check the [changelog](changelog.md) before updating.
+
 - **Foam** - marker blocks for space that should stay air. Plain air in a template is treated as structure void. Foam can spread on its own to fill a region.
 - **Simple structures** - a built-in structure type that covers most structure use-cases. Everything is data driven, so pack authors can modify structures.
 - **Extended jigsaw** - vanilla's jigsaw structure with a builder and helpers for declaring pools with less boilerplate.
@@ -12,6 +14,11 @@ An open source library mod for Minecraft structure mod developers.
 
 Using the library: [getting started](docs/getting-started.md), [extending it](docs/extending.md) and [debugging tools](docs/debugging.md).  
 [Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced) is a source-available mod built on it.  
-If you have questions, ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).
+If you have questions, ask on the [Ametrin Studios discord](https://discord.gg/Ye6WxRV2Tt).  
+Want to help? See [contributing](CONTRIBUTING.md).
 
 Disclaimer: This mod is inspired by [Structure Gel API](https://www.curseforge.com/minecraft/mc-mods/structure-gel-api).
+
+## License
+
+The code is licensed under [MIT](LICENSE). The license doesn't cover the names "Ametrin Structures" and "Ametrin Studios" or the logo (`src/main/resources/icon.png`). Copies, forks and ports have to be released under a different name and logo, unless agreed otherwise with us.
