@@ -29,7 +29,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.storage.loot.LootTable;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -45,43 +44,35 @@ final class StructureLoot {
 
     record Layout(Holder<Structure> structure, List<Container> containers) {}
 
-    /// Lays out the structures `structures` accepts at up to `count` spots their sets pick within `radius` chunks of `center`, nearest first.
-    /// A spot a structure `structures` rejects takes is skipped.
-    static List<Layout> layouts(ServerLevel level, Predicate<Holder<Structure>> structures, ChunkPos center, int radius, int count, RandomSource random) {
-        var state = level.getChunkSource().getGeneratorState();
-        record Spot(ChunkPos chunk, StructureSet set) {}
-        var spots = new ArrayList<Spot>();
-        for (var set : state.possibleStructureSets()) {
-            if (set.value().structures().stream().noneMatch(entry -> structures.test(entry.structure()))) {
-                continue;
-            }
-            for (int x = center.x() - radius; x <= center.x() + radius; x++) {
-                for (int z = center.z() - radius; z <= center.z() + radius; z++) {
-                    if (set.value().placement().isStructureChunk(state, x, z)) {
-                        spots.add(new Spot(new ChunkPos(x, z), set.value()));
-                    }
-                }
-            }
-        }
-        spots.sort(Comparator.comparingInt(spot -> spot.chunk().distanceSquared(center)));
+    /// @param radius how far it looked, in chunks. When it found enough, the distance of the last layout.
+    record Layouts(List<Layout> layouts, int radius) {}
 
+    /// Lays out the structures `structures` accepts at the up to `count` nearest spots their sets pick within `radius` chunks of `center`.
+    /// A spot a structure `structures` rejects takes is skipped.
+    static Layouts layouts(ServerLevel level, Predicate<Holder<Structure>> structures, ChunkPos center, int radius, int count, RandomSource random) {
+        var state = level.getChunkSource().getGeneratorState();
+        var sets = state.possibleStructureSets().stream()
+                .map(Holder::value)
+                .filter(set -> set.structures().stream().anyMatch(entry -> structures.test(entry.structure())))
+                .toList();
         var layouts = new ArrayList<Layout>();
-        for (var spot : spots) {
-            if (layouts.size() == count) {
-                break;
-            }
-            for (var option : StructureSetOrder.of(spot.set(), state.getLevelSeed(), spot.chunk())) {
+        int reached = radius;
+        var nearest = new StructureCandidates<>(state, sets, StructureSet::placement, center, radius);
+        while (layouts.size() < count && nearest.hasNext()) {
+            var spot = nearest.next();
+            for (var option : StructureSetOrder.of(spot.source(), state.getLevelSeed(), spot.chunk())) {
                 var candidate = option.structure();
                 var stub = candidate.value().findValidGenerationPoint(StructureSpread.context(level, state, candidate.value(), spot.chunk()));
                 if (stub.isPresent()) {
                     if (structures.test(candidate)) {
                         layouts.add(new Layout(candidate, containers(level, stub.get().getPiecesBuilder().build(), random)));
+                        reached = StructureSpread.distance(center, spot.chunk());
                     }
                     break;
                 }
             }
         }
-        return layouts;
+        return new Layouts(List.copyOf(layouts), layouts.size() == count ? reached : radius);
     }
 
     static List<Container> containers(ServerLevel level, PiecesContainer pieces, RandomSource random) {

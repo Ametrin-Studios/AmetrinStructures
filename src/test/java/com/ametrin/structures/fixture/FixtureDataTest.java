@@ -73,6 +73,16 @@ class FixtureDataTest {
     }
 
     @Test
+    void archaeologyNeedsABrushableBlock(MinecraftServer server) throws Exception {
+        var marker = marker();
+        marker.setFixtureData(List.of(
+                TagParser.parseCompoundFully("{type: \"ametrin_structures:archaeology\", block: \"minecraft:suspicious_gravel\"}"),
+                TagParser.parseCompoundFully("{type: \"ametrin_structures:archaeology\", block: \"minecraft:sand\"}")), server.registryAccess());
+        assertInstanceOf(ArchaeologyFixture.class, marker.fixtures().get(0).fixture());
+        assertInstanceOf(Fixture.Unreadable.class, marker.fixtures().get(1).fixture());
+    }
+
+    @Test
     void aPickedMarkerStacksWithItsCopyOncePlaced(MinecraftServer server) throws Exception {
         var registries = server.registryAccess();
         var marker = marker();

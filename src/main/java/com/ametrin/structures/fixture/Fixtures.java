@@ -16,6 +16,7 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BrushableBlockEntity;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -46,6 +47,11 @@ public final class Fixtures {
     /// Whether the block's entity has an inventory, modded ones included.
     public static boolean isContainer(BlockState state) {
         return hasBlockEntity(state, Container.class);
+    }
+
+    /// Whether the block can be brushed for an item, like suspicious sand, modded ones included.
+    public static boolean isBrushable(BlockState state) {
+        return hasBlockEntity(state, BrushableBlockEntity.class);
     }
 
     private static boolean hasBlockEntity(BlockState state, Class<?> type) {

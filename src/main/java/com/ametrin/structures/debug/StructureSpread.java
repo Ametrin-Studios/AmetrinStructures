@@ -22,6 +22,7 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /// Works out where structures would generate around a chunk, and why the other candidate chunks fail,
@@ -78,19 +79,23 @@ final class StructureSpread {
         }
     }
 
+    /// @param radius         how far it looked, in chunks. When it stopped at the limit, the distance of the last structure.
+    /// @param limited        whether it stopped at the limit
     /// @param candidateCount chunks the sets' placement picked
     /// @param rejectedSpots  candidates that failed, nearest first; only when asked for
     /// @param spacing        each spot's horizontal distance to the closest other one (in blocks); empty with fewer than 2 or more than [StructureSpread#MAX_SPACING_SPOTS] spots
-    public record Report(int structureSetCount, int candidateCount, Map<Reason, Integer> rejections, List<Found> found,
+    public record Report(int structureSetCount, int radius, boolean limited, int candidateCount, Map<Reason, Integer> rejections, List<Found> found,
                          List<RejectedSpot> rejectedSpots, Optional<DoubleSummaryStatistics> spacing, List<Timing> timings) {
         public IntSummaryStatistics startHeights() {
             return found.stream().mapToInt(spot -> spot.origin().getY()).summaryStatistics();
         }
     }
 
+    /// @param radius  as in [Report]
+    /// @param limited as in [Report]
     /// @param spots   the picked chunks' centers on the surface, nearest first
     /// @param spacing as in [Report]
-    public record Candidates(List<BlockPos> spots, Optional<DoubleSummaryStatistics> spacing) {}
+    public record Candidates(int radius, boolean limited, List<BlockPos> spots, Optional<DoubleSummaryStatistics> spacing) {}
 
     /// Spacing compares every pair, so it is skipped for very dense structures.
     public static final int MAX_SPACING_SPOTS = 4096;
@@ -153,13 +158,13 @@ final class StructureSpread {
         }
     }
 
-    /// Checks every chunk within `radius` chunks of `center`, for the dimension's structure sets that
-    /// `sets` accepts. Structures that `targets` accepts are reported, the others in those sets can only
+    /// Checks the chunks within `radius` chunks of `center`, nearest first, for the dimension's structure sets that
+    /// `sets` accepts, until `limit` structures generate. Structures that `targets` accepts are reported, the others in those sets can only
     /// take their spots. With `locateRejected`, the report also lists where each rejected candidate would
     /// have been. `placement` replaces the sets' placements if given.
     public static Report analyze(
             ServerLevel level, Predicate<Holder<StructureSet>> sets, Predicate<Holder<Structure>> targets,
-            ChunkPos center, int radius, boolean locateRejected, @Nullable StructurePlacement placement) {
+            ChunkPos center, int radius, int limit, boolean locateRejected, @Nullable StructurePlacement placement) {
         var state = level.getChunkSource().getGeneratorState();
         var checked = state.possibleStructureSets().stream().filter(sets).map(Holder::value).toList();
 
@@ -168,27 +173,28 @@ final class StructureSpread {
         var found = new ArrayList<Found>();
         var rejectedSpots = new ArrayList<RejectedSpot>();
         var stopwatches = new HashMap<Holder<Structure>, Stopwatch>();
-        for (int x = center.x() - radius; x <= center.x() + radius; x++) {
-            for (int z = center.z() - radius; z <= center.z() + radius; z++) {
-                for (var set : checked) {
-                    if (!(placement != null ? placement : set.placement()).isStructureChunk(state, x, z)) {
-                        continue;
-                    }
-                    candidates++;
-                    var chunk = new ChunkPos(x, z);
-                    switch (tryChunk(level, state, set, targets, chunk, stopwatches)) {
-                        case Outcome.Generated generated -> found.add(generated.found());
-                        case Outcome.Rejected rejected -> {
-                            rejections.merge(rejected.reason(), 1, Integer::sum);
-                            if (locateRejected) {
-                                var position = rejected.position().orElseGet(() -> surface(level, chunk.getMiddleBlockX(), chunk.getMiddleBlockZ()));
-                                rejectedSpots.add(new RejectedSpot(position, rejected.reason(), isInBiome(level, state, set, targets, chunk, rejected.reason(), position)));
-                            }
-                        }
+        int reached = radius;
+        var nearest = new StructureCandidates<>(state, checked, set -> placement != null ? placement : set.placement(), center, radius);
+        while (found.size() < limit && nearest.hasNext()) {
+            var candidate = nearest.next();
+            var chunk = candidate.chunk();
+            var set = candidate.source();
+            candidates++;
+            switch (tryChunk(level, state, set, targets, chunk, stopwatches)) {
+                case Outcome.Generated generated -> {
+                    found.add(generated.found());
+                    reached = distance(center, chunk);
+                }
+                case Outcome.Rejected rejected -> {
+                    rejections.merge(rejected.reason(), 1, Integer::sum);
+                    if (locateRejected) {
+                        var position = rejected.position().orElseGet(() -> surface(level, chunk.getMiddleBlockX(), chunk.getMiddleBlockZ()));
+                        rejectedSpots.add(new RejectedSpot(position, rejected.reason(), isInBiome(level, state, set, targets, chunk, rejected.reason(), position)));
                     }
                 }
             }
         }
+        boolean limited = found.size() == limit;
 
         var centerBlock = new BlockPos(center.getMiddleBlockX(), 0, center.getMiddleBlockZ());
         found.sort(Comparator.comparingDouble(spot -> horizontalDistance(spot.origin(), centerBlock)));
@@ -198,25 +204,28 @@ final class StructureSpread {
                 .map(entry -> entry.getValue().timing(entry.getKey()))
                 .sorted(Comparator.comparingLong(Timing::nanos).reversed())
                 .toList();
-        return new Report(checked.size(), candidates, rejections, List.copyOf(found), List.copyOf(rejectedSpots),
+        return new Report(checked.size(), limited ? reached : radius, limited, candidates, rejections, List.copyOf(found), List.copyOf(rejectedSpots),
                 spacing(found.stream().map(Found::origin).toList()), timings);
     }
 
-    /// The chunks `placement` picks within `radius` chunks of `center`, whatever would generate there.
-    public static Candidates candidates(ServerLevel level, StructurePlacement placement, ChunkPos center, int radius) {
+    /// The up to `limit` nearest chunks `placement` picks within `radius` chunks of `center`, whatever would generate there.
+    public static Candidates candidates(ServerLevel level, StructurePlacement placement, ChunkPos center, int radius, int limit) {
         var state = level.getChunkSource().getGeneratorState();
         var spots = new ArrayList<BlockPos>();
-        for (int x = center.x() - radius; x <= center.x() + radius; x++) {
-            for (int z = center.z() - radius; z <= center.z() + radius; z++) {
-                if (placement.isStructureChunk(state, x, z)) {
-                    var chunk = new ChunkPos(x, z);
-                    spots.add(surface(level, chunk.getMiddleBlockX(), chunk.getMiddleBlockZ()));
-                }
-            }
+        int reached = radius;
+        var nearest = new StructureCandidates<>(state, List.of(placement), Function.identity(), center, radius);
+        while (spots.size() < limit && nearest.hasNext()) {
+            var chunk = nearest.next().chunk();
+            spots.add(surface(level, chunk.getMiddleBlockX(), chunk.getMiddleBlockZ()));
+            reached = distance(center, chunk);
         }
-        var centerBlock = new BlockPos(center.getMiddleBlockX(), 0, center.getMiddleBlockZ());
-        spots.sort(Comparator.comparingDouble(spot -> horizontalDistance(spot, centerBlock)));
-        return new Candidates(List.copyOf(spots), spacing(spots));
+        boolean limited = spots.size() == limit;
+        return new Candidates(limited ? reached : radius, limited, List.copyOf(spots), spacing(spots));
+    }
+
+    /// In chunks, rounded up.
+    static int distance(ChunkPos from, ChunkPos to) {
+        return (int) Math.ceil(Math.sqrt(from.distanceSquared(to)));
     }
 
     /// What the structure set generates in one chunk, decided like vanilla does: the structures are tried
