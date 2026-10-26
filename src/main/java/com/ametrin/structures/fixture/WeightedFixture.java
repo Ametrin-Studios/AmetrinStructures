@@ -7,6 +7,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.RandomSource;
+import net.neoforged.neoforge.common.conditions.ICondition;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +70,11 @@ public record WeightedFixture(int weight, float generationChance, List<FixtureCo
             }
         }
         return true;
+    }
+
+    /// Whether one of its NeoForge conditions fails
+    public boolean neverPasses(ICondition.IContext context) {
+        return conditions.stream().anyMatch(condition -> condition instanceof FixtureConditions.NeoForge(var wrapped) && !wrapped.test(context));
     }
 
     /// Decodes one stored alternative, or keeps it as a [Fixture.Unreadable].

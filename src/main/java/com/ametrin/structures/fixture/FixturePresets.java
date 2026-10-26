@@ -2,11 +2,13 @@ package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.util.ASLog;
+import com.ametrin.structures.util.RegistryConditionContext;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.RandomSource;
+import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -59,14 +61,16 @@ public final class FixturePresets {
         var presets = event.getServer().registryAccess().lookup(ASRegistries.FIXTURE_PRESET)
                 .map(lookup -> lookup.listElements().collect(Collectors.toMap(holder -> holder.key().identifier(), Holder::value)))
                 .orElseGet(Map::of);
-        problems(presets).forEach(problem -> ASLog.warn("fixture preset {}", problem));
+        problems(presets, new RegistryConditionContext(event.getServer().registryAccess())).forEach(problem -> ASLog.warn("fixture preset {}", problem));
     }
 
-    /// What's wrong with the presets: alternatives that don't decode, unknown presets and cycles.
-    public static List<String> problems(Map<Identifier, FixturePreset> presets) {
+    public static List<String> problems(Map<Identifier, FixturePreset> presets, ICondition.IContext conditions) {
         var problems = new ArrayList<String>();
         presets.forEach((id, preset) -> {
             for (var alternative : preset.fixtures()) {
+                if (alternative.neverPasses(conditions)) {
+                    continue;
+                }
                 switch (alternative.fixture()) {
                     case Fixture.Unreadable unreadable -> problems.add(id + ": " + unreadable.error());
                     case PresetFixture(var key) when !presets.containsKey(key.identifier()) ->
