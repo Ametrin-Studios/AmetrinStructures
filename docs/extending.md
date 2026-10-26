@@ -169,9 +169,23 @@ A structure's `processors(...)` run on every template piece that has no processo
 
 `RemoveUnsupportedProcessor.INSTANCE` (`ametrin_structures:remove_unsupported`) removes the sides of glow lichen, resin clumps, sculk veins and similar blocks that touch nothing solid, and places air when no side is left, so they don't break and drop as items. Put it after a `ReplaceBlockProcessor` that turns vines into resin clumps with `preserve_state`.
 
+`ConditionalProcessor` (`ametrin_structures:conditional`) runs its processors only when NeoForge conditions pass, e.g. when another mod is installed. Its processors are only read then, so they can use the other mod's blocks without breaking anything when it's missing. One processor list can hold the swaps for several mods side by side:
+
+```json
+{
+  "processor_type": "ametrin_structures:conditional",
+  "conditions": [{ "type": "neoforge:mod_loaded", "modid": "othermod" }],
+  "processors": [
+    { "processor_type": "ametrin_structures:replace_block", "condition": "minecraft:stone_bricks", "chance": 0.2, "change_to": { "Name": "othermod:cracked_stone_tiles" } }
+  ]
+}
+```
+
+`processors` can also be a processor list id.
+
 Every piece gets a `RemoveFoamProcessor` automatically. Add one yourself to fill foam with something else, e.g. `RemoveFoamProcessor.WATER` to flood a sunken build.
 
-Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java), [`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java), [`RemoveUnsupportedProcessor`](../src/main/java/com/ametrin/structures/processor/RemoveUnsupportedProcessor.java), [`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/InlineFromStructureProcessor.java) and [`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java).
+Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java), [`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java), [`RemoveUnsupportedProcessor`](../src/main/java/com/ametrin/structures/processor/RemoveUnsupportedProcessor.java), [`ConditionalProcessor`](../src/main/java/com/ametrin/structures/processor/ConditionalProcessor.java), [`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/InlineFromStructureProcessor.java) and [`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java).
 
 ## Fixtures
 

@@ -2,6 +2,7 @@ package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.util.ASCodecs;
+import com.ametrin.structures.util.RegistryConditionContext;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
@@ -38,15 +39,12 @@ public interface FixtureCondition {
         // NeoForge's conditions see the world's tags.
         @Override
         public <T> boolean isTagLoaded(TagKey<T> key) {
-            return level.registryAccess().lookup(key.registry()).flatMap(lookup -> lookup.get(key)).isPresent();
+            return new RegistryConditionContext(level.registryAccess()).isTagLoaded(key);
         }
 
         @Override
         public <T> Collection<Holder<T>> getTag(TagKey<T> key) {
-            return level.registryAccess().lookup(key.registry())
-                    .flatMap(lookup -> lookup.get(key))
-                    .<Collection<Holder<T>>>map(tag -> tag.stream().toList())
-                    .orElseGet(List::of);
+            return new RegistryConditionContext(level.registryAccess()).getTag(key);
         }
     }
 }

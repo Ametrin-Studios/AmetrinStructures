@@ -2,6 +2,7 @@ package com.ametrin.structures.registry;
 
 import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
+import com.ametrin.structures.processor.ConditionalProcessor;
 import com.ametrin.structures.processor.RemoveUnsupportedProcessor;
 import com.ametrin.structures.processor.ReplaceBlockProcessor;
 import com.ametrin.structures.processor.RetainExistingProcessor;
@@ -24,4 +25,6 @@ public final class ASProcessors {
             REGISTER.register("inline_from_structure", () -> () -> InlineFromStructureProcessor.CODEC);
     public static final DeferredHolder<StructureProcessorType<?>, StructureProcessorType<RemoveUnsupportedProcessor>> REMOVE_UNSUPPORTED =
             REGISTER.register("remove_unsupported", () -> () -> RemoveUnsupportedProcessor.CODEC);
+    public static final DeferredHolder<StructureProcessorType<?>, StructureProcessorType<ConditionalProcessor>> CONDITIONAL =
+            REGISTER.register("conditional", () -> () -> ConditionalProcessor.CODEC);
 }
