@@ -12,7 +12,7 @@ Reports where a structure would generate around you and why it doesn't generate 
 - With a tag, it reports all structures in the tag, through every structure set that has one of them.
 - With `set`, it reports all structures in that set, using only that set's placement. This is useful to check how a set spreads, e.g. one whose structures take each other's spots.
 - For a tag or a set, the report also counts the spots per structure.
-- `radius` is in chunks and defaults to 128.
+- `radius` is in chunks, defaults to 128 and goes up to 16384. The report stops after the nearest 1000 structures, so a large radius is only slow when the structure is rare.
 - The report shows how many candidate chunks the placement picked and how many of them generate, the most common reasons for the rest, the start heights, the average and smallest distance between spots, and the nearest spot.
 - It also times the slowest structures: the total time and the time per candidate chunk to find spots and build pieces. For this library's structures, the time is split into the biome pre-check, creating the pieces, finding the start height and each filter. The first report after starting the game also loads templates and warms up the JVM, so run it twice before you trust the numbers. Placing blocks isn't timed, because the report doesn't place anything.
 - This library's simple and jigsaw structures give specific reasons: wrong biome, empty start height range, which filter failed, another structure in the same set taking the spot, or another structure being picked first for one with `onlyWhenPickedFirst()`. Other structures can only say they found no spot.
@@ -82,7 +82,7 @@ Broken fixture presets are logged as warnings when the server starts: unknown fi
 
 The counts are what the table produces. A real chest can hold fewer when the items don't fit.
 
-`/ametrin loot_stats structure <structure> [layouts] [radius]` does the same for all chests of a structure. It lays out the structure at up to 100 spots, or `layouts` spots, where it would generate within 128 chunks, or `radius` chunks, nearest first. It shows the items per structure. Hover the loot tables line to see how often each table appears per structure. A structure tag, like `#minecraft:village`, counts all its structures together, as they come up around you, and lists how many layouts each one contributed. Containers with a loot table count, and so do loot container fixtures, drawn like generation would draw them.
+`/ametrin loot_stats structure <structure> [radius] [layouts]` does the same for all chests of a structure. It lays out the structure at the nearest 100 spots, or `layouts` spots, where it would generate within 128 chunks, or `radius` chunks, up to 16384. It shows the items per structure. Hover the loot tables line to see how often each table appears per structure. A structure tag, like `#minecraft:village`, counts all its structures together, as they come up around you, and lists how many layouts each one contributed. Containers with a loot table count, and so do loot container fixtures, drawn like generation would draw them.
 
 The structure isn't placed, so processors that would remove or replace a chest don't, and fixture conditions are checked at the marker. Only template pieces are read: pieces that place their chests in code, like most vanilla structures from before jigsaws, show none. Suspicious blocks, vaults, spawners and mobs aren't counted.
 

@@ -1,5 +1,6 @@
 package com.ametrin.structures.debug;
 
+import com.ametrin.structures.util.ASLog;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -18,11 +19,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.Util;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -31,13 +34,14 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
 /// Rolls loot as if the caller opened chests, luck included, and reports how often each item comes up.
 ///
 /// - `/ametrin loot_stats table <loot_table> [samples]`: one chest where the caller stands.
-/// - `/ametrin loot_stats structure <structure> [layouts] [radius]`: every chest in layouts of the structure near the caller, see [StructureLoot].
+/// - `/ametrin loot_stats structure <structure> [radius] [layouts]`: every chest in the nearest layouts of the structure, see [StructureLoot].
 ///   For a structure tag, the layouts of all its structures together.
 public final class LootStatsCommand {
     private static final int DEFAULT_SAMPLES = 10_000;
@@ -45,7 +49,7 @@ public final class LootStatsCommand {
     private static final int DEFAULT_LAYOUTS = 100;
     private static final int MAX_LAYOUTS = 1_000;
     private static final int DEFAULT_RADIUS = 128;
-    private static final int MAX_RADIUS = 512;
+    private static final int MAX_RADIUS = 16_384;
     private static final int SHOWN_ITEMS = 10;
     private static final int KEPT_REPORTS = 16;
 
@@ -70,12 +74,12 @@ public final class LootStatsCommand {
                                         .executes(command -> table(command, IntegerArgumentType.getInteger(command, "samples"))))))
                 .then(Commands.literal("structure")
                         .then(Commands.argument("structure", ResourceOrTagKeyArgument.resourceOrTagKey(Registries.STRUCTURE))
-                                .executes(command -> structure(command, DEFAULT_LAYOUTS, DEFAULT_RADIUS))
-                                .then(Commands.argument("layouts", IntegerArgumentType.integer(1, MAX_LAYOUTS))
-                                        .executes(command -> structure(command, IntegerArgumentType.getInteger(command, "layouts"), DEFAULT_RADIUS))
-                                        .then(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS))
+                                .executes(command -> structure(command, DEFAULT_RADIUS, DEFAULT_LAYOUTS))
+                                .then(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS))
+                                        .executes(command -> structure(command, IntegerArgumentType.getInteger(command, "radius"), DEFAULT_LAYOUTS))
+                                        .then(Commands.argument("layouts", IntegerArgumentType.integer(1, MAX_LAYOUTS))
                                                 .executes(command -> structure(command,
-                                                        IntegerArgumentType.getInteger(command, "layouts"), IntegerArgumentType.getInteger(command, "radius")))))))
+                                                        IntegerArgumentType.getInteger(command, "radius"), IntegerArgumentType.getInteger(command, "layouts")))))))
                 .then(Commands.literal("more")
                         .then(Commands.argument("report", IntegerArgumentType.integer(0))
                                 .executes(command -> more(command.getSource(), IntegerArgumentType.getInteger(command, "report")))));
@@ -145,7 +149,7 @@ public final class LootStatsCommand {
         return stats.items().size();
     }
 
-    private static int structure(CommandContext<CommandSourceStack> command, int count, int radius) throws CommandSyntaxException {
+    private static int structure(CommandContext<CommandSourceStack> command, int radius, int count) throws CommandSyntaxException {
         var source = command.getSource();
         var level = source.getLevel();
         var structures = ResourceOrTagKeyArgument.getResourceOrTagKey(command, "structure", Registries.STRUCTURE, SpreadCommand.INVALID_STRUCTURE);
@@ -156,12 +160,26 @@ public final class LootStatsCommand {
         }
         var name = structures.asPrintable();
         var random = level.getRandom().fork();
-        var layouts = StructureLoot.layouts(level, structures, ChunkPos.containing(BlockPos.containing(source.getPosition())), radius, count, random);
-        if (layouts.isEmpty()) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.no_layouts", name, radius));
-            return 0;
-        }
+        var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
+        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.structure_started", count, name, radius), false);
+        // Laying out structures far away can take a while.
+        CompletableFuture.supplyAsync(() -> StructureLoot.layouts(level, structures, center, radius, count, random), Util.backgroundExecutor())
+                .whenCompleteAsync((layouts, error) -> {
+                    if (error != null) {
+                        ASLog.error("structure loot stats failed", error);
+                        source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.failed", error.toString()));
+                    } else if (layouts.layouts().isEmpty()) {
+                        source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.no_layouts", name, radius));
+                    } else {
+                        structureReport(source, structures, name, layouts, random);
+                    }
+                }, source.getServer());
+        return 1;
+    }
 
+    private static void structureReport(CommandSourceStack source, ResourceOrTagKeyArgument.Result<Structure> structures, String name, StructureLoot.Layouts found, RandomSource random) {
+        var level = source.getLevel();
+        var layouts = found.layouts();
         var player = player(source);
         var lootTables = level.getServer().reloadableRegistries();
         var stats = sample(layouts.size(), layout -> {
@@ -179,7 +197,7 @@ public final class LootStatsCommand {
 
         int samples = layouts.size();
         var summary = Component.translatable("commands.ametrin_structures.loot_stats.structure_summary",
-                name, samples, radius, format(luck(player)), percent(stats.empty(), samples));
+                name, samples, found.radius(), format(luck(player)), percent(stats.empty(), samples));
         var extraLines = new ArrayList<Component>();
         if (structures.unwrap().right().isPresent()) {
             var mix = layouts.stream()
@@ -205,7 +223,6 @@ public final class LootStatsCommand {
         extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.tables", sortedTables.size())
                 .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(tableList))));
         sendReport(source, summary, extraLines, stats, "structure", tableRows.toString());
-        return stats.items().size();
     }
 
     private static @Nullable Player player(CommandSourceStack source) {

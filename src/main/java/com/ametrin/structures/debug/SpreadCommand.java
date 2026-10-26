@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 
 /// `/ametrin structures spread <structure|#tag> [radius] [color] [rejected]` reports where a structure,
 /// or the structures in a tag, would generate around the caller and why other candidate chunks fail.
-/// It doesn't generate anything, see [StructureSpread]. `spread set <structure_set> …` does the same
+/// It doesn't generate anything, see [StructureSpread]. It stops after the nearest [#MAX_STRUCTURES] structures. `spread set <structure_set> …` does the same
 /// for all structures in a set, using only that set's placement.
 ///
 /// With Xaero's Minimap installed, the spots also show up as waypoints in `color`, which defaults to a
@@ -65,7 +65,9 @@ import java.util.stream.Collectors;
 /// last report, nearest first.
 public final class SpreadCommand {
     private static final int DEFAULT_RADIUS = 128;
-    private static final int MAX_RADIUS = 1024;
+    private static final int MAX_RADIUS = 16_384;
+    /// Also for the chunks `spread placement` picks.
+    private static final int MAX_STRUCTURES = 1000;
     private static final String VISIT_NEXT = "/ametrin structures visit next";
 
     static final DynamicCommandExceptionType INVALID_STRUCTURE = new DynamicCommandExceptionType(
@@ -281,7 +283,7 @@ public final class SpreadCommand {
 
         source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.started", name, radius), false);
         CompletableFuture.supplyAsync(() -> StructureSpread.analyze(
-                        level, target.sets(), target.structures(), center, radius, rejected != Rejected.NONE, target.placement()), Util.backgroundExecutor())
+                        level, target.sets(), target.structures(), center, radius, MAX_STRUCTURES, rejected != Rejected.NONE, target.placement()), Util.backgroundExecutor())
                 .whenCompleteAsync((report, error) -> {
                     if (error != null) {
                         ASLog.error("structure spread report failed", error);
@@ -293,7 +295,7 @@ public final class SpreadCommand {
                         VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, report.found().stream().map(Stop::of).toList(), -1));
                         sendWaypoints(player, reportId, level.dimension(), waypointColor, rejected, report);
                     }
-                    send(source, target, name, radius, rejected, report);
+                    send(source, target, name, rejected, report);
                 }, source.getServer());
         return 1;
     }
@@ -310,7 +312,7 @@ public final class SpreadCommand {
         var player = source.getPlayer();
 
         source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.placement_started", name, radius), false);
-        CompletableFuture.supplyAsync(() -> StructureSpread.candidates(level, placement, center, radius), Util.backgroundExecutor())
+        CompletableFuture.supplyAsync(() -> StructureSpread.candidates(level, placement, center, radius, MAX_STRUCTURES), Util.backgroundExecutor())
                 .whenCompleteAsync((candidates, error) -> {
                     if (error != null) {
                         ASLog.error("placement spread report failed", error);
@@ -322,7 +324,10 @@ public final class SpreadCommand {
                         VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, stops, -1));
                         sendWaypoints(player, report, level.dimension(), waypointColor, Rejected.NONE, stops, List.of());
                     }
-                    line(source, Component.translatable("commands.ametrin_structures.spread.candidates", name, candidates.spots().size(), radius));
+                    line(source, Component.translatable("commands.ametrin_structures.spread.candidates", name, candidates.spots().size(), candidates.radius()));
+                    if (candidates.limited()) {
+                        line(source, Component.translatable("commands.ametrin_structures.spread.limited", MAX_STRUCTURES));
+                    }
                     sendSpacing(source, candidates.spacing());
                     if (!candidates.spots().isEmpty()) {
                         sendNearest(source, candidates.spots().getFirst());
@@ -374,7 +379,7 @@ public final class SpreadCommand {
         return 1;
     }
 
-    private static void send(CommandSourceStack source, Target target, Component name, int radius, Rejected rejected, StructureSpread.Report report) {
+    private static void send(CommandSourceStack source, Target target, Component name, Rejected rejected, StructureSpread.Report report) {
         if (report.structureSetCount() == 0) {
             var reason = target.kind() == Target.Kind.SET ? "commands.ametrin_structures.spread.set_unused" : "commands.ametrin_structures.spread.no_set";
             source.sendFailure(Component.translatable(reason, name));
@@ -382,7 +387,10 @@ public final class SpreadCommand {
         }
         int generated = report.found().size();
         int percent = report.candidateCount() == 0 ? 0 : Math.round(100F * generated / report.candidateCount());
-        line(source, Component.translatable("commands.ametrin_structures.spread.summary", name, radius, report.candidateCount(), generated, percent));
+        line(source, Component.translatable("commands.ametrin_structures.spread.summary", name, report.radius(), report.candidateCount(), generated, percent));
+        if (report.limited()) {
+            line(source, Component.translatable("commands.ametrin_structures.spread.limited", MAX_STRUCTURES));
+        }
         if (target.kind() != Target.Kind.STRUCTURE) {
             report.found().stream()
                     .collect(Collectors.groupingBy(StructureSpread.Found::id, Collectors.counting()))
