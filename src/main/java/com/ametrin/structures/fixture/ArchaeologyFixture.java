@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 /// Suspicious sand or gravel, holding an item from `loot_table` when set.
 public record ArchaeologyFixture(Optional<ResourceKey<LootTable>> lootTable, BlockState block) implements Fixture {
     public static final FixtureField<Optional<ResourceKey<LootTable>>> LOOT_TABLE = FixtureField.optional("loot_table", FieldType.registryKey(Registries.LOOT_TABLE));
-    public static final FixtureField<BlockState> BLOCK = FixtureField.withDefault("block", FieldType.blockState(), Blocks.SUSPICIOUS_SAND.defaultBlockState());
+    public static final FixtureField<BlockState> BLOCK = FixtureField.withDefault("block", FieldType.blockState().validated(Fixtures::isBrushable, "the block must be brushable"), Blocks.SUSPICIOUS_SAND.defaultBlockState());
     public static final List<FixtureField<?>> FIELDS = List.of(LOOT_TABLE, BLOCK);
     public static final MapCodec<ArchaeologyFixture> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     LOOT_TABLE.forGetter(ArchaeologyFixture::lootTable),
