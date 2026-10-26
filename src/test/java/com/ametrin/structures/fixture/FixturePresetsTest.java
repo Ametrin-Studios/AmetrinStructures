@@ -2,6 +2,7 @@ package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.spawner.EntityDataBuilder;
+import com.ametrin.structures.util.RegistryConditionContext;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
@@ -89,12 +90,22 @@ class FixturePresetsTest {
                 id("b"), new FixturePreset(List.of(preset("a"))),
                 id("fine"), new FixturePreset(List.of(CHEST, preset("fine_too"))),
                 id("fine_too"), new FixturePreset(List.of(CHEST)));
-        var problems = FixturePresets.problems(presets);
+        var problems = FixturePresets.problems(presets, new RegistryConditionContext(server.registryAccess()));
         assertEquals(5, problems.size(), problems.toString());
         assertTrue(problems.stream().anyMatch(problem -> problem.contains("minecraft:nope")), problems.toString());
         assertTrue(problems.stream().anyMatch(problem -> problem.contains("state")), problems.toString());
         assertTrue(problems.stream().anyMatch(problem -> problem.contains("unknown fixture preset test:missing")));
         assertTrue(problems.stream().anyMatch(problem -> problem.startsWith("cycle ")));
+    }
+
+    @Test
+    void alternativesForMissingModsArentProblems(MinecraftServer server) {
+        var preset = FixturePreset.CODEC.parse(server.registryAccess().createSerializationContext(JsonOps.INSTANCE), JsonParser.parseString("""
+                {"fixtures": [
+                  {"conditions": [{"type": "neoforge:mod_loaded", "modid": "missing_mod"}], "type": "ametrin_structures:block_state", "state": "missing_mod:block"},
+                  {"conditions": [{"type": "neoforge:mod_loaded", "modid": "missing_mod"}], "type": "ametrin_structures:preset", "preset": "missing_mod:preset"}
+                ]}""")).getOrThrow();
+        assertEquals(List.of(), FixturePresets.problems(Map.of(id("guarded"), preset), new RegistryConditionContext(server.registryAccess())));
     }
 
     @Test

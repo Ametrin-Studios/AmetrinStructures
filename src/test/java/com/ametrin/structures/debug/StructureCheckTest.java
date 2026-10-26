@@ -86,6 +86,19 @@ class StructureCheckTest {
     }
 
     @Test
+    void fixturesForMissingModsArentReported(MinecraftServer server) throws CommandSyntaxException {
+        var template = template(server, "guarded", """
+                {size: [1, 1, 1], entities: [],
+                 palette: [{Name: "ametrin_structures:fixture"}],
+                 blocks: [
+                   {pos: [0, 0, 0], state: 0, nbt: {id: "ametrin_structures:fixture", fixtures: [
+                     {conditions: [{type: "neoforge:mod_loaded", modid: "missing_mod"}], type: "ametrin_structures:loot_container", loot_table: "missing_mod:chest"},
+                     {conditions: [{type: "neoforge:mod_loaded", modid: "missing_mod"}], type: "missing_mod:unknown"}]}}]}
+                """);
+        assertEquals(List.of(), describe(check(server, simple(template))));
+    }
+
+    @Test
     void jigsawsThatCantConnectAreReported(MinecraftServer server) throws CommandSyntaxException {
         var template = template(server, "jigsaws", """
                 {size: [3, 1, 1], entities: [],

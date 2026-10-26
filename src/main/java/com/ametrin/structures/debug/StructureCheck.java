@@ -5,6 +5,7 @@ import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.simple.SimpleStructure;
+import com.ametrin.structures.util.RegistryConditionContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -62,6 +63,7 @@ final class StructureCheck {
     private final HolderLookup.Provider lootRegistries;
     private final HolderLookup.RegistryLookup<StructureTemplatePool> pools;
     private final RegistryOps<Tag> ops;
+    private final RegistryConditionContext conditions;
     // Jigsaw order doesn't matter here.
     private final RandomSource random = RandomSource.create(0);
 
@@ -76,6 +78,7 @@ final class StructureCheck {
         this.lootRegistries = lootRegistries;
         this.pools = registries.lookupOrThrow(Registries.TEMPLATE_POOL);
         this.ops = registries.createSerializationContext(NbtOps.INSTANCE);
+        this.conditions = new RegistryConditionContext(registries);
     }
 
     static Report run(MinecraftServer server, Predicate<Holder.Reference<Structure>> structures) {
@@ -143,7 +146,7 @@ final class StructureCheck {
                 var at = Component.translatable("commands.ametrin_structures.check.at", block.pos().toShortString());
                 if (block.state().is(ASBlocks.FIXTURE.get())) {
                     nbt.read(FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElseGet(List::of)
-                            .forEach(alternative -> checkFixture(Problem.Subject.TEMPLATE, id, at, alternative.fixture()));
+                            .forEach(alternative -> checkFixture(Problem.Subject.TEMPLATE, id, at, alternative));
                     nbt.read(FixtureBlockEntity.OFFSET_KEY, Vec3.CODEC)
                             .filter(offset -> !FixtureBlockEntity.isValidOffset(offset))
                             .ifPresent(offset -> problem(Problem.Subject.TEMPLATE, id, "fixture_offset", at, offset.toString(), FixtureBlockEntity.MAX_OFFSET));
@@ -155,7 +158,11 @@ final class StructureCheck {
         }
     }
 
-    private void checkFixture(Problem.Subject subject, Identifier id, Component where, Fixture fixture) {
+    private void checkFixture(Problem.Subject subject, Identifier id, Component where, WeightedFixture alternative) {
+        if (alternative.neverPasses(conditions)) {
+            return;
+        }
+        var fixture = alternative.fixture();
         if (fixture instanceof Fixture.Unreadable unreadable) {
             problem(subject, id, "unreadable_fixture", where, unreadable.error());
             return;
@@ -167,8 +174,8 @@ final class StructureCheck {
             registries.lookupOrThrow(ASRegistries.FIXTURE_PRESET).get(key).ifPresent(preset -> {
                 var alternatives = preset.value().fixtures();
                 for (int i = 0; i < alternatives.size(); i++) {
-                    var alternative = Component.translatable("commands.ametrin_structures.check.alternative", i + 1);
-                    checkFixture(Problem.Subject.FIXTURE_PRESET, key.identifier(), alternative, alternatives.get(i).fixture());
+                    var position = Component.translatable("commands.ametrin_structures.check.alternative", i + 1);
+                    checkFixture(Problem.Subject.FIXTURE_PRESET, key.identifier(), position, alternatives.get(i));
                 }
             });
         }
