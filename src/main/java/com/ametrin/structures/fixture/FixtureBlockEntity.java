@@ -167,9 +167,9 @@ public class FixtureBlockEntity extends BlockEntity {
         ItemStack stack = new ItemStack(getBlockState().getBlock());
         try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(problemPath(), LOGGER)) {
             var output = TagValueOutput.createWithContext(reporter, registries);
+            // Like vanilla's pick block with data, so a picked marker and its copy stack.
             saveCustomOnly(output);
-            // The name is stored as the item's name component instead.
-            output.discard(CUSTOM_NAME_KEY);
+            removeComponentsFromTag(output);
             BlockItem.setBlockEntityData(stack, getType(), output);
             stack.applyComponents(collectComponents());
         }
@@ -215,6 +215,13 @@ public class FixtureBlockEntity extends BlockEntity {
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
         components.set(DataComponents.CUSTOM_NAME, customName);
+    }
+
+    // The name is stored as the item's name component instead.
+    @Override
+    @SuppressWarnings("deprecation")
+    public void removeComponentsFromTag(ValueOutput output) {
+        output.discard(CUSTOM_NAME_KEY);
     }
 
     @Override
