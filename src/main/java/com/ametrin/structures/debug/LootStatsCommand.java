@@ -20,7 +20,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Util;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
@@ -190,16 +189,24 @@ public final class LootStatsCommand {
         var player = player(source);
         var lootTables = level.getServer().reloadableRegistries();
         var stats = sample(layouts.size(), layout -> {
+            var contents = layouts.get(layout).contents();
             var items = new ArrayList<ItemStack>();
-            for (var container : layouts.get(layout).containers()) {
+            for (var container : contents.containers()) {
                 items.addAll(lootTables.getLootTable(container.lootTable()).getRandomItems(chestParams(source, container.pos(), player), random));
+            }
+            for (var display : contents.displays()) {
+                items.addAll(display.drops(level, random));
             }
             return items;
         });
-        var tables = count(layouts.stream().map(layout -> {
-            var perTable = new HashMap<ResourceKey<LootTable>, Integer>();
-            layout.containers().forEach(container -> perTable.merge(container.lootTable(), 1, Integer::sum));
-            return (Map<ResourceKey<LootTable>, Integer>) perTable;
+        // A display without an equipment table is listed by its entity type.
+        var sources = count(layouts.stream().map(layout -> {
+            var perSource = new HashMap<String, Integer>();
+            layout.contents().containers().forEach(container -> perSource.merge(container.lootTable().identifier().toString(), 1, Integer::sum));
+            layout.contents().displays().forEach(display -> perSource.merge(
+                    display.equipment().map(table -> table.identifier().toString()).orElseGet(() -> BuiltInRegistries.ENTITY_TYPE.getKey(display.type()).toString()),
+                    1, Integer::sum));
+            return (Map<String, Integer>) perSource;
         }).toList());
 
         int samples = layouts.size();
@@ -215,21 +222,29 @@ public final class LootStatsCommand {
                     .collect(Collectors.joining(", "));
             extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.structure_mix", mix));
         }
-        var sortedTables = sortedByTotal(tables);
-        var tableList = Component.empty();
-        var tableRows = new StringBuilder("\nloot table\tper structure\tshare of structures\n");
-        for (var entry : sortedTables) {
-            var id = entry.getKey().identifier().toString();
+        var sortedSources = sortedByTotal(sources);
+        var sourceList = Component.empty();
+        var sourceRows = new StringBuilder("\nloot source\tper structure\tshare of structures\n");
+        for (var entry : sortedSources) {
+            var id = entry.getKey();
             var counts = entry.getValue();
-            if (!tableList.getSiblings().isEmpty()) {
-                tableList.append("\n");
+            if (!sourceList.getSiblings().isEmpty()) {
+                sourceList.append("\n");
             }
-            tableList.append(Component.translatable("commands.ametrin_structures.loot_stats.line", average(counts, samples), id, percent(counts.samplesWith(), samples)));
-            tableRows.append(id).append('\t').append(average(counts, samples)).append('\t').append(percent(counts.samplesWith(), samples)).append('\n');
+            sourceList.append(Component.translatable("commands.ametrin_structures.loot_stats.line", average(counts, samples), id, percent(counts.samplesWith(), samples)));
+            sourceRows.append(id).append('\t').append(average(counts, samples)).append('\t').append(percent(counts.samplesWith(), samples)).append('\n');
         }
-        extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.tables", sortedTables.size())
-                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(tableList))));
-        sendReport(source, summary, extraLines, stats, "structure", tableRows.toString());
+        extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.sources", sortedSources.size())
+                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(sourceList))));
+        double codePieces = layouts.stream().mapToInt(layout -> layout.contents().codePieces()).average().orElse(0);
+        if (codePieces > 0) {
+            extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.code_pieces", format(codePieces)));
+        }
+        double dataMarkers = layouts.stream().mapToInt(layout -> layout.contents().dataMarkers()).average().orElse(0);
+        if (dataMarkers > 0) {
+            extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.data_markers", format(dataMarkers)));
+        }
+        sendReport(source, summary, extraLines, stats, "structure", sourceRows.toString());
     }
 
     private static @Nullable Player player(CommandSourceStack source) {
@@ -249,12 +264,12 @@ public final class LootStatsCommand {
         return params.create(LootContextParamSets.CHEST);
     }
 
-    /// Sends the summary with a copy button, then the most common items. The rest are kept for `[+N more]`.
+    /// Sends the summary with a copy button, then the rarest items. The rest are kept for `[+N more]`.
     ///
     /// @param per         what one sample is, "chest" or "structure"
-    /// @param extraTsv    appended to the copied items, e.g. the loot tables
+    /// @param extraTsv    appended to the copied items, e.g. the loot sources
     private static void sendReport(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, Stats stats, String per, String extraTsv) {
-        var items = sortedByTotal(stats.items());
+        var items = sortedByTotal(stats.items()).reversed();
         var tsv = new StringBuilder("item\tper " + per + "\tshare of " + per + "s\tfewest\tmost\n");
         var lines = new ArrayList<Component>();
         for (var entry : items) {
@@ -262,7 +277,7 @@ public final class LootStatsCommand {
             var counts = entry.getValue();
             tsv.append(id).append('\t').append(average(counts, stats.samples())).append('\t').append(percent(counts.samplesWith(), stats.samples()))
                     .append('\t').append(counts.min()).append('\t').append(counts.max()).append('\n');
-            var name = entry.getKey().getDefaultInstance().getHoverName();
+            var name = entry.getKey().getDefaultInstance().getStyledHoverName();
             var details = Component.empty().append(name)
                     .append(Component.literal("\n" + id).withStyle(ChatFormatting.DARK_GRAY))
                     .append("\n").append(Component.translatable("commands.ametrin_structures.loot_stats.range_" + per, counts.min(), counts.max()));

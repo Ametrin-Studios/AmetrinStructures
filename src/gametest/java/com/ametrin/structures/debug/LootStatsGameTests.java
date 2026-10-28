@@ -1,23 +1,35 @@
 package com.ametrin.structures.debug;
 
+import com.ametrin.structures.fixture.EntityFixture;
 import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.structure.simple.SimpleStructurePiece;
 import com.ametrin.structures.structure.simple.TerrainBox;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.StructureBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.properties.StructureMode;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootPool;
@@ -36,6 +48,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /// Game tests rather than unit tests, since rolling loot needs a server level.
 public final class LootStatsGameTests {
@@ -44,7 +57,7 @@ public final class LootStatsGameTests {
     public static final Map<String, Consumer<GameTestHelper>> TESTS = Map.of(
             "loot_stats_counts_every_item", LootStatsGameTests::countsEveryItem,
             "loot_stats_luck_adds_bonus_rolls", LootStatsGameTests::luckAddsBonusRolls,
-            "loot_stats_finds_containers", LootStatsGameTests::findsContainers);
+            "loot_stats_finds_contents", LootStatsGameTests::findsContents);
 
     private LootStatsGameTests() {}
 
@@ -76,27 +89,61 @@ public final class LootStatsGameTests {
         helper.succeed();
     }
 
-    private static void findsContainers(GameTestHelper helper) {
+    private static void findsContents(GameTestHelper helper) {
         var level = helper.getLevel();
         var chest = new BlockPos(0, 1, 0);
         helper.setBlock(chest, Blocks.CHEST);
         helper.getBlockEntity(chest, ChestBlockEntity.class).setLootTable(BuiltInLootTables.SIMPLE_DUNGEON);
-        var marker = new BlockPos(2, 1, 2);
-        helper.setBlock(marker, ASBlocks.FIXTURE.get());
         var ops = level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
-        var fixture = WeightedFixture.MAP_CODEC.codec().encodeStart(ops, new WeightedFixture(1, LootContainerFixture.chest(BuiltInLootTables.DESERT_PYRAMID))).getOrThrow();
-        helper.getBlockEntity(marker, FixtureBlockEntity.class).setFixtureData(List.of(fixture), level.registryAccess());
+        var chestMarker = new BlockPos(2, 1, 2);
+        marker(helper, chestMarker, new WeightedFixture(1, LootContainerFixture.chest(BuiltInLootTables.DESERT_PYRAMID)));
+        var standMarker = new BlockPos(2, 1, 0);
+        var stand = new EntityFixture(BuiltInRegistries.ENTITY_TYPE.getResourceKey(EntityTypes.ARMOR_STAND).orElseThrow(), Optional.empty(), Optional.empty(), 0, Optional.empty(),
+                Map.of(EquipmentSlot.MAINHAND, new ItemStackTemplate(Items.STICK)));
+        marker(helper, standMarker, new WeightedFixture(1, stand));
+        helper.setBlock(new BlockPos(0, 1, 2), Blocks.STRUCTURE_BLOCK.defaultBlockState().setValue(StructureBlock.MODE, StructureMode.DATA));
 
         var origin = helper.absolutePos(BlockPos.ZERO);
-        var template = Identifier.fromNamespaceAndPath("ametrin_structures_test", "loot_stats_captured");
-        level.getStructureTemplateManager().getOrCreate(template).fillFromWorld(level, origin, new Vec3i(3, 2, 3), false, List.of());
-        var piece = new SimpleStructurePiece(level.getStructureTemplateManager(), template, origin, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE, TerrainBox.template(), 0);
-        var containers = StructureLoot.containers(level, new PiecesContainer(List.of(piece)), RandomSource.create(0));
+        var id = Identifier.fromNamespaceAndPath("ametrin_structures_test", "loot_stats_captured");
+        var template = level.getStructureTemplateManager().getOrCreate(id);
+        template.fillFromWorld(level, origin, new Vec3i(3, 2, 3), false, List.of());
+        // An empty frame holds nothing, so it isn't counted.
+        for (var entity : List.of(
+                "{id: \"minecraft:armor_stand\", equipment: {head: {id: \"minecraft:diamond_helmet\"}}}",
+                "{id: \"minecraft:item_frame\", Item: {id: \"minecraft:emerald\"}}",
+                "{id: \"minecraft:glow_item_frame\"}")) {
+            template.entityInfoList.add(new StructureTemplate.StructureEntityInfo(new Vec3(1.5, 1, 1.5), new BlockPos(1, 1, 1), nbt(entity)));
+        }
+        var piece = new SimpleStructurePiece(level.getStructureTemplateManager(), id, origin, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE, TerrainBox.template(), 0);
+        var contents = StructureLoot.contents(level, new PiecesContainer(List.of(piece)), RandomSource.create(0));
 
-        helper.assertValueEqual(Set.copyOf(containers), Set.of(
+        helper.assertValueEqual(Set.copyOf(contents.containers()), Set.of(
                 new StructureLoot.Container(BuiltInLootTables.SIMPLE_DUNGEON, helper.absolutePos(chest)),
-                new StructureLoot.Container(BuiltInLootTables.DESERT_PYRAMID, helper.absolutePos(marker))), "containers");
+                new StructureLoot.Container(BuiltInLootTables.DESERT_PYRAMID, helper.absolutePos(chestMarker))), "containers");
+        var drops = contents.displays().stream()
+                .flatMap(display -> display.drops(level, RandomSource.create(0)).stream())
+                .map(ItemStack::getItem)
+                .collect(Collectors.toSet());
+        helper.assertValueEqual(drops, Set.of(Items.DIAMOND_HELMET, Items.EMERALD, Items.STICK), "drops");
+        helper.assertValueEqual(contents.displays().size(), 3, "armor stands and item frames");
+        helper.assertValueEqual(contents.dataMarkers(), 1, "data markers");
+        helper.assertValueEqual(contents.codePieces(), 0, "pieces built in code");
         helper.succeed();
+    }
+
+    private static CompoundTag nbt(String snbt) {
+        try {
+            return TagParser.parseCompoundFully(snbt);
+        } catch (CommandSyntaxException exception) {
+            throw new IllegalArgumentException(exception);
+        }
+    }
+
+    private static void marker(GameTestHelper helper, BlockPos pos, WeightedFixture fixture) {
+        var level = helper.getLevel();
+        helper.setBlock(pos, ASBlocks.FIXTURE.get());
+        var data = WeightedFixture.MAP_CODEC.codec().encodeStart(level.registryAccess().createSerializationContext(NbtOps.INSTANCE), fixture).getOrThrow();
+        helper.getBlockEntity(pos, FixtureBlockEntity.class).setFixtureData(List.of(data), level.registryAccess());
     }
 
     private static LootParams params(GameTestHelper helper, float luck) {

@@ -1,6 +1,7 @@
 ## 0.3.2-beta
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)
 - `archeology` fixtures only accept brushable blocks
+- improved `ametrin loot_stats` command
 
 ## 0.3.1-beta
 - `excluded_dimenstion` structure set data map
