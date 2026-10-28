@@ -104,7 +104,7 @@ final class FixtureLayout {
                 helper.assertValueEqual(saved.getStringOr("LootTable", ""), BuiltInLootTables.DESERT_PYRAMID_ARCHAEOLOGY.identifier().toString(), "loot table");
             }),
             // Three blocks up, so there's a gap to fill down to the floor.
-            new Entry("extend_down", slot(10).above(2), Marker.of(new ExtendDownFixture(Optional.of(Blocks.COBBLESTONE.defaultBlockState()), 8)), (helper, pos) -> {
+            new Entry("extend_down", slot(10).above(2), Marker.of(new ExtendFixture(ExtendFixture.Vertical.DOWN, Optional.of(Blocks.COBBLESTONE.defaultBlockState()), 8)), (helper, pos) -> {
                 helper.assertBlockPresent(Blocks.COBBLESTONE, pos);
                 helper.assertBlockPresent(Blocks.COBBLESTONE, pos.below(2));
             }),
