@@ -93,11 +93,12 @@ final class GalleryCommand {
             pieces.pieces().forEach(piece -> piece.move(dx, dy, dz));
             var moved = pieces.calculateBoundingBox();
             var start = new StructureStart(structure, ChunkPos.containing(moved.getCenter()), 0, pieces);
-            // Like /place structure, one chunk at a time, but loading the chunks it needs.
             var min = new ChunkPos(SectionPos.blockToSectionCoord(moved.minX()), SectionPos.blockToSectionCoord(moved.minZ()));
             var max = new ChunkPos(SectionPos.blockToSectionCoord(moved.maxX()), SectionPos.blockToSectionCoord(moved.maxZ()));
+            // Placed blocks react to their neighbors, and some, like a carved pumpkin looking for a golem, fail on a neighbor in an unloaded chunk.
+            // So every chunk is loaded first, with one around them.
+            ChunkPos.rangeClosed(new ChunkPos(min.x() - 1, min.z() - 1), new ChunkPos(max.x() + 1, max.z() + 1)).forEach(chunk -> level.getChunk(chunk.x(), chunk.z()));
             ChunkPos.rangeClosed(min, max).forEach(chunk -> {
-                level.getChunk(chunk.x(), chunk.z());
                 var chunkBox = new BoundingBox(chunk.getMinBlockX(), level.getMinY(), chunk.getMinBlockZ(), chunk.getMaxBlockX(), level.getMaxY() + 1, chunk.getMaxBlockZ());
                 start.placeInChunk(level, level.structureManager(), generator, level.getRandom(), chunkBox, chunk);
             });
