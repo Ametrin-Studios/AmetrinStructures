@@ -58,15 +58,19 @@ final class GalleryCommand {
                     }
                     return layouts;
                 }, Util.backgroundExecutor())
-                .whenCompleteAsync((layouts, error) -> {
+                .thenAcceptAsync(layouts -> {
+                    if (layouts.isEmpty()) {
+                        source.sendFailure(Component.translatable("commands.ametrin_structures.pieces.none", name, count * TRIES_PER_LAYOUT));
+                        return;
+                    }
+                    int columns = place(level, structure.value(), here.offset(GAP, 0, GAP), layouts);
+                    source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.gallery.placed", layouts.size(), name, columns), true);
+                }, source.getServer())
+                // Covers both laying out and placing, so an exception while placing isn't lost.
+                .whenCompleteAsync((_, error) -> {
                     if (error != null) {
                         ASLog.error("gallery failed", error);
                         source.sendFailure(Component.translatable("commands.ametrin_structures.gallery.failed", error.toString()));
-                    } else if (layouts.isEmpty()) {
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.pieces.none", name, count * TRIES_PER_LAYOUT));
-                    } else {
-                        int columns = place(level, structure.value(), here.offset(GAP, 0, GAP), layouts);
-                        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.gallery.placed", layouts.size(), name, columns), true);
                     }
                 }, source.getServer());
         return 1;
