@@ -6,7 +6,7 @@ import com.ametrin.structures.fixture.ArchaeologyFixture;
 import com.ametrin.structures.fixture.BlockStateFixture;
 import com.ametrin.structures.fixture.EmptyFixture;
 import com.ametrin.structures.fixture.EntityFixture;
-import com.ametrin.structures.fixture.ExtendDownFixture;
+import com.ametrin.structures.fixture.ExtendFixture;
 import com.ametrin.structures.fixture.FeatureFixture;
 import com.ametrin.structures.fixture.FillContainerFixture;
 import com.ametrin.structures.fixture.LootContainerFixture;
@@ -35,5 +35,5 @@ public final class ASFixtures {
     public static final DeferredHolder<FixtureType, FixtureType> BLOCK_STATE = REGISTER.register("block_state", () -> new FixtureType(BlockStateFixture.CODEC, BlockStateFixture.FIELDS));
     public static final DeferredHolder<FixtureType, FixtureType> FEATURE = REGISTER.register("feature", () -> new FixtureType(FeatureFixture.CODEC, FeatureFixture.FIELDS));
     public static final DeferredHolder<FixtureType, FixtureType> ARCHAEOLOGY = REGISTER.register("archaeology", () -> new FixtureType(ArchaeologyFixture.CODEC, ArchaeologyFixture.FIELDS));
-    public static final DeferredHolder<FixtureType, FixtureType> EXTEND_DOWN = REGISTER.register("extend_down", () -> new FixtureType(ExtendDownFixture.CODEC, ExtendDownFixture.FIELDS));
+    public static final DeferredHolder<FixtureType, FixtureType> EXTEND = REGISTER.register("extend", () -> new FixtureType(ExtendFixture.CODEC, ExtendFixture.FIELDS));
 }

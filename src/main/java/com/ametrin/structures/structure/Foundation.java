@@ -3,6 +3,7 @@ package com.ametrin.structures.structure;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -43,17 +44,16 @@ public record Foundation(Optional<BlockState> state, int maxDepth) {
                 bottom.set(x, pieceBox.minY(), z);
                 BlockState hanging = level.getBlockState(bottom);
                 if (!isFillable(hanging) && (state.isPresent() || canRepeat(hanging))) {
-                    fillDown(level, bottom.below(), state.orElse(hanging), maxDepth, chunkBox);
+                    extend(level, bottom.below(), Direction.DOWN, state.orElse(hanging), maxDepth, chunkBox);
                 }
             }
         }
     }
 
-    /// Fills from `top` downward with `fill` while the blocks are [fillable][#isFillable], within `bounds`.
-    public static void fillDown(WorldGenLevel level, BlockPos top, BlockState fill, int maxDepth, BoundingBox bounds) {
-        var pos = top.mutable();
-        int floor = Math.max(level.getMinY(), top.getY() - maxDepth + 1);
-        for (; pos.getY() >= floor && bounds.isInside(pos); pos.move(0, -1, 0)) {
+    /// Fills from `start` toward `direction` with `fill` while the blocks are [fillable][#isFillable], within `bounds` and the build height.
+    public static void extend(WorldGenLevel level, BlockPos start, Direction direction, BlockState fill, int maxLength, BoundingBox bounds) {
+        var pos = start.mutable();
+        for (int i = 0; i < maxLength && bounds.isInside(pos) && !level.isOutsideBuildHeight(pos); i++, pos.move(direction)) {
             BlockState replaced = level.getBlockState(pos);
             if (!isFillable(replaced)) {
                 return;

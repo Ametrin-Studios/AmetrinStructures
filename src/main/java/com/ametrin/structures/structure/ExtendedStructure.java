@@ -80,6 +80,11 @@ public abstract class ExtendedStructure extends Structure {
         return layOut(context, timer).map(candidate -> evaluate(context, candidate, timer), rejection -> rejection);
     }
 
+    /// Lays out the structure in the context's chunk without checking the biome, the filters or [StructureBuilder#onlyWhenPickedFirst], e.g. to test how it assembles.
+    public Optional<GenerationStub> layOutUnchecked(GenerationContext context) {
+        return layOut(context, Timer.NONE).left().map(candidate -> withProcessors(candidate.stub().get()));
+    }
+
     // A structure outside any set counts as picked.
     private boolean isPickedFirst(GenerationContext context) {
         var sets = containingSets(context.registryAccess());

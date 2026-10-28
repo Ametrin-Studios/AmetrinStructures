@@ -2,6 +2,9 @@
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)
 - `archeology` fixtures only accept brushable blocks
 - improved `ametrin loot_stats` command
+- `ametrin structures pieces` command
+- `ametrin structures gallery` command
+- `extend` fixture replaces `extend_down` and can grow up or down
 
 ## 0.3.1-beta
 - `excluded_dimenstion` structure set data map
