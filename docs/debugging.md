@@ -82,7 +82,7 @@ Lays out the structure 100 times, or `layouts` times up to 1000, without placing
 /ametrin structures gallery <structure> [count]
 ```
 
-Places 9 layouts, or `count` up to 100, in a grid next to you, each in a cell as big as the biggest layout. Only do this in a throw-away test word.
+Places 9 layouts, or `count` up to 100, in a grid next to you, each in a cell as big as the biggest layout, with a gap of a quarter of its size, at least 8 blocks. Only do this in a throw-away test word.
 
 ## Fixtures
 

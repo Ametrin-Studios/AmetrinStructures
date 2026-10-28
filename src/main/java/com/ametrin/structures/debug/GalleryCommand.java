@@ -29,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
 final class GalleryCommand {
     private static final int DEFAULT_COUNT = 9;
     private static final int MAX_COUNT = 100;
-    private static final int GAP = 8;
+    private static final int MIN_GAP = 8;
     // A seed can lay out no pieces, so a few more are tried.
     private static final int TRIES_PER_LAYOUT = 4;
 
@@ -63,7 +63,7 @@ final class GalleryCommand {
                         source.sendFailure(Component.translatable("commands.ametrin_structures.pieces.none", name, count * TRIES_PER_LAYOUT));
                         return;
                     }
-                    int columns = place(level, structure.value(), here.offset(GAP, 0, GAP), layouts);
+                    int columns = place(level, structure.value(), here, layouts);
                     source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.gallery.placed", layouts.size(), name, columns), true);
                 }, source.getServer())
                 // Covers both laying out and placing, so an exception while placing isn't lost.
@@ -76,13 +76,18 @@ final class GalleryCommand {
         return 1;
     }
 
-    /// Places the layouts in rows, the first one's lowest corner at `corner`. Each cell is as big as the biggest layout.
+    /// Places the layouts in rows next to `here`, each one's lowest block at its height. Each cell is as big as the biggest layout,
+    /// with a gap of a quarter of its size, at least [#MIN_GAP] blocks.
     ///
     /// @return the number of columns
-    private static int place(ServerLevel level, Structure structure, BlockPos corner, List<PiecesContainer> layouts) {
+    private static int place(ServerLevel level, Structure structure, BlockPos here, List<PiecesContainer> layouts) {
         int columns = (int) Math.ceil(Math.sqrt(layouts.size()));
-        int cellX = layouts.stream().mapToInt(pieces -> pieces.calculateBoundingBox().getXSpan()).max().orElse(0) + GAP;
-        int cellZ = layouts.stream().mapToInt(pieces -> pieces.calculateBoundingBox().getZSpan()).max().orElse(0) + GAP;
+        int width = layouts.stream().mapToInt(pieces -> pieces.calculateBoundingBox().getXSpan()).max().orElse(0);
+        int length = layouts.stream().mapToInt(pieces -> pieces.calculateBoundingBox().getZSpan()).max().orElse(0);
+        int gap = Math.max(MIN_GAP, Math.max(width, length) / 4);
+        int cellX = width + gap;
+        int cellZ = length + gap;
+        var corner = here.offset(gap, 0, gap);
         var generator = level.getChunkSource().getGenerator();
         for (int i = 0; i < layouts.size(); i++) {
             var pieces = layouts.get(i);
