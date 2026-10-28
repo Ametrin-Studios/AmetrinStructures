@@ -22,6 +22,8 @@ public final class StructuresCommand {
                 .then(SpreadCommand.spread())
                 .then(SpreadCommand.visit())
                 .then(CheckCommand.check())
+                .then(PiecesCommand.pieces())
+                .then(GalleryCommand.gallery())
                 .then(SaveStructuresCommand.saveStructures());
         ExportTemplatesCommand.exportTemplates().ifPresent(structures::then);
         dispatcher.register(Commands.literal("ametrin").then(structures).then(LootStatsCommand.lootStats(context)));

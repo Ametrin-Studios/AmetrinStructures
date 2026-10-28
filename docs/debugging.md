@@ -68,6 +68,22 @@ It checks simple and jigsaw structures and tells you how many of other types it 
 
 A jigsaw that other pieces attach to isn't checked, because the attached piece replaces it. This skips the many vanilla jigsaws that point back to where they came from.
 
+## Trying layouts
+
+These lay out a structure at random seeds where you stand. They ignore the biome, the filters and `onlyWhenPickedFirst()`, so you see how the structure assembles, not where it generates.
+
+```
+/ametrin structures pieces <structure> [layouts]
+```
+
+Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything. It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first. Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
+
+```
+/ametrin structures gallery <structure> [count]
+```
+
+Places 9 layouts, or `count` up to 100, in a grid next to you, each in a cell as big as the biggest layout. Only do this in a throw-away test word.
+
 ## Fixtures
 
 "Generate now" in a fixture's screen runs it in place like generation would, but ignores its generation chance. The fixture goes back into your inventory first, with all its settings, so you can place it again.

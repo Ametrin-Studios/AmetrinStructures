@@ -1,6 +1,7 @@
 package com.ametrin.structures.gametest;
 
 import com.ametrin.structures.AmetrinStructures;
+import com.ametrin.structures.debug.LayoutGameTests;
 import com.ametrin.structures.debug.LootStatsGameTests;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.FunctionGameTestInstance;
@@ -40,6 +41,7 @@ public final class ASGameTests {
             }));
         }
         LootStatsGameTests.TESTS.forEach((name, test) -> tests.add(new GameTest(name, EMPTY, test)));
+        LayoutGameTests.TESTS.forEach((name, test) -> tests.add(new GameTest(name, EMPTY, test)));
         return tests;
     }
 

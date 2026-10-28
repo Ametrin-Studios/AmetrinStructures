@@ -14,7 +14,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
@@ -37,6 +36,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
+import static com.ametrin.structures.debug.ChatReport.*;
+
 /// Rolls loot as if the caller opened chests, luck included, and reports how often each item comes up.
 ///
 /// - `/ametrin loot_stats table <loot_table> [samples]`: one chest where the caller stands.
@@ -49,18 +50,6 @@ public final class LootStatsCommand {
     private static final int MAX_LAYOUTS = 1_000;
     private static final int DEFAULT_RADIUS = 128;
     private static final int MAX_RADIUS = 16_384;
-    private static final int SHOWN_ITEMS = 10;
-    private static final int KEPT_REPORTS = 16;
-
-    // The item lines `[+N more]` prints, for the latest few reports.
-    private static final Map<Integer, List<Component>> HIDDEN_LINES = new LinkedHashMap<>() {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<Integer, List<Component>> eldest) {
-            return size() > KEPT_REPORTS;
-        }
-    };
-    private static int nextReport;
-
     private LootStatsCommand() {}
 
     static LiteralArgumentBuilder<CommandSourceStack> lootStats(CommandBuildContext context) {
@@ -79,9 +68,7 @@ public final class LootStatsCommand {
                                         .then(Commands.argument("layouts", IntegerArgumentType.integer(1, MAX_LAYOUTS))
                                                 .executes(command -> structure(command,
                                                         IntegerArgumentType.getInteger(command, "radius"), IntegerArgumentType.getInteger(command, "layouts")))))))
-                .then(Commands.literal("more")
-                        .then(Commands.argument("report", IntegerArgumentType.integer(0))
-                                .executes(command -> more(command.getSource(), IntegerArgumentType.getInteger(command, "report")))));
+                .then(ChatReport.more());
     }
 
     /// @param total       over all samples
@@ -224,7 +211,7 @@ public final class LootStatsCommand {
             if (!sourceList.getSiblings().isEmpty()) {
                 sourceList.append("\n");
             }
-            sourceList.append(Component.translatable("commands.ametrin_structures.loot_stats.line", average(counts, samples), id, percent(counts.samplesWith(), samples)));
+            sourceList.append(ChatReport.line(counts, samples, id));
             sourceRows.append(id).append('\t').append(average(counts, samples)).append('\t').append(percent(counts.samplesWith(), samples)).append('\n');
         }
         extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.sources", sortedSources.size())
@@ -257,7 +244,7 @@ public final class LootStatsCommand {
         return params.create(LootContextParamSets.CHEST);
     }
 
-    /// Sends the summary with a copy button, then the rarest items. The rest are kept for `[+N more]`.
+    /// Sends the summary with a copy button, then the rarest items.
     ///
     /// @param per         what one sample is, "chest" or "structure"
     /// @param extraTsv    appended to the copied items, e.g. the loot sources
@@ -274,52 +261,9 @@ public final class LootStatsCommand {
             var details = Component.empty().append(name)
                     .append(Component.literal("\n" + id).withStyle(ChatFormatting.DARK_GRAY))
                     .append("\n").append(Component.translatable("commands.ametrin_structures.loot_stats.range_" + per, counts.min(), counts.max()));
-            lines.add(Component.translatable("commands.ametrin_structures.loot_stats.line", average(counts, stats.samples()), name, percent(counts.samplesWith(), stats.samples()))
-                    .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
+            lines.add(ChatReport.line(counts, stats.samples(), name).withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
         }
         tsv.append(extraTsv);
-
-        var copy = Component.translatable("commands.ametrin_structures.loot_stats.copy").withStyle(style -> style
-                .withColor(ChatFormatting.GREEN)
-                .withClickEvent(new ClickEvent.CopyToClipboard(tsv.toString()))
-                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("commands.ametrin_structures.loot_stats.copy_hover"))));
-        source.sendSuccess(() -> summary.append(" ").append(copy), false);
-        extraLines.forEach(line -> source.sendSuccess(() -> line, false));
-        lines.stream().limit(SHOWN_ITEMS).forEach(line -> source.sendSuccess(() -> line, false));
-        if (lines.size() > SHOWN_ITEMS) {
-            int report = nextReport++;
-            HIDDEN_LINES.put(report, List.copyOf(lines.subList(SHOWN_ITEMS, lines.size())));
-            source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.more", lines.size() - SHOWN_ITEMS).withStyle(style -> style
-                    .withColor(ChatFormatting.GREEN)
-                    .withClickEvent(new ClickEvent.RunCommand("/ametrin loot_stats more " + report))), false);
-        }
-    }
-
-    private static int more(CommandSourceStack source, int report) {
-        var lines = HIDDEN_LINES.remove(report);
-        if (lines == null) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.gone"));
-            return 0;
-        }
-        lines.forEach(line -> source.sendSuccess(() -> line, false));
-        return lines.size();
-    }
-
-    private static <K> List<Map.Entry<K, Counts>> sortedByTotal(Map<K, Counts> counts) {
-        return counts.entrySet().stream()
-                .sorted(Map.Entry.<K, Counts>comparingByValue(Comparator.comparingLong(Counts::total)).reversed())
-                .toList();
-    }
-
-    private static String average(Counts counts, int samples) {
-        return format((double) counts.total() / samples);
-    }
-
-    private static String percent(long part, int whole) {
-        return format(100.0 * part / whole);
-    }
-
-    private static String format(double value) {
-        return String.format(Locale.ROOT, "%.2f", value);
+        ChatReport.send(source, summary, extraLines, lines, tsv.toString(), "/ametrin loot_stats");
     }
 }
