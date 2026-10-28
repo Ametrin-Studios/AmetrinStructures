@@ -242,12 +242,12 @@ public final class LootStatsCommand {
         return params.create(LootContextParamSets.CHEST);
     }
 
-    /// Sends the summary with a copy button, then the most common items. The rest are kept for `[+N more]`.
+    /// Sends the summary with a copy button, then the rarest items. The rest are kept for `[+N more]`.
     ///
     /// @param per         what one sample is, "chest" or "structure"
     /// @param extraTsv    appended to the copied items, e.g. the loot tables
     private static void sendReport(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, Stats stats, String per, String extraTsv) {
-        var items = sortedByTotal(stats.items());
+        var items = sortedByTotal(stats.items()).reversed();
         var tsv = new StringBuilder("item\tper " + per + "\tshare of " + per + "s\tfewest\tmost\n");
         var lines = new ArrayList<Component>();
         for (var entry : items) {
@@ -255,7 +255,7 @@ public final class LootStatsCommand {
             var counts = entry.getValue();
             tsv.append(id).append('\t').append(average(counts, stats.samples())).append('\t').append(percent(counts.samplesWith(), stats.samples()))
                     .append('\t').append(counts.min()).append('\t').append(counts.max()).append('\n');
-            var name = entry.getKey().getDefaultInstance().getHoverName();
+            var name = entry.getKey().getDefaultInstance().getStyledHoverName();
             var details = Component.empty().append(name)
                     .append(Component.literal("\n" + id).withStyle(ChatFormatting.DARK_GRAY))
                     .append("\n").append(Component.translatable("commands.ametrin_structures.loot_stats.range_" + per, counts.min(), counts.max()));

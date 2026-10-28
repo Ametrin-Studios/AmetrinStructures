@@ -78,7 +78,7 @@ Broken fixture presets are logged as warnings when the server starts: unknown fi
 
 ## Loot tables
 
-`/ametrin loot_stats table <loot_table> [samples]` rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. For each item it shows how many a chest has on average and how many chests have at least one. Hover an item for the fewest and most seen in one chest. Only the 10 most common items are listed, click `[+N more]` for the rest. `[copy]` copies the whole report as tab-separated values, e.g. to paste into a spreadsheet. The table can also be inline JSON, like for `/loot`.
+`/ametrin loot_stats table <loot_table> [samples]` rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. For each item it shows how many a chest has on average and how many chests have at least one. Hover an item for the fewest and most seen in one chest. Only the 10 rarest items are listed, click `[+N more]` for the rest. `[copy]` copies the whole report as tab-separated values, e.g. to paste into a spreadsheet. The table can also be inline JSON, like for `/loot`.
 
 The counts are what the table produces. A real chest can hold fewer when the items don't fit.
 
