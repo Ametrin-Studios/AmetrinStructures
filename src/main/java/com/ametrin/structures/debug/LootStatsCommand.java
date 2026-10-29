@@ -46,6 +46,22 @@ import static com.ametrin.structures.debug.ChatReport.*;
 /// - `/ametrin loot_stats structure <structure> [radius] [layouts]`: every chest in the nearest layouts of the structure, see [StructureLoot].
 ///   For a structure tag, the layouts of all its structures together.
 public final class LootStatsCommand {
+    public static final class Keys {
+        public static final String SUMMARY = "commands.ametrin_structures.loot_stats.summary";
+        public static final String STRUCTURE_STARTED = "commands.ametrin_structures.loot_stats.structure_started";
+        public static final String FAILED = "commands.ametrin_structures.loot_stats.failed";
+        public static final String NO_LAYOUTS = "commands.ametrin_structures.loot_stats.no_layouts";
+        public static final String STRUCTURE_SUMMARY = "commands.ametrin_structures.loot_stats.structure_summary";
+        public static final String STRUCTURE_MIX = "commands.ametrin_structures.loot_stats.structure_mix";
+        public static final String SOURCES = "commands.ametrin_structures.loot_stats.sources";
+        public static final String CODE_PIECES = "commands.ametrin_structures.loot_stats.code_pieces";
+        public static final String DATA_MARKERS = "commands.ametrin_structures.loot_stats.data_markers";
+        public static final String RANGE_CHEST = "commands.ametrin_structures.loot_stats.range_chest";
+        public static final String RANGE_STRUCTURE = "commands.ametrin_structures.loot_stats.range_structure";
+
+        private Keys() {}
+    }
+
     private static final int DEFAULT_SAMPLES = 10_000;
     private static final int MAX_SAMPLES = 100_000;
     private static final int DEFAULT_LAYOUTS = 100;
@@ -137,8 +153,8 @@ public final class LootStatsCommand {
         var stats = sample(table.value(), params, samples, source.getLevel().getRandom().fork());
 
         var name = table.unwrapKey().map(key -> key.identifier().toString()).orElse("inline");
-        var summary = Component.translatable("commands.ametrin_structures.loot_stats.summary", name, samples, format(luck(player)), percent(stats.empty(), samples));
-        sendReport(source, summary, List.of(), stats, "chest", "");
+        var summary = Component.translatable(Keys.SUMMARY, name, samples, format(luck(player)), percent(stats.empty(), samples));
+        sendReport(source, summary, List.of(), stats, "chest", Keys.RANGE_CHEST, "");
         return stats.items().size();
     }
 
@@ -154,15 +170,15 @@ public final class LootStatsCommand {
         var name = structures.asPrintable();
         var random = level.getRandom().fork();
         var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.loot_stats.structure_started", count, name, radius), false);
+        source.sendSuccess(() -> Component.translatable(Keys.STRUCTURE_STARTED, count, name, radius), false);
         // Laying out structures far away can take a while.
         CompletableFuture.supplyAsync(() -> StructureLoot.layouts(level, structures, center, radius, count, random), Util.backgroundExecutor())
                 .whenCompleteAsync((layouts, error) -> {
                     if (error != null) {
                         ASLog.error("structure loot stats failed", error);
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.failed", error.toString()));
+                        source.sendFailure(Component.translatable(Keys.FAILED, error.toString()));
                     } else if (layouts.layouts().isEmpty()) {
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.loot_stats.no_layouts", name, radius));
+                        source.sendFailure(Component.translatable(Keys.NO_LAYOUTS, name, radius));
                     } else {
                         structureReport(source, structures, name, layouts, random);
                     }
@@ -197,7 +213,7 @@ public final class LootStatsCommand {
         }).toList());
 
         int samples = layouts.size();
-        var summary = Component.translatable("commands.ametrin_structures.loot_stats.structure_summary",
+        var summary = Component.translatable(Keys.STRUCTURE_SUMMARY,
                 name, samples, found.radius(), format(luck(player)), percent(stats.empty(), samples));
         var extraLines = new ArrayList<Component>();
         if (structures.unwrap().right().isPresent()) {
@@ -207,21 +223,21 @@ public final class LootStatsCommand {
                     .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                     .map(entry -> entry.getKey() + " " + entry.getValue())
                     .collect(Collectors.joining(", "));
-            extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.structure_mix", mix));
+            extraLines.add(Component.translatable(Keys.STRUCTURE_MIX, mix));
         }
         var sortedSources = sortedByTotal(sources);
         var sourceBreakdown = breakdown("loot source\tper structure\tshare of structures", sortedSources, samples);
-        extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.sources", sortedSources.size())
+        extraLines.add(Component.translatable(Keys.SOURCES, sortedSources.size())
                 .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(sourceBreakdown.hover()))));
         double codePieces = layouts.stream().mapToInt(layout -> layout.contents().codePieces()).average().orElse(0);
         if (codePieces > 0) {
-            extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.code_pieces", format(codePieces)));
+            extraLines.add(Component.translatable(Keys.CODE_PIECES, format(codePieces)));
         }
         double dataMarkers = layouts.stream().mapToInt(layout -> layout.contents().dataMarkers()).average().orElse(0);
         if (dataMarkers > 0) {
-            extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.data_markers", format(dataMarkers)));
+            extraLines.add(Component.translatable(Keys.DATA_MARKERS, format(dataMarkers)));
         }
-        sendReport(source, summary, extraLines, stats, "structure", sourceBreakdown.tsv());
+        sendReport(source, summary, extraLines, stats, "structure", Keys.RANGE_STRUCTURE, sourceBreakdown.tsv());
     }
 
     private static @Nullable Player player(CommandSourceStack source) {
@@ -245,7 +261,7 @@ public final class LootStatsCommand {
     ///
     /// @param per         what one sample is, "chest" or "structure"
     /// @param extraTsv    appended to the copied items, e.g. the loot sources
-    private static void sendReport(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, Stats stats, String per, String extraTsv) {
+    private static void sendReport(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, Stats stats, String per, String rangeKey, String extraTsv) {
         var items = sortedByTotal(stats.items()).reversed();
         var tsv = new StringBuilder("item\tper " + per + "\tshare of " + per + "s\tfewest\tmost\n");
         var lines = new ArrayList<Component>();
@@ -257,7 +273,7 @@ public final class LootStatsCommand {
             var name = entry.getKey().getDefaultInstance().getStyledHoverName();
             var details = Component.empty().append(name)
                     .append(Component.literal("\n" + id).withStyle(ChatFormatting.DARK_GRAY))
-                    .append("\n").append(Component.translatable("commands.ametrin_structures.loot_stats.range_" + per, counts.min(), counts.max()));
+                    .append("\n").append(Component.translatable(rangeKey, counts.min(), counts.max()));
             lines.add(ChatReport.line(counts, stats.samples(), name).withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
         }
         tsv.append(extraTsv);

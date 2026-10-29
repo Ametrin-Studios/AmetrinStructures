@@ -10,6 +10,11 @@ public final class SpreadWaypointsClient {
 
     private static boolean failed;
 
+    /// The label of a rejected spot's waypoint, for a [com.ametrin.structures.debug.StructureSpread.Reason]'s key.
+    public static String rejectedKey(String reason) {
+        return "waypoint.ametrin_structures.rejected." + reason;
+    }
+
     private SpreadWaypointsClient() {}
 
     public static void show(ASPayloads.SpreadWaypoints payload) {

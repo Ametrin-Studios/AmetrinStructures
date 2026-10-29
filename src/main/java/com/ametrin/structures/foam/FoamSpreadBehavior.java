@@ -6,6 +6,8 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Util;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +22,11 @@ public interface FoamSpreadBehavior {
     /// One tooltip line saying where this behavior spreads, e.g. "Spreads to the six adjacent blocks".
     /// Defaults to the translation of `foam_spread_behavior.<namespace>.<path>`, from the type's id; override to pass parameters.
     default Component description() {
-        return FoamDescriptions.of("foam_spread_behavior", ASRegistries.FOAM_SPREAD_BEHAVIOR_TYPES.getKey(type()));
+        return FoamDescriptions.of(ASRegistries.FOAM_SPREAD_BEHAVIOR_TYPES.getKey(type()), FoamSpreadBehavior::descriptionKey);
+    }
+
+    static String descriptionKey(Identifier type) {
+        return Util.makeDescriptionId("foam_spread_behavior", type);
     }
 
     FoamSpreadBehaviorType type();

@@ -65,6 +65,40 @@ import java.util.stream.Collectors;
 /// `/ametrin structures visit next|previous|<number>` teleports a player through the spots of their
 /// last report, nearest first.
 public final class SpreadCommand {
+    public static final class Keys {
+        public static final String INVALID_SET = "commands.ametrin_structures.spread.invalid_set";
+        public static final String INVALID_PLACEMENT = "commands.ametrin_structures.spread.invalid_placement";
+        public static final String RINGS_PLACEMENT = "commands.ametrin_structures.spread.rings_placement";
+        public static final String WITH_PLACEMENT = "commands.ametrin_structures.spread.with_placement";
+        public static final String STARTED = "commands.ametrin_structures.spread.started";
+        public static final String FAILED = "commands.ametrin_structures.spread.failed";
+        public static final String PLACEMENT = "commands.ametrin_structures.spread.placement";
+        public static final String PLACEMENT_STARTED = "commands.ametrin_structures.spread.placement_started";
+        public static final String CANDIDATES = "commands.ametrin_structures.spread.candidates";
+        public static final String LIMITED = "commands.ametrin_structures.spread.limited";
+        public static final String CLEARED = "commands.ametrin_structures.spread.cleared";
+        public static final String SET_UNUSED = "commands.ametrin_structures.spread.set_unused";
+        public static final String NO_SET = "commands.ametrin_structures.spread.no_set";
+        public static final String SUMMARY = "commands.ametrin_structures.spread.summary";
+        public static final String GENERATED = "commands.ametrin_structures.spread.generated";
+        public static final String REJECTED = "commands.ametrin_structures.spread.rejected";
+        public static final String OUTSIDE_BIOME_HIDDEN = "commands.ametrin_structures.spread.outside_biome_hidden";
+        public static final String WAYPOINTS_LIMITED = "commands.ametrin_structures.spread.waypoints_limited";
+        public static final String HEIGHTS = "commands.ametrin_structures.spread.heights";
+        public static final String SPACING = "commands.ametrin_structures.spread.spacing";
+        public static final String NEAREST = "commands.ametrin_structures.spread.nearest";
+        public static final String VISIT_HINT = "commands.ametrin_structures.spread.visit_hint";
+        public static final String TIMING = "commands.ametrin_structures.spread.timing";
+        public static final String TIMING_STEP = "commands.ametrin_structures.spread.timing.step";
+        public static final String TIMING_STEPS = "commands.ametrin_structures.spread.timing.steps";
+        public static final String TIMING_LIMITED = "commands.ametrin_structures.spread.timing.limited";
+        public static final String VISIT_NONE = "commands.ametrin_structures.visit.none";
+        public static final String VISIT_ARRIVED = "commands.ametrin_structures.visit.arrived";
+        public static final String VISIT_ARRIVED_CANDIDATE = "commands.ametrin_structures.visit.arrived_candidate";
+
+        private Keys() {}
+    }
+
     private static final int DEFAULT_RADIUS = 128;
     private static final int MAX_RADIUS = 16_384;
     /// Also for the chunks `spread placement` picks.
@@ -74,12 +108,12 @@ public final class SpreadCommand {
     static final DynamicCommandExceptionType INVALID_STRUCTURE = new DynamicCommandExceptionType(
             id -> Component.translatableEscape("commands.locate.structure.invalid", id));
     private static final DynamicCommandExceptionType INVALID_SET = new DynamicCommandExceptionType(
-            id -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_set", id));
+            id -> Component.translatableEscape(Keys.INVALID_SET, id));
     private static final DynamicCommandExceptionType INVALID_PLACEMENT = new DynamicCommandExceptionType(
-            error -> Component.translatableEscape("commands.ametrin_structures.spread.invalid_placement", error));
+            error -> Component.translatableEscape(Keys.INVALID_PLACEMENT, error));
     // Concentric ring positions are only computed once per world, for the sets' own placements.
     private static final SimpleCommandExceptionType RINGS_PLACEMENT = new SimpleCommandExceptionType(
-            Component.translatable("commands.ametrin_structures.spread.rings_placement"));
+            Component.translatable(Keys.RINGS_PLACEMENT));
     // Per player. Each placement report gets a number, so it keeps its own waypoints.
     private static final Map<UUID, Integer> PLACEMENT_REPORTS = new ConcurrentHashMap<>();
 
@@ -275,19 +309,19 @@ public final class SpreadCommand {
             int number = nextPlacementReport(source);
             reportId = target.id().withSuffix("/placement_" + number);
             waypointColor = color != null ? color : randomColor();
-            name = Component.translatable("commands.ametrin_structures.spread.with_placement", target.name(waypointColor), number);
+            name = Component.translatable(Keys.WITH_PLACEMENT, target.name(waypointColor), number);
         }
         var level = source.getLevel();
         var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
         var player = source.getPlayer();
 
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.started", name, radius), false);
+        source.sendSuccess(() -> Component.translatable(Keys.STARTED, name, radius), false);
         CompletableFuture.supplyAsync(() -> StructureSpread.analyze(
                         level, target.sets(), target.structures(), center, radius, MAX_STRUCTURES, rejected != Rejected.NONE, target.placement()), Util.backgroundExecutor())
                 .whenCompleteAsync((report, error) -> {
                     if (error != null) {
                         ASLog.error("structure spread report failed", error);
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.spread.failed", error.toString()));
+                        source.sendFailure(Component.translatable(Keys.FAILED, error.toString()));
                         return;
                     }
                     // A player who left in the meantime was already removed. Storing their report would leak it.
@@ -306,17 +340,17 @@ public final class SpreadCommand {
         int number = nextPlacementReport(source);
         var report = Identifier.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement/" + number);
         var waypointColor = color != null ? color : randomColor();
-        var name = Component.translatable("commands.ametrin_structures.spread.placement", number).withColor(waypointColor.textColor());
+        var name = Component.translatable(Keys.PLACEMENT, number).withColor(waypointColor.textColor());
         var level = source.getLevel();
         var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
         var player = source.getPlayer();
 
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.placement_started", name, radius), false);
+        source.sendSuccess(() -> Component.translatable(Keys.PLACEMENT_STARTED, name, radius), false);
         CompletableFuture.supplyAsync(() -> StructureSpread.candidates(level, placement, center, radius, MAX_STRUCTURES), Util.backgroundExecutor())
                 .whenCompleteAsync((candidates, error) -> {
                     if (error != null) {
                         ASLog.error("placement spread report failed", error);
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.spread.failed", error.toString()));
+                        source.sendFailure(Component.translatable(Keys.FAILED, error.toString()));
                         return;
                     }
                     var stops = candidates.spots().stream().map(spot -> new Stop(report, spot, spot, Optional.<BoundingBox>empty())).toList();
@@ -324,9 +358,9 @@ public final class SpreadCommand {
                         VISITS.put(player.getUUID(), new Visits(level.dimension(), waypointColor, stops, -1));
                         sendWaypoints(player, report, level.dimension(), waypointColor, Rejected.NONE, stops, List.of());
                     }
-                    line(source, Component.translatable("commands.ametrin_structures.spread.candidates", name, candidates.spots().size(), candidates.radius()));
+                    line(source, Component.translatable(Keys.CANDIDATES, name, candidates.spots().size(), candidates.radius()));
                     if (candidates.limited()) {
-                        line(source, Component.translatable("commands.ametrin_structures.spread.limited", MAX_STRUCTURES));
+                        line(source, Component.translatable(Keys.LIMITED, MAX_STRUCTURES));
                     }
                     sendSpacing(source, candidates.spacing());
                     if (!candidates.spots().isEmpty()) {
@@ -375,21 +409,21 @@ public final class SpreadCommand {
         if (player.connection.hasChannel(ASPayloads.ClearSpreadWaypoints.TYPE)) {
             PacketDistributor.sendToPlayer(player, ASPayloads.ClearSpreadWaypoints.INSTANCE);
         }
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.spread.cleared"), false);
+        source.sendSuccess(() -> Component.translatable(Keys.CLEARED), false);
         return 1;
     }
 
     private static void send(CommandSourceStack source, Target target, Component name, Rejected rejected, StructureSpread.Report report) {
         if (report.structureSetCount() == 0) {
-            var reason = target.kind() == Target.Kind.SET ? "commands.ametrin_structures.spread.set_unused" : "commands.ametrin_structures.spread.no_set";
+            var reason = target.kind() == Target.Kind.SET ? Keys.SET_UNUSED : Keys.NO_SET;
             source.sendFailure(Component.translatable(reason, name));
             return;
         }
         int generated = report.found().size();
         int percent = report.candidateCount() == 0 ? 0 : Math.round(100F * generated / report.candidateCount());
-        line(source, Component.translatable("commands.ametrin_structures.spread.summary", name, report.radius(), report.candidateCount(), generated, percent));
+        line(source, Component.translatable(Keys.SUMMARY, name, report.radius(), report.candidateCount(), generated, percent));
         if (report.limited()) {
-            line(source, Component.translatable("commands.ametrin_structures.spread.limited", MAX_STRUCTURES));
+            line(source, Component.translatable(Keys.LIMITED, MAX_STRUCTURES));
         }
         if (target.kind() != Target.Kind.STRUCTURE) {
             report.found().stream()
@@ -397,20 +431,20 @@ public final class SpreadCommand {
                     .entrySet().stream()
                     .sorted(Map.Entry.<Identifier, Long>comparingByValue().reversed())
                     .forEach(entry -> line(source, Component.translatable(
-                            "commands.ametrin_structures.spread.generated", entry.getKey().toString(), entry.getValue())));
+                            Keys.GENERATED, entry.getKey().toString(), entry.getValue())));
         }
 
         report.rejections().entrySet().stream()
                 .sorted(Map.Entry.<StructureSpread.Reason, Integer>comparingByValue().reversed())
                 .forEach(entry -> line(source, Component.translatable(
-                        "commands.ametrin_structures.spread.rejected", entry.getValue(), reason(entry.getKey()))));
+                        Keys.REJECTED, entry.getValue(), reason(entry.getKey()))));
         long shownRejected = report.rejectedSpots().stream().filter(rejected::accepts).count();
         long hiddenRejected = report.rejectedSpots().size() - shownRejected;
         if (hiddenRejected > 0) {
-            line(source, Component.translatable("commands.ametrin_structures.spread.outside_biome_hidden", hiddenRejected));
+            line(source, Component.translatable(Keys.OUTSIDE_BIOME_HIDDEN, hiddenRejected));
         }
         if (generated > MAX_WAYPOINTS || shownRejected > MAX_WAYPOINTS) {
-            line(source, Component.translatable("commands.ametrin_structures.spread.waypoints_limited", MAX_WAYPOINTS));
+            line(source, Component.translatable(Keys.WAYPOINTS_LIMITED, MAX_WAYPOINTS));
         }
         sendTimings(source, report.timings());
         if (generated == 0) {
@@ -418,7 +452,7 @@ public final class SpreadCommand {
         }
 
         var heights = report.startHeights();
-        line(source, Component.translatable("commands.ametrin_structures.spread.heights",
+        line(source, Component.translatable(Keys.HEIGHTS,
                 String.format("%.1f", heights.getAverage()), heights.getMin(), heights.getMax()));
         sendSpacing(source, report.spacing());
         sendNearest(source, report.found().getFirst().origin());
@@ -426,15 +460,15 @@ public final class SpreadCommand {
 
     private static void sendSpacing(CommandSourceStack source, Optional<DoubleSummaryStatistics> spacing) {
         spacing.ifPresent(stats -> line(source, Component.translatable(
-                "commands.ametrin_structures.spread.spacing", Math.round(stats.getAverage()), Math.round(stats.getMin()))));
+                Keys.SPACING, Math.round(stats.getAverage()), Math.round(stats.getMin()))));
     }
 
     private static void sendNearest(CommandSourceStack source, BlockPos nearest) {
         var here = BlockPos.containing(source.getPosition());
-        line(source, Component.translatable("commands.ametrin_structures.spread.nearest",
+        line(source, Component.translatable(Keys.NEAREST,
                 Math.round(StructureSpread.horizontalDistance(nearest, here)), coordinates(nearest)));
         if (source.getPlayer() != null) {
-            line(source, Component.translatable("commands.ametrin_structures.spread.visit_hint")
+            line(source, Component.translatable(Keys.VISIT_HINT)
                     .withStyle(style -> style.withColor(ChatFormatting.GREEN)
                             .withClickEvent(new ClickEvent.RunCommand(VISIT_NEXT))
                             .withHoverEvent(new HoverEvent.ShowText(Component.literal(VISIT_NEXT)))));
@@ -443,21 +477,21 @@ public final class SpreadCommand {
 
     private static void sendTimings(CommandSourceStack source, List<StructureSpread.Timing> timings) {
         for (var timing : timings.subList(0, Math.min(timings.size(), MAX_TIMINGS))) {
-            line(source, Component.translatable("commands.ametrin_structures.spread.timing",
+            line(source, Component.translatable(Keys.TIMING,
                     timing.id().toString(), duration(timing.nanos()), timing.attempts(), duration((double) timing.nanos() / Math.max(timing.attempts(), 1))));
             if (timing.steps().isEmpty()) {
                 continue;
             }
             var steps = timing.steps().entrySet().stream()
-                    .map(entry -> Component.translatable("commands.ametrin_structures.spread.timing.step",
-                            Component.translatable("commands.ametrin_structures.spread.step." + entry.getKey().key(), entry.getKey().argument()),
+                    .map(entry -> Component.translatable(Keys.TIMING_STEP,
+                            Component.translatable(entry.getKey().translationKey(), entry.getKey().argument()),
                             duration(entry.getValue()),
                             Math.round(100.0 * entry.getValue() / Math.max(timing.nanos(), 1))))
                     .toList();
-            line(source, Component.translatable("commands.ametrin_structures.spread.timing.steps", ComponentUtils.formatList(steps, Component.literal(", "))));
+            line(source, Component.translatable(Keys.TIMING_STEPS, ComponentUtils.formatList(steps, Component.literal(", "))));
         }
         if (timings.size() > MAX_TIMINGS) {
-            line(source, Component.translatable("commands.ametrin_structures.spread.timing.limited", MAX_TIMINGS));
+            line(source, Component.translatable(Keys.TIMING_LIMITED, MAX_TIMINGS));
         }
     }
 
@@ -475,12 +509,12 @@ public final class SpreadCommand {
         var player = source.getPlayerOrException();
         var visits = VISITS.get(player.getUUID());
         if (visits == null || visits.stops().isEmpty()) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.visit.none"));
+            source.sendFailure(Component.translatable(Keys.VISIT_NONE));
             return 0;
         }
         var level = source.getServer().getLevel(visits.dimension());
         if (level == null) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.visit.none"));
+            source.sendFailure(Component.translatable(Keys.VISIT_NONE));
             return 0;
         }
 
@@ -492,10 +526,10 @@ public final class SpreadCommand {
         player.teleportTo(level, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
 
         source.sendSuccess(() -> stop.box()
-                .map(box -> Component.translatable("commands.ametrin_structures.visit.arrived",
+                .map(box -> Component.translatable(Keys.VISIT_ARRIVED,
                         index + 1, count, Component.literal(stop.id().toString()).withColor(visits.color().textColor()), coordinates(stop.origin()),
                         box.getXSpan() + "×" + box.getYSpan() + "×" + box.getZSpan()))
-                .orElseGet(() -> Component.translatable("commands.ametrin_structures.visit.arrived_candidate", index + 1, count, coordinates(stop.origin()))), false);
+                .orElseGet(() -> Component.translatable(Keys.VISIT_ARRIVED_CANDIDATE, index + 1, count, coordinates(stop.origin()))), false);
         return index + 1;
     }
 
@@ -504,7 +538,7 @@ public final class SpreadCommand {
     }
 
     private static Component reason(StructureSpread.Reason reason) {
-        return Component.translatable("commands.ametrin_structures.spread.reason." + reason.key(), reason.argument());
+        return Component.translatable(reason.translationKey(), reason.argument());
     }
 
     private static MutableComponent coordinates(BlockPos pos) {

@@ -13,7 +13,17 @@ import net.minecraft.network.chat.MutableComponent;
 import java.util.*;
 
 /// Sends a report to chat: a summary with a button that copies the report as tab-separated values, some extra lines, the first few lines, and the rest behind `[+N more]`.
-final class ChatReport {
+public final class ChatReport {
+    public static final class Keys {
+        public static final String COPY = "commands.ametrin_structures.report.copy";
+        public static final String COPY_HOVER = "commands.ametrin_structures.report.copy_hover";
+        public static final String MORE = "commands.ametrin_structures.report.more";
+        public static final String GONE = "commands.ametrin_structures.report.gone";
+        public static final String LINE = "commands.ametrin_structures.report.line";
+
+        private Keys() {}
+    }
+
     static final int SHOWN_LINES = 10;
     private static final int KEPT_REPORTS = 16;
 
@@ -37,17 +47,17 @@ final class ChatReport {
 
     /// @param moreCommand the command that has the [#more()] subcommand, like `/ametrin loot_stats`
     static void send(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, List<Component> lines, String tsv, String moreCommand) {
-        var copy = Component.translatable("commands.ametrin_structures.report.copy").withStyle(style -> style
+        var copy = Component.translatable(Keys.COPY).withStyle(style -> style
                 .withColor(ChatFormatting.GREEN)
                 .withClickEvent(new ClickEvent.CopyToClipboard(tsv))
-                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("commands.ametrin_structures.report.copy_hover"))));
+                .withHoverEvent(new HoverEvent.ShowText(Component.translatable(Keys.COPY_HOVER))));
         source.sendSuccess(() -> summary.append(" ").append(copy), false);
         extraLines.forEach(line -> source.sendSuccess(() -> line, false));
         lines.stream().limit(SHOWN_LINES).forEach(line -> source.sendSuccess(() -> line, false));
         if (lines.size() > SHOWN_LINES) {
             int report = nextReport++;
             HIDDEN_LINES.put(report, List.copyOf(lines.subList(SHOWN_LINES, lines.size())));
-            source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.report.more", lines.size() - SHOWN_LINES).withStyle(style -> style
+            source.sendSuccess(() -> Component.translatable(Keys.MORE, lines.size() - SHOWN_LINES).withStyle(style -> style
                     .withColor(ChatFormatting.GREEN)
                     .withClickEvent(new ClickEvent.RunCommand(moreCommand + " more " + report))), false);
         }
@@ -56,7 +66,7 @@ final class ChatReport {
     private static int more(CommandSourceStack source, int report) {
         var lines = HIDDEN_LINES.remove(report);
         if (lines == null) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.report.gone"));
+            source.sendFailure(Component.translatable(Keys.GONE));
             return 0;
         }
         lines.forEach(line -> source.sendSuccess(() -> line, false));
@@ -65,7 +75,7 @@ final class ChatReport {
 
     /// A line like ` 1.50 × name (75.00%)`.
     static MutableComponent line(LootStatsCommand.Counts counts, int samples, Object name) {
-        return Component.translatable("commands.ametrin_structures.report.line", average(counts, samples), name, percent(counts.samplesWith(), samples));
+        return Component.translatable(Keys.LINE, average(counts, samples), name, percent(counts.samplesWith(), samples));
     }
 
     /// A breakdown shown when hovering a line, and the same as tab-separated rows under `header`.

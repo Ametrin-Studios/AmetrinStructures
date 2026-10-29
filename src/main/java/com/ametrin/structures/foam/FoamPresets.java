@@ -30,11 +30,15 @@ public final class FoamPresets {
     /// Fills the plane facing the builder.
     public static final FoamSpread PLANAR = new FoamSpread(FoamSpreadBehaviors.Planar.INSTANCE, List.of(new FoamSpreadRestrictions.MaxDistance(DEFAULT_MAX_DISTANCE)));
 
-    /// A preset in the operator items tab, named `item.ametrin_structures.foam.<name>`.
+    /// A preset in the operator items tab.
     public record Preset(String name, FoamSpread spread) {
         /// A stack of the library's foam.
         public ItemStack createStack() {
-            return stack(spread, Component.translatable("item.ametrin_structures.foam." + name));
+            return stack(spread, Component.translatable(translationKey()));
+        }
+
+        public String translationKey() {
+            return "item.ametrin_structures.foam." + name;
         }
     }
 

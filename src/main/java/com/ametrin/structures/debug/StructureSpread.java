@@ -33,25 +33,29 @@ import java.util.function.Predicate;
 /// other structures every failure is reported as no generation point.
 ///
 /// Only evaluates terrain noise, so it is safe to run off the server thread.
-final class StructureSpread {
+public final class StructureSpread {
     private StructureSpread() {}
 
     /// Why a candidate chunk did not generate the structure. `argument` names a filter or structure, or is empty.
     public record Reason(String key, String argument) {
-        static final Reason BIOME = new Reason("biome", "");
-        static final Reason NO_PIECES = new Reason("no_pieces", "");
-        static final Reason NO_START_HEIGHT = new Reason("no_start_height", "");
-        static final Reason NO_GENERATION_POINT = new Reason("no_generation_point", "");
-        static final Reason NOT_PICKED_FIRST = new Reason("not_picked_first", "");
+        public static final Reason BIOME = new Reason("biome", "");
+        public static final Reason NO_PIECES = new Reason("no_pieces", "");
+        public static final Reason NO_START_HEIGHT = new Reason("no_start_height", "");
+        public static final Reason NO_GENERATION_POINT = new Reason("no_generation_point", "");
+        public static final Reason NOT_PICKED_FIRST = new Reason("not_picked_first", "");
 
         static final String FILTER = "filter";
 
-        static Reason filtered(String filter) {
+        public static Reason filtered(String filter) {
             return new Reason(FILTER, filter);
         }
 
-        static Reason takenBy(String structure) {
+        public static Reason takenBy(String structure) {
             return new Reason("taken", structure);
+        }
+
+        public String translationKey() {
+            return "commands.ametrin_structures.spread.reason." + key;
         }
     }
 
@@ -71,12 +75,20 @@ final class StructureSpread {
 
     /// @param argument names a filter or is empty
     public record Step(String key, String argument) {
-        static final Step BIOME_PRECHECK = new Step("biome_precheck", "");
-        static final Step PIECES = new Step("pieces", "");
-        static final Step START_HEIGHT = new Step("start_height", "");
+        public static final Step BIOME_PRECHECK = new Step("biome_precheck", "");
+        public static final Step PIECES = new Step("pieces", "");
+        public static final Step START_HEIGHT = new Step("start_height", "");
 
         static Step filter(PlacementFilter filter) {
-            return new Step("filter", filterName(filter));
+            return filter(filterName(filter));
+        }
+
+        public static Step filter(String filter) {
+            return new Step("filter", filter);
+        }
+
+        public String translationKey() {
+            return "commands.ametrin_structures.spread.step." + key;
         }
     }
 

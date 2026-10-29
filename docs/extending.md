@@ -336,7 +336,7 @@ Reference: [`SpawnerProfile`](../src/main/java/com/ametrin/structures/spawner/Sp
 
 ## Foam
 
-How foam spreads is stored on the item stack, not the block. `FoamPresets.stack(spread, name)` creates a foam item with any `FoamSpread`: a `FoamSpreadBehavior` that picks where each step goes, plus `FoamSpreadRestriction`s that block positions. Register your own in `ASRegistries.FOAM_SPREAD_BEHAVIOR_TYPE` and `ASRegistries.FOAM_SPREAD_RESTRICTION_TYPE`. Their tooltip line is the translation of `foam_spread_behavior.<namespace>.<path>` or `foam_spread_restriction.<namespace>.<path>`. Override `description()` to pass arguments.
+How foam spreads is stored on the item stack, not the block. `FoamPresets.stack(spread, name)` creates a foam item with any `FoamSpread`: a `FoamSpreadBehavior` that picks where each step goes, plus `FoamSpreadRestriction`s that block positions. Register your own in `ASRegistries.FOAM_SPREAD_BEHAVIOR_TYPE` and `ASRegistries.FOAM_SPREAD_RESTRICTION_TYPE`. Their tooltip line is the translation of `foam_spread_behavior.<namespace>.<path>` or `foam_spread_restriction.<namespace>.<path>`, which `FoamSpreadBehavior.descriptionKey(id)` and `FoamSpreadRestriction.descriptionKey(id)` give you, e.g. for a language provider. Override `description()` to pass arguments.
 
 To fill some areas with something other than air, register your own foam block with a replacement state, plus a `FoamBlockItem`. Give it its own texture so you can tell the areas apart:
 

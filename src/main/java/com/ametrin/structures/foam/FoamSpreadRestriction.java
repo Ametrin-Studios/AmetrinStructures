@@ -5,6 +5,8 @@ import com.ametrin.structures.util.ASCodecs;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LevelReader;
 
@@ -18,7 +20,11 @@ public interface FoamSpreadRestriction {
 
     /// Defaults to the translation of `foam_spread_restriction.<namespace>.<path>`. Override to pass parameters.
     default Component description() {
-        return FoamDescriptions.of("foam_spread_restriction", ASRegistries.FOAM_SPREAD_RESTRICTION_TYPES.getKey(type()));
+        return FoamDescriptions.of(ASRegistries.FOAM_SPREAD_RESTRICTION_TYPES.getKey(type()), FoamSpreadRestriction::descriptionKey);
+    }
+
+    static String descriptionKey(Identifier type) {
+        return Util.makeDescriptionId("foam_spread_restriction", type);
     }
 
     FoamSpreadRestrictionType type();

@@ -44,6 +44,38 @@ import java.util.function.Predicate;
 
 /// Authoring screen for a fixture block. Only Cancel discards edits.
 public class FixtureScreen extends Screen {
+    public static final class Keys {
+        public static final String FIXTURE = "screen.ametrin_structures.fixture";
+        public static final String PAGE_FIXTURES = "screen.ametrin_structures.page.fixtures";
+        public static final String PAGE_SETTINGS = "screen.ametrin_structures.page.settings";
+        public static final String GENERATE = "screen.ametrin_structures.generate";
+        public static final String GENERATE_TOOLTIP = "screen.ametrin_structures.generate.tooltip";
+        public static final String TYPE = "screen.ametrin_structures.type";
+        public static final String WEIGHT = "screen.ametrin_structures.weight";
+        public static final String GENERATION_CHANCE = "screen.ametrin_structures.generation_chance";
+        public static final String GENERATION_CHANCE_TOOLTIP = "screen.ametrin_structures.generation_chance.tooltip";
+        public static final String CONDITIONS = "screen.ametrin_structures.conditions";
+        public static final String CONDITIONS_TOOLTIP = "screen.ametrin_structures.conditions.tooltip";
+        public static final String PARAMETERS = "screen.ametrin_structures.parameters";
+        public static final String PREVIOUS = "screen.ametrin_structures.previous";
+        public static final String NEXT = "screen.ametrin_structures.next";
+        public static final String ADD = "screen.ametrin_structures.add";
+        public static final String REMOVE = "screen.ametrin_structures.remove";
+        public static final String ALTERNATIVES = "screen.ametrin_structures.alternatives";
+        public static final String REQUIRED = "screen.ametrin_structures.required";
+        public static final String NONE = "screen.ametrin_structures.none";
+        public static final String EXAMPLE = "screen.ametrin_structures.example";
+        public static final String CUSTOM_NAME = "screen.ametrin_structures.custom_name";
+        public static final String OFFSET = "screen.ametrin_structures.offset";
+        public static final String OFFSET_TOOLTIP = "screen.ametrin_structures.offset.tooltip";
+        public static final String BECOMES = "screen.ametrin_structures.becomes";
+        public static final String BECOMES_HINT = "screen.ametrin_structures.becomes.hint";
+        public static final String USE_GRAVITY = "screen.ametrin_structures.use_gravity";
+        public static final String MARK_POST_PROCESSING = "screen.ametrin_structures.mark_post_processing";
+
+        private Keys() {}
+    }
+
     private static final int MAX_ROW_WIDTH = 520;
     private static final int ROW_HEIGHT = 24;
     private static final int MAX_LABEL_WIDTH = 140;
@@ -79,7 +111,7 @@ public class FixtureScreen extends Screen {
     }
 
     private FixtureScreen(FixtureBlockEntity marker) {
-        super(Component.translatable("screen.ametrin_structures.fixture"));
+        super(Component.translatable(Keys.FIXTURE));
         this.pos = marker.getBlockPos();
         marker.fixtureData().forEach(data -> alternatives.add(new AlternativeDraft(data, registries())));
         this.customName = marker.customName() == null ? "" : marker.customName().getString();
@@ -100,15 +132,15 @@ public class FixtureScreen extends Screen {
     @Override
     protected void init() {
         tabs.clear();
-        tabs.add(new ListTab(Component.translatable("screen.ametrin_structures.page.fixtures"), this::populateFixtures));
-        tabs.add(new ListTab(Component.translatable("screen.ametrin_structures.page.settings"), this::populateSettings));
+        tabs.add(new ListTab(Component.translatable(Keys.PAGE_FIXTURES), this::populateFixtures));
+        tabs.add(new ListTab(Component.translatable(Keys.PAGE_SETTINGS), this::populateSettings));
         tabNavigationBar = MenuTabBar.builder(tabManager, width).addTabs(tabs.toArray(Tab[]::new)).build();
         addRenderableWidget(tabNavigationBar);
 
         var footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
-        footer.addChild(Button.builder(Component.translatable("screen.ametrin_structures.generate"), _ -> generate())
+        footer.addChild(Button.builder(Component.translatable(Keys.GENERATE), _ -> generate())
                 .width(FOOTER_BUTTON_WIDTH)
-                .tooltip(Tooltip.create(Component.translatable("screen.ametrin_structures.generate.tooltip")))
+                .tooltip(Tooltip.create(Component.translatable(Keys.GENERATE_TOOLTIP)))
                 .build());
         footer.addChild(Button.builder(CommonComponents.GUI_DONE, _ -> onClose()).width(FOOTER_BUTTON_WIDTH).build());
         footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, _ -> close()).width(FOOTER_BUTTON_WIDTH).build());
@@ -165,28 +197,28 @@ public class FixtureScreen extends Screen {
     private void populateFixtures(RowList list, CompletionPopup completions) {
         var alternative = current();
         list.addRow(alternativesRow());
-        typeRow = new Row(Component.translatable("screen.ametrin_structures.type"), List.of(), typeBox(alternative, completions));
+        typeRow = new Row(Component.translatable(Keys.TYPE), List.of(), typeBox(alternative, completions));
         list.addRow(typeRow);
-        var weightLabel = Component.translatable("screen.ametrin_structures.weight");
+        var weightLabel = Component.translatable(Keys.WEIGHT);
         var weightBox = editBox(controlWidth(), weightLabel, alternative.weight);
         weightBox.setHint(Component.literal("1").withStyle(EditBox.SEARCH_HINT_STYLE));
         onEdit(weightBox, value -> FixtureInput.parseWeight(value).isPresent(), value -> alternative.weight = value);
         list.addRow(new Row(weightLabel, List.of(), weightBox));
-        var chanceLabel = Component.translatable("screen.ametrin_structures.generation_chance");
+        var chanceLabel = Component.translatable(Keys.GENERATION_CHANCE);
         var chanceBox = editBox(controlWidth(), chanceLabel, alternative.chance);
         chanceBox.setHint(Component.literal("1.0").withStyle(EditBox.SEARCH_HINT_STYLE));
         onEdit(chanceBox, value -> FixtureInput.parseChance(value).isPresent(), value -> alternative.chance = value);
-        list.addRow(new Row(chanceLabel, tooltip(Component.translatable("screen.ametrin_structures.generation_chance.tooltip")), chanceBox));
-        var conditionsLabel = Component.translatable("screen.ametrin_structures.conditions");
+        list.addRow(new Row(chanceLabel, tooltip(Component.translatable(Keys.GENERATION_CHANCE_TOOLTIP)), chanceBox));
+        var conditionsLabel = Component.translatable(Keys.CONDITIONS);
         var conditionsBox = editBox(controlWidth(), conditionsLabel, alternative.conditions);
         conditionsBox.setMaxLength(Integer.MAX_VALUE);
         conditionsBox.setHint(Component.literal("[{type: \"ametrin_structures:biome\", biomes: \"#minecraft:is_forest\"}]").withStyle(EditBox.SEARCH_HINT_STYLE));
         onEdit(conditionsBox, value -> value.isBlank() || FixtureInput.parseConditions(registries(), value).isPresent(), value -> alternative.conditions = value);
-        list.addRow(new Row(conditionsLabel, tooltip(Component.translatable("screen.ametrin_structures.conditions.tooltip")), conditionsBox));
+        list.addRow(new Row(conditionsLabel, tooltip(Component.translatable(Keys.CONDITIONS_TOOLTIP)), conditionsBox));
 
         var fields = alternative.fields();
         if (!fields.isEmpty()) {
-            list.addRow(new HeaderRow(Component.translatable("screen.ametrin_structures.parameters")));
+            list.addRow(new HeaderRow(Component.translatable(Keys.PARAMETERS)));
         }
         for (var field : fields) {
             list.addRow(fieldRow(field, alternative, completions));
@@ -195,21 +227,21 @@ public class FixtureScreen extends Screen {
 
     private Row alternativesRow() {
         boolean several = alternatives.size() > 1;
-        var previous = smallButton("◀", "screen.ametrin_structures.previous", () -> step(-1));
-        var next = smallButton("▶", "screen.ametrin_structures.next", () -> step(1));
-        var add = smallButton("+", "screen.ametrin_structures.add", this::addAlternative);
-        var remove = smallButton("-", "screen.ametrin_structures.remove", this::removeAlternative);
+        var previous = smallButton("◀", Keys.PREVIOUS, () -> step(-1));
+        var next = smallButton("▶", Keys.NEXT, () -> step(1));
+        var add = smallButton("+", Keys.ADD, this::addAlternative);
+        var remove = smallButton("-", Keys.REMOVE, this::removeAlternative);
         previous.active = several;
         next.active = several;
         remove.active = several;
         return new Row(
-                Component.translatable("screen.ametrin_structures.alternatives", selected + 1, alternatives.size()),
+                Component.translatable(Keys.ALTERNATIVES, selected + 1, alternatives.size()),
                 List.of(),
                 previous, next, add, remove);
     }
 
     private EditBox typeBox(AlternativeDraft alternative, CompletionPopup completions) {
-        var box = editBox(controlWidth(), Component.translatable("screen.ametrin_structures.type"), alternative.type().toString());
+        var box = editBox(controlWidth(), Component.translatable(Keys.TYPE), alternative.type().toString());
         completions.attach(box, () -> availableTypes.stream().map(Identifier::toString).toList());
         onEdit(box, value -> knownType(value).isPresent(), value -> knownType(value)
                 .filter(type -> !type.equals(alternative.type()))
@@ -237,7 +269,7 @@ public class FixtureScreen extends Screen {
         lines.add(Component.literal(key).withStyle(ChatFormatting.YELLOW));
         lines.add(Component.literal(type.name()).withStyle(ChatFormatting.GRAY));
         if (field.presence() == FixtureField.Presence.REQUIRED) {
-            lines.add(Component.translatable("screen.ametrin_structures.required").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable(Keys.REQUIRED).withStyle(ChatFormatting.GRAY));
         }
         defaultText.ifPresent(value -> lines.add(Component.translatable("editGamerule.default", value).withStyle(ChatFormatting.GRAY)));
         var tooltip = tooltip(lines.toArray(Component[]::new));
@@ -270,10 +302,10 @@ public class FixtureScreen extends Screen {
             return Component.literal(defaultText.get());
         }
         if (field.presence() == FixtureField.Presence.OPTIONAL) {
-            return Component.translatable("screen.ametrin_structures.none");
+            return Component.translatable(Keys.NONE);
         }
         return field.type().example()
-                .map(example -> Component.translatable("screen.ametrin_structures.example", example))
+                .map(example -> Component.translatable(Keys.EXAMPLE, example))
                 .orElseGet(() -> Component.literal(field.type().name()));
     }
 
@@ -288,7 +320,7 @@ public class FixtureScreen extends Screen {
             values.add(initial);
         }
         return CycleButton.<String>builder(
-                        value -> value.isEmpty() ? Component.translatable("screen.ametrin_structures.none") : Component.literal(value),
+                        value -> value.isEmpty() ? Component.translatable(Keys.NONE) : Component.literal(value),
                         initial)
                 .withValues(values)
                 .displayOnlyValue()
@@ -296,12 +328,12 @@ public class FixtureScreen extends Screen {
     }
 
     private void populateSettings(RowList list, CompletionPopup completions) {
-        var nameLabel = Component.translatable("screen.ametrin_structures.custom_name");
+        var nameLabel = Component.translatable(Keys.CUSTOM_NAME);
         var nameBox = editBox(controlWidth(), nameLabel, customName);
         nameBox.setResponder(value -> customName = value);
         list.addRow(new Row(nameLabel, List.of(), nameBox));
 
-        var offsetLabel = Component.translatable("screen.ametrin_structures.offset");
+        var offsetLabel = Component.translatable(Keys.OFFSET);
         var offsetBoxes = new EditBox[3];
         int offsetWidth = (controlWidth() - 2 * GAP) / 3;
         String[] axes = {"X", "Y", "Z"};
@@ -312,17 +344,17 @@ public class FixtureScreen extends Screen {
             onEdit(box, value -> FixtureInput.parseOffset(value).isPresent(), value -> FixtureInput.parseOffset(value).ifPresent(parsed -> offset[index] = parsed));
             offsetBoxes[axis] = box;
         }
-        var offsetTooltip = Component.translatable("screen.ametrin_structures.offset.tooltip", FixtureBlockEntity.MAX_OFFSET);
+        var offsetTooltip = Component.translatable(Keys.OFFSET_TOOLTIP, FixtureBlockEntity.MAX_OFFSET);
         list.addRow(new Row(offsetLabel, tooltip(offsetTooltip), offsetBoxes));
 
-        var becomesLabel = Component.translatable("screen.ametrin_structures.becomes");
+        var becomesLabel = Component.translatable(Keys.BECOMES);
         var becomesBox = editBox(controlWidth(), becomesLabel, becomes);
-        becomesBox.setHint(Component.translatable("screen.ametrin_structures.becomes.hint").withStyle(EditBox.SEARCH_HINT_STYLE));
+        becomesBox.setHint(Component.translatable(Keys.BECOMES_HINT).withStyle(EditBox.SEARCH_HINT_STYLE));
         completions.attach(becomesBox, Completer.blockState(blocks(), _ -> true));
         onEdit(becomesBox, value -> FixtureInput.parseState(registries(), value).isPresent(), value -> becomes = value);
         list.addRow(new Row(becomesLabel, List.of(), becomesBox));
 
-        var gravityLabel = Component.translatable("screen.ametrin_structures.use_gravity");
+        var gravityLabel = Component.translatable(Keys.USE_GRAVITY);
         list.addRow(new Row(
                 gravityLabel,
                 List.of(),
@@ -330,7 +362,7 @@ public class FixtureScreen extends Screen {
                         .displayOnlyValue()
                         .create(0, 0, controlWidth(), WIDGET_HEIGHT, gravityLabel, (_, value) -> useGravity = value)));
 
-        var postProcessingLabel = Component.translatable("screen.ametrin_structures.mark_post_processing");
+        var postProcessingLabel = Component.translatable(Keys.MARK_POST_PROCESSING);
         list.addRow(new Row(
                 postProcessingLabel,
                 List.of(),

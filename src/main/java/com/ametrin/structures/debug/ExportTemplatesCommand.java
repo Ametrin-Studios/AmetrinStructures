@@ -32,6 +32,15 @@ import java.util.stream.Stream;
 /// Only exists in a development environment, because it writes into the project.
 /// The resources are `src/main/resources` next to the run folder, or the folders listed in the [#SOURCES_PROPERTY] system property, separated like a classpath.
 public final class ExportTemplatesCommand {
+    public static final class Keys {
+        public static final String FAILED = "commands.ametrin_structures.export_templates.failed";
+        public static final String NONE = "commands.ametrin_structures.export_templates.none";
+        public static final String EXPORTED = "commands.ametrin_structures.export_templates.exported";
+        public static final String SKIPPED = "commands.ametrin_structures.export_templates.skipped";
+
+        private Keys() {}
+    }
+
     public static final String SOURCES_PROPERTY = "ametrin_structures.template_sources";
     private static final String TEMPLATES = "structure";
     private static final String EXTENSION = ".nbt";
@@ -86,17 +95,17 @@ public final class ExportTemplatesCommand {
             result = export(source.getServer().getWorldPath(LevelResource.GENERATED_DIR), roots, namespace);
         } catch (IOException exception) {
             ASLog.error("exporting templates failed", exception);
-            source.sendFailure(Component.translatable("commands.ametrin_structures.export_templates.failed", exception.toString()));
+            source.sendFailure(Component.translatable(Keys.FAILED, exception.toString()));
             return 0;
         }
         if (result.isEmpty()) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.export_templates.none"));
+            source.sendFailure(Component.translatable(Keys.NONE));
             return 0;
         }
         source.sendSuccess(() -> Component.translatable(
-                "commands.ametrin_structures.export_templates.exported", result.added(), result.changed(), result.unchanged()), true);
+                Keys.EXPORTED, result.added(), result.changed(), result.unchanged()), true);
         if (!result.skipped().isEmpty()) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.export_templates.skipped", String.join(", ", result.skipped())));
+            source.sendFailure(Component.translatable(Keys.SKIPPED, String.join(", ", result.skipped())));
         }
         return result.added() + result.changed();
     }

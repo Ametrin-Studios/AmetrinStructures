@@ -25,7 +25,7 @@ public final class FoamSpreadRestrictions {
 
         @Override
         public Component description() {
-            return Component.translatable("foam_spread_restriction.ametrin_structures.max_distance", maxDistance);
+            return FoamDescriptions.of(ASFoamSpreadRestrictions.MAX_DISTANCE.getId(), FoamSpreadRestriction::descriptionKey, maxDistance);
         }
 
         @Override

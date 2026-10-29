@@ -26,7 +26,15 @@ import java.util.concurrent.CompletableFuture;
 
 /// `/ametrin structures gallery <structure> [count]` places layouts of a structure at random seeds in a grid, starting next to the caller,
 /// with each layout's lowest block at the caller's height. See [StructureLayouts] for what's ignored. It can't be undone.
-final class GalleryCommand {
+public final class GalleryCommand {
+    public static final class Keys {
+        public static final String STARTED = "commands.ametrin_structures.gallery.started";
+        public static final String PLACED = "commands.ametrin_structures.gallery.placed";
+        public static final String FAILED = "commands.ametrin_structures.gallery.failed";
+
+        private Keys() {}
+    }
+
     private static final int DEFAULT_COUNT = 9;
     private static final int MAX_COUNT = 100;
     private static final int MIN_GAP = 8;
@@ -50,7 +58,7 @@ final class GalleryCommand {
         var level = source.getLevel();
         var here = BlockPos.containing(source.getPosition());
         var random = level.getRandom().fork();
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.gallery.started", count, name), false);
+        source.sendSuccess(() -> Component.translatable(Keys.STARTED, count, name), false);
         CompletableFuture.supplyAsync(() -> {
                     var layouts = new ArrayList<PiecesContainer>();
                     for (int i = 0; i < count * TRIES_PER_LAYOUT && layouts.size() < count; i++) {
@@ -60,17 +68,17 @@ final class GalleryCommand {
                 }, Util.backgroundExecutor())
                 .thenAcceptAsync(layouts -> {
                     if (layouts.isEmpty()) {
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.pieces.none", name, count * TRIES_PER_LAYOUT));
+                        source.sendFailure(Component.translatable(PiecesCommand.Keys.NONE, name, count * TRIES_PER_LAYOUT));
                         return;
                     }
                     int columns = place(level, structure.value(), here, layouts);
-                    source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.gallery.placed", layouts.size(), name, columns), true);
+                    source.sendSuccess(() -> Component.translatable(Keys.PLACED, layouts.size(), name, columns), true);
                 }, source.getServer())
                 // Covers both laying out and placing, so an exception while placing isn't lost.
                 .whenCompleteAsync((_, error) -> {
                     if (error != null) {
                         ASLog.error("gallery failed", error);
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.gallery.failed", error.toString()));
+                        source.sendFailure(Component.translatable(Keys.FAILED, error.toString()));
                     }
                 }, source.getServer());
         return 1;
