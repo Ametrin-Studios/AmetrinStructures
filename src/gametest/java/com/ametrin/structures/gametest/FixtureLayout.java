@@ -24,9 +24,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.block.entity.BarrelBlockEntity;
 import net.minecraft.world.level.block.entity.BrushableBlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity;
 import net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig;
@@ -74,9 +74,9 @@ final class FixtureLayout {
                 helper.assertValueEqual(helper.getBlockEntity(pos, ChestBlockEntity.class).getLootTable(),
                         BuiltInLootTables.SIMPLE_DUNGEON, "loot table");
             }),
-            entry("fill_container", 1, new FillContainerFixture(BuiltInLootTables.SIMPLE_DUNGEON, Blocks.BARREL.defaultBlockState()), (helper, pos) -> {
-                helper.assertBlockPresent(Blocks.BARREL, pos);
-                helper.assertFalse(helper.getBlockEntity(pos, BarrelBlockEntity.class).isEmpty(), "barrel is empty");
+            entry("fill_container", 1, new FillContainerFixture(BuiltInLootTables.SIMPLE_DUNGEON, Blocks.FURNACE.defaultBlockState()), (helper, pos) -> {
+                helper.assertBlockPresent(Blocks.FURNACE, pos);
+                helper.assertFalse(helper.getBlockEntity(pos, FurnaceBlockEntity.class).isEmpty(), "furnace is empty");
             }),
             entry("entity", 2, EntityFixture.of(EntityType.ARMOR_STAND), (helper, pos) ->
                     helper.assertEntityPresent(EntityType.ARMOR_STAND, pos)),

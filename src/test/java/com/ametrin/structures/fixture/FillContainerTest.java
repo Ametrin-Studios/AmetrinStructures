@@ -67,7 +67,23 @@ class FillContainerTest {
     }
 
     @Test
-    void anyBlockWithAnInventoryIsAccepted() {
+    void aBlockThatTakesALootTableIsRejected() {
+        var json = JsonParser.parseString("""
+                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": {"Name": "minecraft:barrel"}}
+                """);
+        assertTrue(Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).isError());
+    }
+
+    @Test
+    void theBlockIsRequired() {
+        var json = JsonParser.parseString("""
+                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon"}
+                """);
+        assertTrue(Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).isError());
+    }
+
+    @Test
+    void anyOtherBlockWithAnInventoryIsAccepted() {
         var json = JsonParser.parseString("""
                 {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": {"Name": "minecraft:furnace"}}
                 """);
