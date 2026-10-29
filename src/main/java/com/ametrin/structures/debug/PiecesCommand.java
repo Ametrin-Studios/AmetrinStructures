@@ -129,19 +129,10 @@ final class PiecesCommand {
                 format(width.getAverage()), format(height.getAverage()), format(length.getAverage()), width.getMax(), height.getMax(), length.getMax()));
 
         var open = sortedByTotal(LootStatsCommand.count(layouts.stream().map(Layout::openJigsaws).toList()));
-        var openList = Component.empty();
-        var openRows = new StringBuilder("\nopen jigsaws into\tper layout\tshare of layouts\n");
-        long openTotal = 0;
-        for (var entry : open) {
-            if (!openList.getSiblings().isEmpty()) {
-                openList.append("\n");
-            }
-            openList.append(line(entry.getValue(), samples, entry.getKey()));
-            openRows.append(entry.getKey()).append('\t').append(average(entry.getValue(), samples)).append('\t').append(percent(entry.getValue().samplesWith(), samples)).append('\n');
-            openTotal += entry.getValue().total();
-        }
+        var openBreakdown = breakdown("open jigsaws into\tper layout\tshare of layouts", open, samples);
+        long openTotal = open.stream().mapToLong(entry -> entry.getValue().total()).sum();
         var openLine = Component.translatable("commands.ametrin_structures.pieces.open_jigsaws", format((double) openTotal / samples));
-        extraLines.add(open.isEmpty() ? openLine : openLine.withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(openList))));
+        extraLines.add(open.isEmpty() ? openLine : openLine.withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(openBreakdown.hover()))));
 
         var tsv = new StringBuilder("piece\tper layout\tshare of layouts\tfewest\tmost\n");
         var lines = new ArrayList<Component>();
@@ -152,7 +143,7 @@ final class PiecesCommand {
             var details = Component.translatable("commands.ametrin_structures.pieces.range", counts.min(), counts.max()).withStyle(ChatFormatting.GRAY);
             lines.add(line(counts, samples, entry.getKey()).withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
         }
-        tsv.append(openRows);
+        tsv.append(openBreakdown.tsv());
         ChatReport.send(source, summary, extraLines, lines, tsv.toString(), "/ametrin structures pieces");
     }
 

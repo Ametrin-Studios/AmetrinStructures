@@ -203,19 +203,9 @@ public final class LootStatsCommand {
             extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.structure_mix", mix));
         }
         var sortedSources = sortedByTotal(sources);
-        var sourceList = Component.empty();
-        var sourceRows = new StringBuilder("\nloot source\tper structure\tshare of structures\n");
-        for (var entry : sortedSources) {
-            var id = entry.getKey();
-            var counts = entry.getValue();
-            if (!sourceList.getSiblings().isEmpty()) {
-                sourceList.append("\n");
-            }
-            sourceList.append(ChatReport.line(counts, samples, id));
-            sourceRows.append(id).append('\t').append(average(counts, samples)).append('\t').append(percent(counts.samplesWith(), samples)).append('\n');
-        }
+        var sourceBreakdown = breakdown("loot source\tper structure\tshare of structures", sortedSources, samples);
         extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.sources", sortedSources.size())
-                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(sourceList))));
+                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(sourceBreakdown.hover()))));
         double codePieces = layouts.stream().mapToInt(layout -> layout.contents().codePieces()).average().orElse(0);
         if (codePieces > 0) {
             extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.code_pieces", format(codePieces)));
@@ -224,7 +214,7 @@ public final class LootStatsCommand {
         if (dataMarkers > 0) {
             extraLines.add(Component.translatable("commands.ametrin_structures.loot_stats.data_markers", format(dataMarkers)));
         }
-        sendReport(source, summary, extraLines, stats, "structure", sourceRows.toString());
+        sendReport(source, summary, extraLines, stats, "structure", sourceBreakdown.tsv());
     }
 
     private static @Nullable Player player(CommandSourceStack source) {

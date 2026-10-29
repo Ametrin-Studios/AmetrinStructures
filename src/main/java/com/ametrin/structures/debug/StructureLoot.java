@@ -40,7 +40,9 @@ import net.minecraft.world.level.levelgen.structure.TemplateStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.FeaturePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.ListPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -171,16 +173,7 @@ final class StructureLoot {
         for (var piece : pieces.pieces()) {
             switch (piece) {
                 case TemplateStructurePiece template -> collector.collect(template.template(), template.placeSettings(), template.templatePosition());
-                case PoolElementStructurePiece pooled -> {
-                    switch (pooled.getElement()) {
-                        case SinglePoolElement single -> collector.collect(
-                                level.getStructureManager().getOrCreate(single.getTemplateLocation()),
-                                new StructurePlaceSettings().setRotation(pooled.getRotation()),
-                                pooled.getPosition());
-                        case EmptyPoolElement _, FeaturePoolElement _ -> {}
-                        default -> collector.codePieces++;
-                    }
-                }
+                case PoolElementStructurePiece pooled -> collector.collect(pooled.getElement(), pooled);
                 default -> collector.codePieces++;
             }
         }
@@ -198,6 +191,19 @@ final class StructureLoot {
         Collector(ServerLevel level, RandomSource random) {
             this.level = level;
             this.random = random;
+        }
+
+        // A list element places each of its elements at the same spot.
+        void collect(StructurePoolElement element, PoolElementStructurePiece piece) {
+            switch (element) {
+                case SinglePoolElement single -> collect(
+                        level.getStructureManager().getOrCreate(single.getTemplateLocation()),
+                        new StructurePlaceSettings().setRotation(piece.getRotation()),
+                        piece.getPosition());
+                case ListPoolElement list -> list.getElements().forEach(child -> collect(child, piece));
+                case EmptyPoolElement _, FeaturePoolElement _ -> {}
+                default -> codePieces++;
+            }
         }
 
         void collect(StructureTemplate template, StructurePlaceSettings settings, BlockPos origin) {

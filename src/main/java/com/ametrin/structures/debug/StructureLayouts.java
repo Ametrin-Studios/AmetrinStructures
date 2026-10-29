@@ -20,17 +20,7 @@ final class StructureLayouts {
 
     /// The structure's pieces at `chunk` with `seed`, or empty when it lays out none.
     static Optional<PiecesContainer> layOut(ServerLevel level, Structure structure, ChunkPos chunk, long seed) {
-        var generator = level.getChunkSource().getGenerator();
-        var context = new Structure.GenerationContext(
-                level.registryAccess(),
-                generator,
-                generator.getBiomeSource(),
-                level.getChunkSource().randomState(),
-                level.getStructureManager(),
-                seed,
-                chunk,
-                level,
-                _ -> true);
+        var context = StructureSpread.context(level, seed, chunk, _ -> true);
         var stub = structure instanceof ExtendedStructure extended ? extended.layOutUnchecked(context) : structure.findValidGenerationPoint(context);
         return stub.map(found -> found.getPiecesBuilder().build()).filter(pieces -> !pieces.isEmpty());
     }

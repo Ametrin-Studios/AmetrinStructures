@@ -27,8 +27,12 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.StructureBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.properties.StructureMode;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -125,6 +129,13 @@ public final class LootStatsGameTests {
         helper.assertValueEqual(contents.displays().size(), 3, "armor stands and item frames");
         helper.assertValueEqual(contents.dataMarkers(), 1, "data markers");
         helper.assertValueEqual(contents.codePieces(), 0, "pieces built in code");
+
+        // A list element places each of its templates, so it has the chests of both.
+        var list = StructurePoolElement.list(List.of(StructurePoolElement.single(id.toString()), StructurePoolElement.single(id.toString()))).apply(StructureTemplatePool.Projection.RIGID);
+        var listPiece = new PoolElementStructurePiece(level.getStructureManager(), list, origin, 0, Rotation.NONE, piece.getBoundingBox(), LiquidSettings.APPLY_WATERLOGGING);
+        var listContents = StructureLoot.contents(level, new PiecesContainer(List.of(listPiece)), RandomSource.create(0));
+        helper.assertValueEqual(listContents.containers().size(), 4, "containers of a list element");
+        helper.assertValueEqual(listContents.codePieces(), 0, "list elements built in code");
         helper.succeed();
     }
 

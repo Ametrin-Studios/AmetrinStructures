@@ -68,6 +68,22 @@ final class ChatReport {
         return Component.translatable("commands.ametrin_structures.report.line", average(counts, samples), name, percent(counts.samplesWith(), samples));
     }
 
+    /// A breakdown shown when hovering a line, and the same as tab-separated rows under `header`.
+    record Breakdown(MutableComponent hover, String tsv) {}
+
+    static Breakdown breakdown(String header, List<Map.Entry<String, LootStatsCommand.Counts>> entries, int samples) {
+        var hover = Component.empty();
+        var tsv = new StringBuilder("\n").append(header).append('\n');
+        for (var entry : entries) {
+            if (!hover.getSiblings().isEmpty()) {
+                hover.append("\n");
+            }
+            hover.append(line(entry.getValue(), samples, entry.getKey()));
+            tsv.append(entry.getKey()).append('\t').append(average(entry.getValue(), samples)).append('\t').append(percent(entry.getValue().samplesWith(), samples)).append('\n');
+        }
+        return new Breakdown(hover, tsv.toString());
+    }
+
     static <K> List<Map.Entry<K, LootStatsCommand.Counts>> sortedByTotal(Map<K, LootStatsCommand.Counts> counts) {
         return counts.entrySet().stream()
                 .sorted(Map.Entry.<K, LootStatsCommand.Counts>comparingByValue(Comparator.comparingLong(LootStatsCommand.Counts::total)).reversed())
