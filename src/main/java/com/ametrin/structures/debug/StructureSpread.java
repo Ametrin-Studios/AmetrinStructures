@@ -11,6 +11,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
@@ -83,7 +84,7 @@ final class StructureSpread {
     /// @param limited        whether it stopped at the limit
     /// @param candidateCount chunks the sets' placement picked
     /// @param rejectedSpots  candidates that failed, nearest first; only when asked for
-    /// @param spacing        each spot's horizontal distance to the closest other one (in blocks); empty with fewer than 2 or more than [StructureSpread#MAX_SPACING_SPOTS] spots
+    /// @param spacing        each spot's horizontal distance to the closest other one (in blocks); empty with fewer than 2 spots
     public record Report(int structureSetCount, int radius, boolean limited, int candidateCount, Map<Reason, Integer> rejections, List<Found> found,
                          List<RejectedSpot> rejectedSpots, Optional<DoubleSummaryStatistics> spacing, List<Timing> timings) {
         public IntSummaryStatistics startHeights() {
@@ -97,11 +98,9 @@ final class StructureSpread {
     /// @param spacing as in [Report]
     public record Candidates(int radius, boolean limited, List<BlockPos> spots, Optional<DoubleSummaryStatistics> spacing) {}
 
-    /// Spacing compares every pair, so it is skipped for very dense structures.
-    public static final int MAX_SPACING_SPOTS = 4096;
-
+    // Compares every pair, which is fine for the limited number of spots a report has.
     private static Optional<DoubleSummaryStatistics> spacing(List<BlockPos> spots) {
-        if (spots.size() < 2 || spots.size() > MAX_SPACING_SPOTS) {
+        if (spots.size() < 2) {
             return Optional.empty();
         }
         return Optional.of(spots.stream()
@@ -302,6 +301,10 @@ final class StructureSpread {
     }
 
     static Structure.GenerationContext context(ServerLevel level, ChunkGeneratorStructureState state, Structure structure, ChunkPos chunk) {
+        return context(level, state.getLevelSeed(), chunk, structure.biomes()::contains);
+    }
+
+    static Structure.GenerationContext context(ServerLevel level, long seed, ChunkPos chunk, Predicate<Holder<Biome>> validBiome) {
         var generator = level.getChunkSource().getGenerator();
         var randomState = level.getChunkSource().randomState();
         return new Structure.GenerationContext(
@@ -311,10 +314,10 @@ final class StructureSpread {
                 randomState.createClimateSampler(SamplerContext.builder().enableCaches().build()),
                 randomState,
                 level.getServer().getStructureTemplateManager(),
-                state.getLevelSeed(),
+                seed,
                 chunk,
                 level,
-                structure.biomes()::contains);
+                validBiome);
     }
 
     private static boolean isInBiome(

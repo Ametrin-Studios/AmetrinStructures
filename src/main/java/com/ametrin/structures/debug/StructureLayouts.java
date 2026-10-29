@@ -6,7 +6,6 @@ import com.ametrin.structures.structure.StructureBuilder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
@@ -21,19 +20,7 @@ final class StructureLayouts {
 
     /// The structure's pieces at `chunk` with `seed`, or empty when it lays out none.
     static Optional<PiecesContainer> layOut(ServerLevel level, Structure structure, ChunkPos chunk, long seed) {
-        var generator = level.getChunkSource().getGenerator();
-        var randomState = level.getChunkSource().randomState();
-        var context = new Structure.GenerationContext(
-                level.registryAccess(),
-                generator,
-                generator.getBiomeSource(),
-                randomState.createClimateSampler(SamplerContext.builder().enableCaches().build()),
-                randomState,
-                level.getStructureTemplateManager(),
-                seed,
-                chunk,
-                level,
-                _ -> true);
+        var context = StructureSpread.context(level, seed, chunk, _ -> true);
         var stub = structure instanceof ExtendedStructure extended ? extended.layOutUnchecked(context) : structure.findValidGenerationPoint(context);
         return stub.map(found -> found.getPiecesBuilder().build()).filter(pieces -> !pieces.isEmpty());
     }
