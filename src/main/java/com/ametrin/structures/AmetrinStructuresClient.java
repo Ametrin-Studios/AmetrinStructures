@@ -46,6 +46,9 @@ public class AmetrinStructuresClient {
             if (ASClientConfig.STRUCTURE_BLOCK_NAME_TAGS.getAsBoolean()) {
                 event.registerBlockEntityRenderer(BlockEntityTypes.STRUCTURE_BLOCK, _ -> new StructureBlockRenderer());
             }
+            if (ASClientConfig.JIGSAW_NAME_TAGS.getAsBoolean()) {
+                event.registerBlockEntityRenderer(BlockEntityTypes.JIGSAW, JigsawRenderer::new);
+            }
         }
 
         @SubscribeEvent

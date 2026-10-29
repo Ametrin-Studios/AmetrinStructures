@@ -346,9 +346,9 @@ static final DeferredBlock<FoamBlock> WATER_FOAM = BLOCKS.registerBlock("water_f
         properties -> properties.noCollision().noOcclusion().noLootTable().instabreak());
 static final DeferredItem<FoamBlockItem> WATER_FOAM_ITEM = ITEMS.registerItem("water_foam",
         properties -> new FoamBlockItem(WATER_FOAM.get(), properties),
-        properties -> properties.useBlockDescriptionPrefix().component(ASDataComponents.FOAM_SPREAD, FoamPresets.BASIC));
+        Item.Properties::useBlockDescriptionPrefix);
 ```
 
-It spreads, dissolves and fills openings like the library's foam. When the structure generates it turns into its replacement state, no matter what the piece's `RemoveFoamProcessor` uses. `FoamPresets.stack(item, spread, name)` creates stacks of it with other spreads.
+It dissolves and fills openings like the library's foam. When the structure generates it turns into its replacement state, no matter what the piece's `RemoveFoamProcessor` uses. Add a `ASDataComponents.FOAM_SPREAD` if you want it to spread by default. `FoamPresets.stack(item, spread, name)` creates stacks of it that do spread.
 
 Reference: [`FoamSpreadBehaviors`](../src/main/java/com/ametrin/structures/foam/FoamSpreadBehaviors.java), [`FoamSpreadRestrictions`](../src/main/java/com/ametrin/structures/foam/FoamSpreadRestrictions.java) and [`FoamPresets`](../src/main/java/com/ametrin/structures/foam/FoamPresets.java).

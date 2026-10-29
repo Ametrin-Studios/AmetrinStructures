@@ -1,4 +1,6 @@
 {
+  "ametrin_structures.configuration.jigsaw_name_tags": "Jigsaw Name Tags",
+  "ametrin_structures.configuration.jigsaw_name_tags.tooltip": "Shows a jigsaw's pool above it. Turn this off if another mod adds a renderer for jigsaws.",
   "ametrin_structures.configuration.structure_block_name_tags": "Structure Block Name Tags",
   "ametrin_structures.configuration.structure_block_name_tags.tooltip": "Shows a structure block's template name above it. Turn this off if another mod replaces the structure block's renderer.",
   "block.ametrin_structures.fixture": "Fixture",
