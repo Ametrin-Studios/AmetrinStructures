@@ -32,6 +32,8 @@ public class ASLanguageProvider extends LanguageProvider {
         fixtureScreen();
         add(ASClientConfig.STRUCTURE_BLOCK_NAME_TAGS_KEY, "Structure Block Name Tags");
         add(ASClientConfig.STRUCTURE_BLOCK_NAME_TAGS_KEY + ".tooltip", "Shows a structure block's template name above it. Turn this off if another mod replaces the structure block's renderer.");
+        add(ASClientConfig.JIGSAW_NAME_TAGS_KEY, "Jigsaw Name Tags");
+        add(ASClientConfig.JIGSAW_NAME_TAGS_KEY + ".tooltip", "Shows a jigsaw's pool above it. Turn this off if another mod adds a renderer for jigsaws.");
         reports();
         lootStats();
         pieces();

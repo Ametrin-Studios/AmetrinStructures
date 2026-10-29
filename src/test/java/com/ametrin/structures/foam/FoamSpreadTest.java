@@ -49,7 +49,7 @@ class FoamSpreadTest {
         assertTrue(stack.is(ASItems.FOAM.get()));
         assertEquals(FoamPresets.INDOOR, stack.get(ASDataComponents.FOAM_SPREAD));
         assertEquals("item.ametrin_structures.foam.indoor", key(stack.get(DataComponents.ITEM_NAME)));
-        assertEquals(FoamPresets.BASIC, ASItems.FOAM.toStack().get(ASDataComponents.FOAM_SPREAD), "the plain item is basic foam");
+        assertFalse(ASItems.FOAM.toStack().has(ASDataComponents.FOAM_SPREAD), "the plain item doesn't spread");
     }
 
     @Test

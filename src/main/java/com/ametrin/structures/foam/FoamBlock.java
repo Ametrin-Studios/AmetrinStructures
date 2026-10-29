@@ -133,7 +133,7 @@ public class FoamBlock extends Block {
 
     private static boolean reachesThrough(Player player) {
         return player.getAbilities().instabuild
-                && !player.isCrouching()
+                && !player.isSecondaryUseActive()
                 && !player.getMainHandItem().is(ASTags.Items.FOAM_INTERACTABLE);
     }
 
@@ -147,7 +147,7 @@ public class FoamBlock extends Block {
     protected boolean canBeReplaced(BlockState state, BlockPlaceContext context) {
         // Placing a block into foam replaces it, unless the player aims at the foam itself.
         var player = context.getPlayer();
-        return player == null || !player.isCrouching() && !context.getItemInHand().is(ASTags.Items.FOAM);
+        return player == null || !player.isSecondaryUseActive() && !context.getItemInHand().is(ASTags.Items.FOAM);
     }
 
     @Override

@@ -1,12 +1,13 @@
 package com.ametrin.structures.foam;
 
 import com.ametrin.structures.registry.ASBlocks;
+import com.ametrin.structures.registry.ASDataComponents;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
-/// Placing it while sneaking places a [FoamSpreaderBlock], which fills the space around it as the stack's [FoamSpread] component says.
+/// Placing a stack with a [FoamSpread] component while sneaking places a [FoamSpreaderBlock], which fills the space around it as the component says.
 public class FoamBlockItem extends BlockItem {
     public FoamBlockItem(FoamBlock block, Properties properties) {
         super(block, properties);
@@ -16,7 +17,7 @@ public class FoamBlockItem extends BlockItem {
     @Nullable
     protected BlockState getPlacementState(BlockPlaceContext context) {
         var player = context.getPlayer();
-        if (player == null || !player.isCrouching()) {
+        if (player == null || !player.isSecondaryUseActive() || !context.getItemInHand().has(ASDataComponents.FOAM_SPREAD)) {
             return super.getPlacementState(context);
         }
         // The axis comes from where the player is looking, which is how planar foam gets its plane.
