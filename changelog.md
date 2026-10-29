@@ -1,3 +1,6 @@
+## 0.4.0-beta
+- `fill_container` fixtures need a `block` and no longer accept blocks that take a loot table, use `loot_container` for those
+
 ## 0.3.2-beta
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)
 - `archeology` fixtures only accept brushable blocks

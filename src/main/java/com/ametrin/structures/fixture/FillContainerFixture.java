@@ -12,7 +12,6 @@ import net.minecraft.util.Util;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BrewingStandBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -32,9 +31,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-/// Any block with an inventory, like a brewing stand or a furnace, filled from `loot_table` when the
+/// A block with an inventory that doesn't take a loot table, like a brewing stand or a furnace, filled from `loot_table` when the
 /// structure generates. Unlike [LootContainerFixture], the loot is rolled right away instead of when a
-/// player first opens it, so it works for blocks that don't support loot tables. Each item goes into an
+/// player first opens it. Each item goes into an
 /// empty slot that accepts it, preferring the slot that accepts the fewest kinds of items. That way
 /// blaze powder ends up in a brewing stand's fuel slot. Ties are broken randomly, and items that don't
 /// fit anywhere are dropped. The loot table runs during world generation, so don't use functions that
@@ -46,11 +45,11 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
     private static final Map<BlockEntityType<?>, int[]> SLOT_BREADTH = new ConcurrentHashMap<>();
 
     public static final FixtureField<ResourceKey<LootTable>> LOOT_TABLE = FixtureField.required("loot_table", FieldType.registryKey(Registries.LOOT_TABLE));
-    public static final FixtureField<BlockState> BLOCK = FixtureField.withDefault(
+    // Blocks that take a loot table are left to LootContainerFixture, which rolls the loot when a player opens them.
+    public static final FixtureField<BlockState> BLOCK = FixtureField.required(
             "block",
             BlockStateMerging.mergedBlockState(List.of(BrewingStandBlock.HAS_BOTTLE))
-                    .validated(Fixtures::isContainer, "the block must have an inventory"),
-            Blocks.BREWING_STAND.defaultBlockState());
+                    .validated(state -> Fixtures.isContainer(state) && !Fixtures.isLootContainer(state), "the block must have an inventory and not take a loot table, use loot_container for those"));
     public static final List<FixtureField<?>> FIELDS = List.of(LOOT_TABLE, BLOCK);
     public static final MapCodec<FillContainerFixture> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     LOOT_TABLE.forGetter(FillContainerFixture::lootTable),
