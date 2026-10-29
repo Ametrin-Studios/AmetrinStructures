@@ -221,7 +221,8 @@ public class FixtureScreen extends Screen {
     }
 
     private Optional<Identifier> knownType(String value) {
-        return Optional.ofNullable(Identifier.tryParse(value)).filter(availableTypes::contains);
+        // An alias counts as known, but stays as written.
+        return Optional.ofNullable(Identifier.tryParse(value)).filter(type -> availableTypes.contains(ASRegistries.FIXTURE_TYPES.resolve(type)));
     }
 
     private Row fieldRow(FixtureField<?> field, AlternativeDraft alternative, CompletionPopup completions) {

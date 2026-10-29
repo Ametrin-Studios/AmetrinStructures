@@ -43,8 +43,7 @@ final class AlternativeDraft {
     AlternativeDraft(Tag stored, HolderLookup.Provider registries) {
         var data = stored instanceof CompoundTag compound ? compound : new CompoundTag();
         this.stored = data;
-        // Resolved, so a type stored under an alias shows its current id.
-        this.type = data.getString(Fixture.TYPE_KEY).map(Identifier::tryParse).map(ASRegistries.FIXTURE_TYPES::resolve).orElseGet(() -> Identifier.withDefaultNamespace("unknown"));
+        this.type = data.getString(Fixture.TYPE_KEY).map(Identifier::tryParse).orElseGet(() -> Identifier.withDefaultNamespace("unknown"));
         this.weight = text(data.get(WeightedFixture.WEIGHT_KEY)).orElse("");
         this.chance = text(data.get(WeightedFixture.GENERATION_CHANCE_KEY)).orElse("");
         this.conditions = Optional.ofNullable(data.get(WeightedFixture.CONDITIONS_KEY)).map(Tag::toString).orElse("");
