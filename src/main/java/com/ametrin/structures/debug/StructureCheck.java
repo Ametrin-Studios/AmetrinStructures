@@ -47,12 +47,34 @@ import java.util.stream.Stream;
 /// don't exist. Checks simple and jigsaw structures and skips other types.
 ///
 /// Only loads templates and doesn't place anything, so it's safe to run off the server thread.
-final class StructureCheck {
-    record Problem(Subject subject, Identifier id, Component message) {
-        enum Subject {
+public final class StructureCheck {
+    public static final class Keys {
+        public static final String AT = "commands.ametrin_structures.check.at";
+        public static final String ALTERNATIVE = "commands.ametrin_structures.check.alternative";
+        public static final String MISSING_TEMPLATE = "commands.ametrin_structures.check.missing_template";
+        public static final String FIXTURE_OFFSET = "commands.ametrin_structures.check.fixture_offset";
+        public static final String MISSING_LOOT_TABLE = "commands.ametrin_structures.check.missing_loot_table";
+        public static final String UNREADABLE_FIXTURE = "commands.ametrin_structures.check.unreadable_fixture";
+        public static final String MISSING_REFERENCE = "commands.ametrin_structures.check.missing_reference";
+        public static final String START_JIGSAW = "commands.ametrin_structures.check.start_jigsaw";
+        public static final String EMPTY_FALLBACK = "commands.ametrin_structures.check.empty_fallback";
+        public static final String MISSING_POOL = "commands.ametrin_structures.check.missing_pool";
+        public static final String EMPTY_POOL = "commands.ametrin_structures.check.empty_pool";
+        public static final String UNMATCHED_JIGSAW = "commands.ametrin_structures.check.unmatched_jigsaw";
+        public static final String MISFACING_JIGSAW = "commands.ametrin_structures.check.misfacing_jigsaw";
+
+        private Keys() {}
+    }
+
+    public record Problem(Subject subject, Identifier id, Component message) {
+        public enum Subject {
             STRUCTURE,
             TEMPLATE,
-            FIXTURE_PRESET
+            FIXTURE_PRESET;
+
+            public String translationKey() {
+                return "commands.ametrin_structures.check.subject." + name().toLowerCase(Locale.ROOT);
+            }
         }
     }
 
@@ -131,7 +153,7 @@ final class StructureCheck {
             template.ifPresent(found -> checkContents(id, found));
         }
         if (template.isEmpty()) {
-            problem(Problem.Subject.STRUCTURE, structure, "missing_template", id.toString());
+            problem(Problem.Subject.STRUCTURE, structure, Keys.MISSING_TEMPLATE, id.toString());
         }
         return template;
     }
@@ -143,17 +165,17 @@ final class StructureCheck {
                 if (nbt == null) {
                     continue;
                 }
-                var at = Component.translatable("commands.ametrin_structures.check.at", block.pos().toShortString());
+                var at = Component.translatable(Keys.AT, block.pos().toShortString());
                 if (block.state().is(ASBlocks.FIXTURE.get())) {
                     nbt.read(FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElseGet(List::of)
                             .forEach(alternative -> checkFixture(Problem.Subject.TEMPLATE, id, at, alternative));
                     nbt.read(FixtureBlockEntity.OFFSET_KEY, Vec3.CODEC)
                             .filter(offset -> !FixtureBlockEntity.isValidOffset(offset))
-                            .ifPresent(offset -> problem(Problem.Subject.TEMPLATE, id, "fixture_offset", at, offset.toString(), FixtureBlockEntity.MAX_OFFSET));
+                            .ifPresent(offset -> problem(Problem.Subject.TEMPLATE, id, Keys.FIXTURE_OFFSET, at, offset.toString(), FixtureBlockEntity.MAX_OFFSET));
                 }
                 nbt.read(RandomizableContainer.LOOT_TABLE_TAG, LootTable.KEY_CODEC)
                         .filter(table -> !exists(table))
-                        .ifPresent(table -> problem(Problem.Subject.TEMPLATE, id, "missing_loot_table", at, table.identifier().toString()));
+                        .ifPresent(table -> problem(Problem.Subject.TEMPLATE, id, Keys.MISSING_LOOT_TABLE, at, table.identifier().toString()));
             }
         }
     }
@@ -164,17 +186,17 @@ final class StructureCheck {
         }
         var fixture = alternative.fixture();
         if (fixture instanceof Fixture.Unreadable unreadable) {
-            problem(subject, id, "unreadable_fixture", where, unreadable.error());
+            problem(subject, id, Keys.UNREADABLE_FIXTURE, where, unreadable.error());
             return;
         }
         fixture.references()
                 .filter(key -> !exists(key))
-                .forEach(key -> problem(subject, id, "missing_reference", where, key.registry().toString(), key.identifier().toString()));
+                .forEach(key -> problem(subject, id, Keys.MISSING_REFERENCE, where, key.registry().toString(), key.identifier().toString()));
         if (fixture instanceof PresetFixture(var key) && checkedPresets.add(key)) {
             registries.lookupOrThrow(ASRegistries.FIXTURE_PRESET).get(key).ifPresent(preset -> {
                 var alternatives = preset.value().fixtures();
                 for (int i = 0; i < alternatives.size(); i++) {
-                    var position = Component.translatable("commands.ametrin_structures.check.alternative", i + 1);
+                    var position = Component.translatable(Keys.ALTERNATIVE, i + 1);
                     checkFixture(Problem.Subject.FIXTURE_PRESET, key.identifier(), position, alternatives.get(i));
                 }
             });
@@ -191,7 +213,7 @@ final class StructureCheck {
 
     private record Connector(StructureTemplate.JigsawBlockInfo jigsaw, String template) {
         Component at() {
-            return Component.translatable("commands.ametrin_structures.check.at", jigsaw.info().pos().toShortString());
+            return Component.translatable(Keys.AT, jigsaw.info().pos().toShortString());
         }
     }
 
@@ -210,7 +232,7 @@ final class StructureCheck {
         var start = jigsaws(structure, startPool, jigsaws);
         startJigsawName
                 .filter(name -> start.complete() && start.connectors().stream().noneMatch(connector -> connector.jigsaw().name().equals(name)))
-                .ifPresent(name -> problem(Problem.Subject.STRUCTURE, structure, "start_jigsaw", poolName(startPool), name.toString()));
+                .ifPresent(name -> problem(Problem.Subject.STRUCTURE, structure, Keys.START_JIGSAW, poolName(startPool), name.toString()));
 
         var links = new ArrayList<Link>();
         var queue = new ArrayDeque<>(List.of(startPool));
@@ -222,7 +244,7 @@ final class StructureCheck {
             }
             var fallback = pool.value().getFallback();
             if (isEmpty(fallback)) {
-                problem(Problem.Subject.STRUCTURE, structure, "empty_fallback", poolName(pool), poolName(fallback));
+                problem(Problem.Subject.STRUCTURE, structure, Keys.EMPTY_FALLBACK, poolName(pool), poolName(fallback));
             }
             queue.add(fallback);
             for (var connector : jigsaws(structure, pool, jigsaws).connectors()) {
@@ -230,9 +252,9 @@ final class StructureCheck {
                 for (var key : aliases.getOrDefault(named, Set.of(named))) {
                     var target = pools.get(key);
                     if (target.isEmpty()) {
-                        problem(Problem.Subject.STRUCTURE, structure, "missing_pool", connector.at(), connector.template(), key.identifier().toString());
+                        problem(Problem.Subject.STRUCTURE, structure, Keys.MISSING_POOL, connector.at(), connector.template(), key.identifier().toString());
                     } else if (isEmpty(target.get())) {
-                        problem(Problem.Subject.STRUCTURE, structure, "empty_pool", connector.at(), connector.template(), key.identifier().toString());
+                        problem(Problem.Subject.STRUCTURE, structure, Keys.EMPTY_POOL, connector.at(), connector.template(), key.identifier().toString());
                     } else if (!target.get().is(Pools.EMPTY)) {
                         queue.add(target.get());
                         links.add(new Link(connector, target.get()));
@@ -270,10 +292,10 @@ final class StructureCheck {
         if (named.isEmpty()) {
             // A missing template may hold the match.
             if (jigsaws(structure, link.target(), jigsaws).complete() && jigsaws(structure, link.target().value().getFallback(), jigsaws).complete()) {
-                problem(Problem.Subject.STRUCTURE, structure, "unmatched_jigsaw", source.at(), source.template(), targetName, poolName(link.target()));
+                problem(Problem.Subject.STRUCTURE, structure, Keys.UNMATCHED_JIGSAW, source.at(), source.template(), targetName, poolName(link.target()));
             }
         } else if (named.stream().noneMatch(candidate -> canFace(source.jigsaw(), candidate.jigsaw()))) {
-            problem(Problem.Subject.STRUCTURE, structure, "misfacing_jigsaw", source.at(), source.template(), targetName, poolName(link.target()));
+            problem(Problem.Subject.STRUCTURE, structure, Keys.MISFACING_JIGSAW, source.at(), source.template(), targetName, poolName(link.target()));
         }
     }
 
@@ -354,6 +376,6 @@ final class StructureCheck {
     }
 
     private void problem(Problem.Subject subject, Identifier id, String key, Object... arguments) {
-        problems.add(new Problem(subject, id, Component.translatable("commands.ametrin_structures.check." + key, arguments)));
+        problems.add(new Problem(subject, id, Component.translatable(key, arguments)));
     }
 }

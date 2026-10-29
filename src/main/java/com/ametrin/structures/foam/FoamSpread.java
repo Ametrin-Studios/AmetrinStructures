@@ -21,6 +21,13 @@ import java.util.function.Consumer;
 
 public record FoamSpread(FoamSpreadBehavior behavior,
                          List<FoamSpreadRestriction> restrictions) implements TooltipProvider {
+    public static final class Keys {
+        public static final String FILL = "tooltip.ametrin_structures.foam.fill";
+        public static final String UNBOUNDED = "tooltip.ametrin_structures.foam.unbounded";
+
+        private Keys() {}
+    }
+
     public static final Codec<FoamSpread> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                     FoamSpreadBehavior.CODEC.fieldOf("behavior").forGetter(FoamSpread::behavior),
                     FoamSpreadRestriction.CODEC.listOf().optionalFieldOf("restrictions", List.of()).forGetter(FoamSpread::restrictions))
@@ -39,11 +46,11 @@ public record FoamSpread(FoamSpreadBehavior behavior,
 
     @Override
     public void addToTooltip(Item.TooltipContext context, Consumer<Component> tooltip, TooltipFlag flag, DataComponentGetter components) {
-        tooltip.accept(Component.translatable("tooltip.ametrin_structures.foam.fill", Component.keybind("key.sneak"))
+        tooltip.accept(Component.translatable(Keys.FILL, Component.keybind("key.sneak"))
                 .withStyle(ChatFormatting.GRAY));
         tooltip.accept(line(behavior.description(), ChatFormatting.BLUE));
         if (restrictions.isEmpty()) {
-            tooltip.accept(line(Component.translatable("tooltip.ametrin_structures.foam.unbounded"), ChatFormatting.RED));
+            tooltip.accept(line(Component.translatable(Keys.UNBOUNDED), ChatFormatting.RED));
         }
         for (var restriction : restrictions) {
             tooltip.accept(line(restriction.description(), ChatFormatting.BLUE));

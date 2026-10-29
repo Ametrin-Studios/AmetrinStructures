@@ -2,6 +2,7 @@ package com.ametrin.structures;
 
 import com.ametrin.structures.data.provider.ASBlockTagsProvider;
 import com.ametrin.structures.data.provider.ASItemTagsProvider;
+import com.ametrin.structures.data.provider.ASLanguageProvider;
 import com.ametrin.structures.data.provider.ASModelProvider;
 import com.ametrin.structures.debug.SpreadCommand;
 import com.ametrin.structures.debug.StructuresCommand;
@@ -97,6 +98,7 @@ public class AmetrinStructures {
     private static void gatherData(GatherDataEvent.Client event) {
         event.createDatapackRegistryObjects(new RegistrySetBuilder().add(ASRegistries.SPAWNER_PROFILE, ASSpawnerProfiles::bootstrap));
         event.createProvider(ASModelProvider::new);
+        event.createProvider(ASLanguageProvider::new);
         event.createBlockAndItemTags(ASBlockTagsProvider::new, ASItemTagsProvider::new);
     }
 }

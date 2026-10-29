@@ -34,7 +34,20 @@ import static com.ametrin.structures.debug.ChatReport.*;
 
 /// `/ametrin structures pieces <structure> [layouts]` lays out a structure at random seeds where the caller stands, without placing it,
 /// and reports which pieces it uses, how big it gets and which jigsaws stay open. See [StructureLayouts] for what's ignored.
-final class PiecesCommand {
+public final class PiecesCommand {
+    public static final class Keys {
+        public static final String STARTED = "commands.ametrin_structures.pieces.started";
+        public static final String FAILED = "commands.ametrin_structures.pieces.failed";
+        public static final String NONE = "commands.ametrin_structures.pieces.none";
+        public static final String SUMMARY = "commands.ametrin_structures.pieces.summary";
+        public static final String COUNT = "commands.ametrin_structures.pieces.count";
+        public static final String SIZE = "commands.ametrin_structures.pieces.size";
+        public static final String OPEN_JIGSAWS = "commands.ametrin_structures.pieces.open_jigsaws";
+        public static final String RANGE = "commands.ametrin_structures.pieces.range";
+
+        private Keys() {}
+    }
+
     private static final int DEFAULT_LAYOUTS = 100;
     private static final int MAX_LAYOUTS = 1_000;
 
@@ -93,7 +106,7 @@ final class PiecesCommand {
         var level = source.getLevel();
         var chunk = ChunkPos.containing(BlockPos.containing(source.getPosition()));
         var random = level.getRandom().fork();
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.pieces.started", count, name), false);
+        source.sendSuccess(() -> Component.translatable(Keys.STARTED, count, name), false);
         CompletableFuture.supplyAsync(() -> {
                     var layouts = new ArrayList<Layout>();
                     for (int i = 0; i < count; i++) {
@@ -105,9 +118,9 @@ final class PiecesCommand {
                 .whenCompleteAsync((layouts, error) -> {
                     if (error != null) {
                         ASLog.error("pieces report failed", error);
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.pieces.failed", error.toString()));
+                        source.sendFailure(Component.translatable(Keys.FAILED, error.toString()));
                     } else if (layouts.isEmpty()) {
-                        source.sendFailure(Component.translatable("commands.ametrin_structures.pieces.none", name, count));
+                        source.sendFailure(Component.translatable(Keys.NONE, name, count));
                     } else {
                         report(source, name, count, layouts);
                     }
@@ -117,21 +130,21 @@ final class PiecesCommand {
 
     private static void report(CommandSourceStack source, String name, int tries, List<Layout> layouts) {
         int samples = layouts.size();
-        var summary = Component.translatable("commands.ametrin_structures.pieces.summary", name, samples, percent(tries - samples, tries));
+        var summary = Component.translatable(Keys.SUMMARY, name, samples, percent(tries - samples, tries));
         var extraLines = new ArrayList<Component>();
 
         var pieceCounts = layouts.stream().mapToInt(layout -> layout.pieces().values().stream().mapToInt(Integer::intValue).sum()).summaryStatistics();
-        extraLines.add(Component.translatable("commands.ametrin_structures.pieces.count", format(pieceCounts.getAverage()), pieceCounts.getMin(), pieceCounts.getMax()));
+        extraLines.add(Component.translatable(Keys.COUNT, format(pieceCounts.getAverage()), pieceCounts.getMin(), pieceCounts.getMax()));
         var width = size(layouts, BoundingBox::getXSpan);
         var height = size(layouts, BoundingBox::getYSpan);
         var length = size(layouts, BoundingBox::getZSpan);
-        extraLines.add(Component.translatable("commands.ametrin_structures.pieces.size",
+        extraLines.add(Component.translatable(Keys.SIZE,
                 format(width.getAverage()), format(height.getAverage()), format(length.getAverage()), width.getMax(), height.getMax(), length.getMax()));
 
         var open = sortedByTotal(LootStatsCommand.count(layouts.stream().map(Layout::openJigsaws).toList()));
         var openBreakdown = breakdown("open jigsaws into\tper layout\tshare of layouts", open, samples);
         long openTotal = open.stream().mapToLong(entry -> entry.getValue().total()).sum();
-        var openLine = Component.translatable("commands.ametrin_structures.pieces.open_jigsaws", format((double) openTotal / samples));
+        var openLine = Component.translatable(Keys.OPEN_JIGSAWS, format((double) openTotal / samples));
         extraLines.add(open.isEmpty() ? openLine : openLine.withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(openBreakdown.hover()))));
 
         var tsv = new StringBuilder("piece\tper layout\tshare of layouts\tfewest\tmost\n");
@@ -140,7 +153,7 @@ final class PiecesCommand {
             var counts = entry.getValue();
             tsv.append(entry.getKey()).append('\t').append(average(counts, samples)).append('\t').append(percent(counts.samplesWith(), samples))
                     .append('\t').append(counts.min()).append('\t').append(counts.max()).append('\n');
-            var details = Component.translatable("commands.ametrin_structures.pieces.range", counts.min(), counts.max()).withStyle(ChatFormatting.GRAY);
+            var details = Component.translatable(Keys.RANGE, counts.min(), counts.max()).withStyle(ChatFormatting.GRAY);
             lines.add(line(counts, samples, entry.getKey()).withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
         }
         tsv.append(openBreakdown.tsv());

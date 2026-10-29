@@ -19,6 +19,13 @@ import java.util.ArrayList;
 /// Lists a picked fixture's alternatives in its item tooltip while shift is held.
 @ApiStatus.Internal
 public final class FixtureTooltip {
+    public static final class Keys {
+        public static final String HOLD_SHIFT = "tooltip.ametrin_structures.fixture.hold_shift";
+        public static final String CHANCE = "tooltip.ametrin_structures.fixture.chance";
+
+        private Keys() {}
+    }
+
     private FixtureTooltip() {}
 
     public static void append(ItemTooltipEvent event) {
@@ -36,7 +43,7 @@ public final class FixtureTooltip {
             int total = alternatives.stream().mapToInt(FixtureTooltip::weight).sum();
             alternatives.forEach(alternative -> lines.add(describe(alternative, total)));
         } else {
-            lines.add(Component.translatable("tooltip.ametrin_structures.fixture.hold_shift", alternatives.size()).withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable(Keys.HOLD_SHIFT, alternatives.size()).withStyle(ChatFormatting.GRAY));
         }
         event.getToolTip().addAll(Math.min(1, event.getToolTip().size()), lines);
     }
@@ -47,7 +54,7 @@ public final class FixtureTooltip {
                 .append(Component.literal(typeName(alternative.getStringOr(Fixture.TYPE_KEY, "?"))).withStyle(ChatFormatting.BLUE));
         float chance = alternative.getFloatOr(WeightedFixture.GENERATION_CHANCE_KEY, 1.0F);
         if (chance < 1.0F) {
-            line.append(Component.translatable("tooltip.ametrin_structures.fixture.chance", percent(chance)).withStyle(ChatFormatting.DARK_GRAY));
+            line.append(Component.translatable(Keys.CHANCE, percent(chance)).withStyle(ChatFormatting.DARK_GRAY));
         }
         return line;
     }

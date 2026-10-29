@@ -60,7 +60,7 @@ final class XaeroSpreadWaypoints {
             var pos = spot.position();
             // Drop the namespace to keep the label short. The full id is in the chat report.
             var argument = spot.argument().substring(spot.argument().indexOf(':') + 1);
-            var label = I18n.get("waypoint.ametrin_structures.rejected." + spot.reason(), argument);
+            var label = I18n.get(SpreadWaypointsClient.rejectedKey(spot.reason()), argument);
             rejected.add(Integer.toString(i), new Waypoint(pos.getX(), pos.getY(), pos.getZ(), name + ": " + label, "x", WaypointColor.GRAY, WaypointPurpose.NORMAL));
         }
     }

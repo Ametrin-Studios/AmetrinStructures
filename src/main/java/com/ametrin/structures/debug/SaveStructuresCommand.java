@@ -15,6 +15,13 @@ import java.util.Comparator;
 
 /// `/ametrin structures save [radius]` saves every structure block in save mode within `radius` blocks of the caller
 public final class SaveStructuresCommand {
+    public static final class Keys {
+        public static final String SAVED = "commands.ametrin_structures.save_structures.saved";
+        public static final String FAILED = "commands.ametrin_structures.save_structures.failed";
+
+        private Keys() {}
+    }
+
     private static final int DEFAULT_RADIUS = 64;
     private static final int MAX_RADIUS = 512;
 
@@ -51,9 +58,9 @@ public final class SaveStructuresCommand {
             }
         }
         int saved = structureBlocks.size() - failed.size();
-        source.sendSuccess(() -> Component.translatable("commands.ametrin_structures.save_structures.saved", saved, radius), true);
+        source.sendSuccess(() -> Component.translatable(Keys.SAVED, saved, radius), true);
         if (!failed.isEmpty()) {
-            source.sendFailure(Component.translatable("commands.ametrin_structures.save_structures.failed", String.join(", ", failed)));
+            source.sendFailure(Component.translatable(Keys.FAILED, String.join(", ", failed)));
         }
         return saved;
     }
