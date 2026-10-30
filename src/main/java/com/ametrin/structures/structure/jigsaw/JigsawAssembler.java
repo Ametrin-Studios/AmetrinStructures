@@ -39,7 +39,8 @@ import java.util.function.Predicate;
 
 /// Grows a layout from its start piece the way vanilla's `JigsawPlacement` does, drawing from the random in the same order, and enforces [CountedPoolElement] counts.
 ///
-/// When the layout ends with an element below its minimum, it undoes everything back to the latest jigsaw that could still attach that element, attaches it there and grows on from that point.
+/// While an element is below its minimum, jigsaws whose pools can't lead to it wait until the rest of the layout is done, so other pieces don't take its space first.
+/// When the layout still ends with an element below its minimum, it undoes everything back to the latest jigsaw that could still attach that element, attaches it there and grows on from that point.
 /// Every change to the layout is recorded so it can be undone.
 final class JigsawAssembler {
     private static final int UNSET = Integer.MIN_VALUE;
@@ -66,6 +67,11 @@ final class JigsawAssembler {
     private final Set<CountedPoolElement> required = new LinkedHashSet<>();
     private @Nullable Visit visit;
     private VoxelShape blocked = Shapes.empty();
+    private Map<CountedPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools = Map.of();
+    private final ArrayDeque<Deferred> deferred = new ArrayDeque<>();
+    private boolean deferring;
+    // Only for listing jigsaws, so the layout's own random isn't drawn from. Layouts run on several threads, so each has its own.
+    private final RandomSource listing = RandomSource.create(0);
 
     /// @param pools looks up the pools jigsaws point to, after `aliases`
     JigsawAssembler(Structure.GenerationContext context, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, int maxDepth, boolean expansionHack, PoolAliasLookup aliases, LiquidSettings liquidSettings, int maxBacktracks) {
@@ -105,6 +111,8 @@ final class JigsawAssembler {
         var root = new Node(start, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
         placed.add(root);
         visit(root);
+        leadingPools = leadingPools(Objects.requireNonNull(visit).jigsaws);
+        deferring = !leadingPools.isEmpty();
         int backtracks = 0;
         while (true) {
             if (step()) {
@@ -124,13 +132,18 @@ final class JigsawAssembler {
         return Optional.of(placed.stream().map(Node::piece).toList());
     }
 
-    // Decides the next jigsaw of the piece being visited, or starts visiting the next piece. False once there's nothing left.
+    // Decides the next jigsaw of the piece being visited, starts visiting the next piece, or decides the next jigsaw that waited. False once there's nothing left.
     private boolean step() {
         var current = visit;
         if (current != null && current.next < current.jigsaws.size()) {
             var jigsaw = current.jigsaws.get(current.next++);
             undo.add(() -> current.next--);
-            decide(current.node, jigsaw);
+            if (deferring && !leadsToMissing(jigsaw)) {
+                deferred.addLast(new Deferred(current.node, jigsaw));
+                undo.add(deferred::removeLast);
+            } else {
+                decide(current.node, jigsaw);
+            }
             return true;
         }
         for (var pieces : queue.values()) {
@@ -141,7 +154,79 @@ final class JigsawAssembler {
                 return true;
             }
         }
+        if (!deferred.isEmpty()) {
+            if (deferring) {
+                deferring = false;
+                undo.add(() -> deferring = true);
+            }
+            var next = deferred.removeFirst();
+            undo.add(() -> deferred.addFirst(next));
+            decide(next.node, next.jigsaw);
+            return true;
+        }
         return false;
+    }
+
+    // Whether the jigsaw's pool can lead to an element below its minimum. Jigsaws that point to an unknown pool don't wait.
+    private boolean leadsToMissing(StructureTemplate.JigsawBlockInfo jigsaw) {
+        var pool = pools.apply(aliases.lookup(jigsaw.pool()));
+        if (pool.isEmpty()) {
+            return true;
+        }
+        var missing = false;
+        for (var entry : leadingPools.entrySet()) {
+            if (count(entry.getKey()) < entry.getKey().minCount()) {
+                if (entry.getValue().contains(pool.get())) {
+                    return true;
+                }
+                missing = true;
+            }
+        }
+        return !missing;
+    }
+
+    /// For each element with a minimum that the jigsaws can lead to, the pools that lead to it: through their elements, their fallback and the pools their elements' jigsaws point to.
+    private Map<CountedPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools(List<StructureTemplate.JigsawBlockInfo> jigsaws) {
+        var parents = new HashMap<Holder<StructureTemplatePool>, Set<Holder<StructureTemplatePool>>>();
+        var containing = new HashMap<CountedPoolElement, Set<Holder<StructureTemplatePool>>>();
+        var visited = new HashSet<Holder<StructureTemplatePool>>();
+        var queue = new ArrayDeque<Holder<StructureTemplatePool>>();
+        jigsaws.forEach(jigsaw -> pools.apply(aliases.lookup(jigsaw.pool())).ifPresent(queue::add));
+        while (!queue.isEmpty()) {
+            var pool = queue.poll();
+            if (!visited.add(pool)) {
+                continue;
+            }
+            var children = new ArrayList<Holder<StructureTemplatePool>>();
+            children.add(pool.value().getFallback());
+            for (var entry : pool.value().getTemplates()) {
+                var element = entry.getFirst();
+                if (element instanceof CountedPoolElement counted && counted.minCount() > 0) {
+                    containing.computeIfAbsent(counted, _ -> new HashSet<>()).add(pool);
+                }
+                element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, listing)
+                        .forEach(jigsaw -> pools.apply(aliases.lookup(jigsaw.pool())).ifPresent(children::add));
+            }
+            for (var child : children) {
+                parents.computeIfAbsent(child, _ -> new HashSet<>()).add(pool);
+                queue.add(child);
+            }
+        }
+
+        var leading = new HashMap<CountedPoolElement, Set<Holder<StructureTemplatePool>>>();
+        containing.forEach((element, holders) -> {
+            var found = new HashSet<>(holders);
+            var back = new ArrayDeque<>(holders);
+            while (!back.isEmpty()) {
+                for (var parent : parents.getOrDefault(back.poll(), Set.of())) {
+                    if (found.add(parent)) {
+                        back.add(parent);
+                    }
+                }
+            }
+            leading.put(element, found);
+        });
+        return leading;
     }
 
     private void visit(Node node) {
@@ -257,6 +342,8 @@ final class JigsawAssembler {
             this(piece, free, new MutableObject<>(), depth, new ArrayList<>());
         }
     }
+
+    private record Deferred(Node node, StructureTemplate.JigsawBlockInfo jigsaw) {}
 
     private static final class Visit {
         private final Node node;

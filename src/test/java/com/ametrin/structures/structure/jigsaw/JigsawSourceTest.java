@@ -57,6 +57,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -111,12 +113,33 @@ class JigsawSourceTest {
     }
 
     @Test
+    void jigsawsThatCantLeadToAMissingElementWait(MinecraftServer server) {
+        var lookup = housesWith(server, TEMPLE, element -> new CountedPoolElement(element, 1, Optional.empty()));
+        int checked = 0;
+        for (int seed = 0; seed < SEEDS; seed++) {
+            // Without backtracking, so the order is what growing produced.
+            var names = assemble(server, lookup.lookup(), seed, 0).stream().flatMap(List::stream)
+                    .map(piece -> piece.getElement() == lookup.replacement() ? "temple" : piece.getElement().toString())
+                    .toList();
+            int firstVillager = indexOf(names, name -> name.contains("/villagers/"));
+            if (firstVillager < 0) {
+                continue;
+            }
+            checked++;
+            // Villagers only come from houses, so they wait until the temple is in or the streets and houses are done.
+            var after = names.subList(firstVillager, names.size());
+            assertTrue(names.subList(0, firstVillager).contains("temple") || after.stream().noneMatch(name -> name.contains("/streets/") || name.contains("/houses/")), "seed " + seed + ": " + names);
+        }
+        assertTrue(checked > 0, "the test needs layouts with villagers");
+    }
+
+    @Test
     void anUnreachableMinCountDoesNotStopTheLayout(MinecraftServer server) {
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
         var unreachable = new CountedPoolElement(StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID), 1, Optional.empty());
         var pool = new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(unreachable, 1)));
         var lookup = overriding(server, pool("unused"), pool);
-        assertTrue(assemble(server, lookup, 0).isPresent());
+        assertTrue(assemble(server, lookup, 0, JigsawSource.DEFAULT_MAX_BACKTRACKS).isPresent());
     }
 
     @Test
@@ -231,6 +254,22 @@ class JigsawSourceTest {
     // How often `template` appears in a village layout at each seed, with the houses pool's element for it replaced by `replace`.
     // Zombie villages have houses of their own, so they're UNREACHED.
     private static List<Integer> countAcrossSeeds(MinecraftServer server, Identifier template, Function<StructurePoolElement, StructurePoolElement> replace) {
+        var houses = housesWith(server, template, replace);
+        var counts = new ArrayList<Integer>();
+        for (int seed = 0; seed < SEEDS; seed++) {
+            counts.add(assemble(server, houses.lookup(), seed, JigsawSource.DEFAULT_MAX_BACKTRACKS)
+                    .map(pieces -> pieces.stream().noneMatch(piece -> houses.elements().contains(piece.getElement()))
+                            ? UNREACHED
+                            : (int) pieces.stream().filter(piece -> piece.getElement() == houses.replacement()).count())
+                    .orElse(FAILED));
+        }
+        return counts;
+    }
+
+    private record Houses(Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> lookup, StructurePoolElement replacement, List<StructurePoolElement> elements) {}
+
+    // The pools with the houses pool's element for `template` replaced by `replace`.
+    private static Houses housesWith(MinecraftServer server, Identifier template, Function<StructurePoolElement, StructurePoolElement> replace) {
         var houses = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL).getOrThrow(HOUSES).value();
         var weights = new LinkedHashMap<StructurePoolElement, Integer>();
         houses.getShuffledTemplates(RandomSource.create(0)).forEach(element -> weights.merge(element, 1, Integer::sum));
@@ -238,20 +277,10 @@ class JigsawSourceTest {
         var replacement = replace.apply(original);
         var elements = weights.entrySet().stream().map(entry -> Pair.of(entry.getKey() == original ? replacement : entry.getKey(), entry.getValue())).toList();
         var lookup = overriding(server, HOUSES, new StructureTemplatePool(houses.getFallback(), elements));
-
-        var houseElements = elements.stream().map(Pair::getFirst).toList();
-        var counts = new ArrayList<Integer>();
-        for (int seed = 0; seed < SEEDS; seed++) {
-            counts.add(assemble(server, lookup, seed)
-                    .map(pieces -> pieces.stream().noneMatch(piece -> houseElements.contains(piece.getElement()))
-                            ? UNREACHED
-                            : (int) pieces.stream().filter(piece -> piece.getElement() == replacement).count())
-                    .orElse(FAILED));
-        }
-        return counts;
+        return new Houses(lookup, replacement, elements.stream().map(Pair::getFirst).toList());
     }
 
-    private static Optional<List<PoolElementStructurePiece>> assemble(MinecraftServer server, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, long seed) {
+    private static Optional<List<PoolElementStructurePiece>> assemble(MinecraftServer server, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, long seed, int maxBacktracks) {
         var context = context(server, seed);
         var templates = server.getStructureManager();
         var random = context.random();
@@ -260,8 +289,12 @@ class JigsawSourceTest {
         var position = new BlockPos(0, 63, 0);
         var start = new PoolElementStructurePiece(templates, element, position, element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation), LiquidSettings.IGNORE_WATERLOGGING);
         var free = JigsawAssembler.freeSpace(start.getBoundingBox(), 64, new JigsawStructure.MaxDistance(80), context.heightAccessor(), DimensionPadding.ZERO);
-        var assembler = new JigsawAssembler(context, pools, 6, true, PoolAliasLookup.EMPTY, LiquidSettings.IGNORE_WATERLOGGING, JigsawSource.DEFAULT_MAX_BACKTRACKS);
+        var assembler = new JigsawAssembler(context, pools, 6, true, PoolAliasLookup.EMPTY, LiquidSettings.IGNORE_WATERLOGGING, maxBacktracks);
         return assembler.assemble(start, free, Shapes.empty());
+    }
+
+    private static int indexOf(List<String> names, Predicate<String> matches) {
+        return IntStream.range(0, names.size()).filter(i -> matches.test(names.get(i))).findFirst().orElse(-1);
     }
 
     private static Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> overriding(MinecraftServer server, ResourceKey<StructureTemplatePool> key, StructureTemplatePool pool) {
