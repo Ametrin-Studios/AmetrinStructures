@@ -3,6 +3,7 @@ package com.ametrin.structures.structure.simple;
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.*;
 import com.ametrin.structures.structure.filter.TerrainSampler;
+import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -11,6 +12,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,6 +24,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import org.jetbrains.annotations.ApiStatus;
@@ -98,7 +101,7 @@ public class SimpleStructure extends ExtendedStructure {
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
         var created = new ArrayList<StructurePiece>();
-        pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
+        var growth = pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings));
         var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
         timer.pieces(System.nanoTime() - start);
         if (unplacedFootprint.isEmpty()) {
@@ -114,15 +117,27 @@ public class SimpleStructure extends ExtendedStructure {
         }
 
         var origin = unplaced.atY(sampled.getAsInt());
-        var footprint = unplacedFootprint.get().moved(0, origin.getY(), 0);
+        created.forEach(piece -> piece.move(0, origin.getY(), 0));
+        if (growth != PieceSource.Growth.NONE) {
+            // Growing is expensive, so rule out the wrong biome first, as the evaluation would afterward.
+            if (!isValidBiome(context, origin)) {
+                return Either.right(new Evaluation.WrongBiome(origin));
+            }
+            start = System.nanoTime();
+            var grown = growth.grow(created, origin);
+            timer.pieces(System.nanoTime() - start);
+            if (!grown) {
+                return Either.right(new Evaluation.NoPieces());
+            }
+        }
+        var footprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList()).orElseThrow();
         return Either.left(new Candidate(origin, terrain, () -> footprint, () -> place(created, origin)));
     }
 
-    // Moves the pieces up to the start height and hands them the structure's settings.
+    // Hands the pieces the structure's settings.
     private GenerationStub place(List<StructurePiece> created, BlockPos origin) {
         var builder = new StructurePiecesBuilder();
         for (var piece : created) {
-            piece.move(0, origin.getY(), 0);
             if (piece instanceof ExtendedTemplateStructurePiece template) {
                 template.setLiquidSettings(liquidSettings);
                 template.setFoundation(foundation);
@@ -168,7 +183,7 @@ public class SimpleStructure extends ExtendedStructure {
         private final String namespace;
 
         @Nullable
-        private Function<HolderGetter<StructureProcessorList>, PieceSource> pieces;
+        private Function<BootstrapContext<Structure>, PieceSource> pieces;
         private StartHeight startHeight = ON_SURFACE_START_HEIGHT;
         private LiquidSettings liquidSettings = LiquidSettings.IGNORE_WATERLOGGING;
         private Optional<Foundation> foundation = Optional.empty();
@@ -215,8 +230,18 @@ public class SimpleStructure extends ExtendedStructure {
             });
         }
 
+        /// A jigsaw layout grown from `startPool`, see [JigsawSource].
+        public Builder jigsaw(ResourceKey<StructureTemplatePool> startPool, Consumer<JigsawSource.Builder> configure) {
+            this.pieces = context -> {
+                var jigsaw = new JigsawSource.Builder(context.lookup(Registries.TEMPLATE_POOL).getOrThrow(startPool));
+                configure.accept(jigsaw);
+                return jigsaw.build();
+            };
+            return this;
+        }
+
         public Builder pieces(Function<HolderGetter<StructureProcessorList>, PieceSource> pieces) {
-            this.pieces = pieces;
+            this.pieces = context -> pieces.apply(context.lookup(Registries.PROCESSOR_LIST));
             return this;
         }
 
@@ -298,7 +323,7 @@ public class SimpleStructure extends ExtendedStructure {
         protected void validate() {
             super.validate();
             if (pieces == null) {
-                throw fail("no piece source was set - call single(), weighted() or compound()");
+                throw fail("no piece source was set - call single(), weighted(), compound() or jigsaw()");
             }
         }
 
@@ -309,10 +334,9 @@ public class SimpleStructure extends ExtendedStructure {
 
         @Override
         protected SimpleStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
-            var processorLists = context.lookup(Registries.PROCESSOR_LIST);
             PieceSource builtPieces;
             try {
-                builtPieces = Objects.requireNonNull(pieces).apply(processorLists);
+                builtPieces = Objects.requireNonNull(pieces).apply(context);
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);
             }

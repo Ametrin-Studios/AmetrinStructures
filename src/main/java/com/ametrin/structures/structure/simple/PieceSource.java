@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 
 import java.util.List;
 import java.util.function.Function;
@@ -24,9 +25,10 @@ public interface PieceSource {
                             TemplateEntry template
                     ) ? Either.<PieceSource, TemplateEntry>right(template) : Either.<PieceSource, TemplateEntry>left(source));
 
-    /// Appends the pieces to `builder`. `context.origin()` has Y 0; the structure moves the pieces to
-    /// their start height afterward. Sources that combine others pass them the same `context`.
-    void appendPieces(List<StructurePiece> builder, Context context);
+    /// Appends the pieces to `builder`. `context.origin()` has Y 0. The structure moves the pieces to their start height afterward, measuring it under them. Sources that combine others pass them the same `context`.
+    ///
+    /// @return the pieces to add once the first ones are at their start height, for pieces that depend on the terrain. [Growth#NONE] for most sources.
+    Growth appendPieces(List<StructurePiece> builder, Context context);
 
     PieceSourceType type();
 
@@ -34,6 +36,25 @@ public interface PieceSource {
     Stream<TemplateEntry> templates();
 
     /// @param terrainAdaptation the structure's, for [com.ametrin.structures.structure.ExtendedTemplateStructurePiece]s
-    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation) {
+    /// @param liquidSettings    the structure's, for pieces that take them when they're created
+    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings) {
+    }
+
+    @FunctionalInterface
+    interface Growth {
+        Growth NONE = (_, _) -> true;
+
+        /// Appends the rest of the pieces to `builder`, which holds every piece so far at its start height.
+        ///
+        /// @param origin the context's origin at the start height
+        /// @return false if the structure can't generate here after all
+        boolean grow(List<StructurePiece> builder, BlockPos origin);
+
+        default Growth andThen(Growth next) {
+            if (this == NONE) {
+                return next;
+            }
+            return next == NONE ? this : (builder, origin) -> grow(builder, origin) && next.grow(builder, origin);
+        }
     }
 }

@@ -20,6 +20,7 @@ import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
@@ -157,7 +158,7 @@ class SimpleStructurePieceTest {
                 LevelHeightAccessor.create(-64, 384),
                 HolderSet.direct(plains)::contains);
         var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN);
+        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING);
         var piece = (SimpleStructurePiece) PieceSources.createPiece(entry, context);
         piece.setStructureProcessors(structureProcessors);
         return piece;

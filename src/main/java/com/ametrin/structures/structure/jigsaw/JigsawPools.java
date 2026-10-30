@@ -163,6 +163,8 @@ public final class JigsawPools {
         private Optional<LiquidSettings> liquidSettings = Optional.empty();
         private boolean processFoam = true;
         private Optional<Foundation> foundation = Optional.empty();
+        private int minCount = 0;
+        private Optional<Integer> maxCount = Optional.empty();
 
         private Element() {
         }
@@ -213,12 +215,29 @@ public final class JigsawPools {
             return this;
         }
 
+        /// At most `max` of this element per structure, see [CountedPoolElement].
+        public Element maxCount(int max) {
+            this.maxCount = Optional.of(max);
+            return this;
+        }
+
+        /// At least `min` of this element per structure, see [CountedPoolElement].
+        public Element minCount(int min) {
+            this.minCount = min;
+            return this;
+        }
+
         private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template) {
             var resolved = processors != null ? processors : processorLists.getOrThrow(EMPTY_PROCESSORS);
             var liquid = liquidSettings;
             var foam = processFoam;
             var base = foundation;
-            return projection -> new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base);
+            var min = minCount;
+            var max = maxCount;
+            if (min == 0 && max.isEmpty()) {
+                return projection -> new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base);
+            }
+            return projection -> new CountedPoolElement(new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base), min, max);
         }
     }
 }

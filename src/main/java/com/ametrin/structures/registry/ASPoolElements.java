@@ -1,6 +1,7 @@
 package com.ametrin.structures.registry;
 
 import com.ametrin.structures.AmetrinStructures;
+import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
@@ -12,4 +13,6 @@ public final class ASPoolElements {
 
     public static final DeferredHolder<StructurePoolElementType<?>, StructurePoolElementType<ExtendedSinglePoolElement>>
             SINGLE = REGISTER.register("single_pool_element", () -> () -> ExtendedSinglePoolElement.CODEC);
+    public static final DeferredHolder<StructurePoolElementType<?>, StructurePoolElementType<CountedPoolElement>>
+            COUNTED = REGISTER.register("counted", () -> () -> CountedPoolElement.CODEC);
 }

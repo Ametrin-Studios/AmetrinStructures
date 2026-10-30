@@ -3,6 +3,7 @@ package com.ametrin.structures.debug;
 import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.StructureBuilder;
+import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -11,6 +12,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 
 import java.util.Optional;
 
@@ -28,10 +30,17 @@ final class StructureLayouts {
     /// A piece's template, or for a piece that isn't one, its pool element or piece type.
     static String name(StructurePiece piece) {
         return switch (piece) {
-            case PoolElementStructurePiece pooled when pooled.getElement() instanceof SinglePoolElement single -> single.getTemplateLocation().toString();
-            case PoolElementStructurePiece pooled -> String.valueOf(BuiltInRegistries.STRUCTURE_POOL_ELEMENT.getKey(pooled.getElement().getType()));
+            case PoolElementStructurePiece pooled -> name(pooled.getElement());
             case ExtendedTemplateStructurePiece template -> template.templateId().toString();
             default -> String.valueOf(BuiltInRegistries.STRUCTURE_PIECE.getKey(piece.getType()));
+        };
+    }
+
+    private static String name(StructurePoolElement element) {
+        return switch (element) {
+            case SinglePoolElement single -> single.getTemplateLocation().toString();
+            case CountedPoolElement counted -> name(counted.element());
+            default -> String.valueOf(BuiltInRegistries.STRUCTURE_POOL_ELEMENT.getKey(element.getType()));
         };
     }
 }

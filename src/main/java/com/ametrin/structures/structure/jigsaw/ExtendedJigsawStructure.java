@@ -52,7 +52,7 @@ public class ExtendedJigsawStructure extends ExtendedStructure {
     // Copies vanilla's final class instead of opening it with an access transformer, which would be more work to maintain across updates.
 
     // The margin terrain adaptation needs around the structure.
-    private static final int TERRAIN_ADAPTATION_MARGIN = 12;
+    static final int TERRAIN_ADAPTATION_MARGIN = 12;
 
     public static final MapCodec<ExtendedJigsawStructure> CODEC = RecordCodecBuilder.<ExtendedJigsawStructure>mapCodec(
                     instance -> instance.group(
