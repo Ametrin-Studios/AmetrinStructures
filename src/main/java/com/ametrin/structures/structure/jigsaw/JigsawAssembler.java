@@ -65,6 +65,7 @@ final class JigsawAssembler {
     // Only grows, so a requirement stays once the layout reached it, even if that part is undone.
     private final Set<CountedPoolElement> required = new LinkedHashSet<>();
     private @Nullable Visit visit;
+    private VoxelShape blocked = Shapes.empty();
 
     /// @param pools looks up the pools jigsaws point to, after `aliases`
     JigsawAssembler(Structure.GenerationContext context, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, int maxDepth, boolean expansionHack, PoolAliasLookup aliases, LiquidSettings liquidSettings, int maxBacktracks) {
@@ -97,9 +98,11 @@ final class JigsawAssembler {
 
     /// Grows the layout from `start`, which is already in place.
     ///
+    /// @param blocked taken by pieces outside the layout, which even pieces attached inside another one stay out of
     /// @return every piece in the order it was placed, `start` first, or empty if the counts can't be met
-    Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, VoxelShape free) {
-        var root = new Node(start, new MutableObject<>(free), 0);
+    Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, VoxelShape free, VoxelShape blocked) {
+        this.blocked = blocked;
+        var root = new Node(start, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
         placed.add(root);
         visit(root);
         int backtracks = 0;
@@ -166,7 +169,7 @@ final class JigsawAssembler {
         if (source.piece.getBoundingBox().isInside(target)) {
             free = source.inside;
             if (free.get() == null) {
-                free.setValue(Shapes.create(AABB.of(source.piece.getBoundingBox())));
+                free.setValue(Shapes.join(Shapes.create(AABB.of(source.piece.getBoundingBox())), blocked, BooleanOp.ONLY_FIRST));
                 undo.add(() -> source.inside.setValue(null));
             }
         } else {

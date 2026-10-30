@@ -13,6 +13,7 @@ import com.ametrin.structures.util.RegistryConditionContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.Pools;
@@ -165,7 +166,8 @@ public final class StructureCheck {
     private Optional<StructureTemplate> template(Identifier structure, Identifier id) {
         var template = checkedTemplates.get(id);
         if (template == null) {
-            template = templates.get(id);
+            // Once something asked for a missing template, the manager holds an empty one in its place.
+            template = templates.get(id).filter(found -> !found.getSize().equals(Vec3i.ZERO));
             checkedTemplates.put(id, template);
             template.ifPresent(found -> checkContents(id, found));
         }

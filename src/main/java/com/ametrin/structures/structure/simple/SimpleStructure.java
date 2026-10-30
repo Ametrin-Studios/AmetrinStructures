@@ -3,6 +3,7 @@ package com.ametrin.structures.structure.simple;
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.*;
 import com.ametrin.structures.structure.filter.TerrainSampler;
+import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.MapCodec;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureType;
@@ -27,6 +29,7 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilde
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
@@ -131,20 +134,34 @@ public class SimpleStructure extends ExtendedStructure {
             }
         }
         var footprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList()).orElseThrow();
-        return Either.left(new Candidate(origin, terrain, () -> footprint, () -> place(created, origin)));
+        return Either.left(new Candidate(origin, terrain, () -> footprint, () -> place(created, origin, context.structureTemplateManager())));
     }
 
     // Hands the pieces the structure's settings.
-    private GenerationStub place(List<StructurePiece> created, BlockPos origin) {
+    private GenerationStub place(List<StructurePiece> created, BlockPos origin, StructureTemplateManager templates) {
         var builder = new StructurePiecesBuilder();
         for (var piece : created) {
             if (piece instanceof ExtendedTemplateStructurePiece template) {
                 template.setLiquidSettings(liquidSettings);
                 template.setFoundation(foundation);
             }
-            builder.addPiece(piece);
+            builder.addPiece(piece instanceof PoolElementStructurePiece pooled ? withFoundation(pooled, templates) : piece);
         }
         return new GenerationStub(origin, Either.right(builder));
+    }
+
+    // Pool elements are shared between structures, so the piece gets a copy of its element with the foundation. Terrain matching pieces already follow the ground.
+    private PoolElementStructurePiece withFoundation(PoolElementStructurePiece piece, StructureTemplateManager templates) {
+        if (foundation.isEmpty() || piece.getElement().getProjection() != StructureTemplatePool.Projection.RIGID) {
+            return piece;
+        }
+        var element = ExtendedSinglePoolElement.withDefaultFoundation(piece.getElement(), foundation.get());
+        if (element == piece.getElement()) {
+            return piece;
+        }
+        var copy = new PoolElementStructurePiece(templates, element, piece.getPosition(), piece.getGroundLevelDelta(), piece.getRotation(), piece.getBoundingBox(), liquidSettings);
+        piece.getJunctions().forEach(copy::addJunction);
+        return copy;
     }
 
     public PieceSource pieces() {
@@ -308,6 +325,7 @@ public class SimpleStructure extends ExtendedStructure {
             return foundation(Foundation.of(state, maxDepth));
         }
 
+        /// Jigsaw pieces only get it on rigid `ametrin_structures:single_pool_element`s without a foundation of their own.
         public Builder foundation(Foundation foundation) {
             this.foundation = Optional.of(foundation);
             return this;

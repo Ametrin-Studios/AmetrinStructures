@@ -17,7 +17,9 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.pools.ListPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
@@ -76,6 +78,27 @@ public class ExtendedSinglePoolElement extends SinglePoolElement {
         // Added here instead of in the constructor, so the element is saved to JSON unchanged and doesn't touch its processor holder before the registry is bound.
         var settings = super.getSettings(rotation, chunkBB, liquidSettings, keepJigsaws);
         return processFoam ? RemoveFoamProcessor.addDefaultIfAbsent(settings) : settings;
+    }
+
+    public Optional<Foundation> foundation() {
+        return foundation;
+    }
+
+    /// `element` with `foundation` on each of its extended single elements that has none of its own, or `element` itself if there are none.
+    public static StructurePoolElement withDefaultFoundation(StructurePoolElement element, Foundation foundation) {
+        return switch (element) {
+            case ExtendedSinglePoolElement single when single.foundation.isEmpty() ->
+                    new ExtendedSinglePoolElement(single.template, single.processors, single.getProjection(), single.overrideLiquidSettings, single.processFoam, Optional.of(foundation));
+            case CountedPoolElement counted -> {
+                var inner = withDefaultFoundation(counted.element(), foundation);
+                yield inner == counted.element() ? counted : new CountedPoolElement(inner, counted.minCount(), counted.maxCount());
+            }
+            case ListPoolElement list -> {
+                var elements = list.getElements().stream().map(child -> withDefaultFoundation(child, foundation)).toList();
+                yield elements.equals(list.getElements()) ? list : new ListPoolElement(elements, list.getProjection());
+            }
+            default -> element;
+        };
     }
 
     @Override

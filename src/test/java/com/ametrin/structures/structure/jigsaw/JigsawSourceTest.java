@@ -1,17 +1,23 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.ExtendedStructure;
+import com.ametrin.structures.structure.ExtendedStructureSettings;
+import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.PieceSource;
+import com.ametrin.structures.structure.simple.PieceSources;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import com.ametrin.structures.structure.simple.StartHeight;
-import com.ametrin.structures.structure.simple.HeightAnchor;
+import com.ametrin.structures.structure.simple.TemplateEntry;
 import com.google.gson.JsonParser;
+import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -24,6 +30,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
@@ -42,6 +49,8 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -124,6 +133,44 @@ class JigsawSourceTest {
     }
 
     @Test
+    void grownPiecesKeepClearOfTheOtherSourcesPieces(MinecraftServer server) {
+        var village = new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(4).useExpansionHack(true).build();
+        var temple = new PieceSources.SingleSource(TemplateEntry.of(TEMPLE));
+        var overlapsAlone = false;
+        for (int seed = 0; seed < SEEDS; seed++) {
+            var templeBox = grow(server, temple, seed).getFirst().getBoundingBox();
+            overlapsAlone |= grow(server, village, seed).stream().skip(1).anyMatch(piece -> piece.getBoundingBox().intersects(templeBox));
+            // The temple and the start piece come first, then what grew.
+            var together = grow(server, new PieceSources.CompoundSource(List.of(temple, village)), seed);
+            assertTrue(together.stream().skip(2).noneMatch(piece -> piece.getBoundingBox().intersects(templeBox)), "seed " + seed);
+        }
+        assertTrue(overlapsAlone, "the test needs a village that grows into the temple on its own");
+    }
+
+    @Test
+    void theStructuresFoundationReachesExtendedElements(MinecraftServer server) {
+        var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
+        var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
+        var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(element, 1))));
+        var structure = new SimpleStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
+                StartHeight.at(HeightAnchor.absolute(64)), LiquidSettings.IGNORE_WATERLOGGING, Optional.of(Foundation.repeating()), Optional.empty());
+        var generated = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server, 0)));
+        var placed = (PoolElementStructurePiece) generated.stub().getPiecesBuilder().build().pieces().getFirst();
+        assertEquals(Optional.of(Foundation.repeating()), assertInstanceOf(ExtendedSinglePoolElement.class, placed.getElement()).foundation());
+    }
+
+    @Test
+    void anElementsOwnFoundationAndVanillaElementsStayAsTheyAre() {
+        var own = Foundation.of(Blocks.STONE.defaultBlockState(), 4);
+        var element = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own));
+        assertSame(element, ExtendedSinglePoolElement.withDefaultFoundation(element, Foundation.repeating()));
+        var vanilla = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
+        assertSame(vanilla, ExtendedSinglePoolElement.withDefaultFoundation(vanilla, Foundation.repeating()));
+    }
+
+    @Test
     void readsFromJson(MinecraftServer server) {
         var json = JsonParser.parseString("""
                 {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "size": 3}
@@ -172,6 +219,15 @@ class JigsawSourceTest {
         }
     }
 
+    // The source's pieces at Y 0, grown.
+    private static List<StructurePiece> grow(MinecraftServer server, PieceSource source, long seed) {
+        var context = context(server, seed);
+        var pieces = new ArrayList<StructurePiece>();
+        var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING));
+        assertTrue(growth.grow(pieces, BlockPos.ZERO));
+        return pieces;
+    }
+
     // How often `template` appears in a village layout at each seed, with the houses pool's element for it replaced by `replace`.
     // Zombie villages have houses of their own, so they're UNREACHED.
     private static List<Integer> countAcrossSeeds(MinecraftServer server, Identifier template, Function<StructurePoolElement, StructurePoolElement> replace) {
@@ -205,7 +261,7 @@ class JigsawSourceTest {
         var start = new PoolElementStructurePiece(templates, element, position, element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation), LiquidSettings.IGNORE_WATERLOGGING);
         var free = JigsawAssembler.freeSpace(start.getBoundingBox(), 64, new JigsawStructure.MaxDistance(80), context.heightAccessor(), DimensionPadding.ZERO);
         var assembler = new JigsawAssembler(context, pools, 6, true, PoolAliasLookup.EMPTY, LiquidSettings.IGNORE_WATERLOGGING, JigsawSource.DEFAULT_MAX_BACKTRACKS);
-        return assembler.assemble(start, free);
+        return assembler.assemble(start, free, Shapes.empty());
     }
 
     private static Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> overriding(MinecraftServer server, ResourceKey<StructureTemplatePool> key, StructureTemplatePool pool) {

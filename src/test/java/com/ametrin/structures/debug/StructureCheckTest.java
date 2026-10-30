@@ -68,6 +68,13 @@ class StructureCheckTest {
     }
 
     @Test
+    void aMissingTemplateSomethingAskedForIsStillReported(MinecraftServer server) {
+        var missing = Identifier.fromNamespaceAndPath("test", "asked_for");
+        server.getStructureManager().getOrCreate(missing);
+        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, simple(missing))));
+    }
+
+    @Test
     void brokenReferencesInATemplateAreReported(MinecraftServer server) throws CommandSyntaxException {
         var template = template(server, "references", """
                 {size: [2, 1, 1], entities: [],

@@ -24,6 +24,8 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.Shapes;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +34,7 @@ import java.util.stream.Stream;
 /// Grows a jigsaw layout from `start_pool`, like vanilla's jigsaw structure, and keeps [CountedPoolElement]s within their counts.
 ///
 /// The start piece's ground level is at the start height, measured under the start piece. With `start_jigsaw_name`, that jigsaw is at the origin instead, one block lower.
-/// The rest of the layout grows once the start piece is in place, since terrain matching pieces follow the terrain.
+/// The rest of the layout grows once the start piece is in place, since terrain matching pieces follow the terrain. It keeps clear of the structure's other pieces.
 ///
 /// @param size          how many jigsaws deep the layout grows, from {@value JigsawStructure#MIN_DEPTH} to {@value JigsawStructure#MAX_DEPTH}. At the last depth only fallback pools attach.
 /// @param maxBacktracks how often the layout may go back to place an element below its minimum before the structure gives up on the spot
@@ -106,8 +108,9 @@ public record JigsawSource(
                 return false;
             }
             var free = JigsawAssembler.freeSpace(box, placedOrigin.getY(), maxDistanceFromCenter, generation.heightAccessor(), dimensionPadding);
+            var others = pieces.stream().filter(piece -> piece != start).map(piece -> Shapes.create(AABB.of(piece.getBoundingBox()))).reduce(Shapes.empty(), Shapes::or);
             var assembler = new JigsawAssembler(generation, pools::get, depth, useExpansionHack, aliases, context.liquidSettings(), maxBacktracks);
-            var assembled = assembler.assemble(start, free);
+            var assembled = assembler.assemble(start, free, others);
             assembled.ifPresent(all -> pieces.addAll(all.subList(1, all.size())));
             return assembled.isPresent();
         };

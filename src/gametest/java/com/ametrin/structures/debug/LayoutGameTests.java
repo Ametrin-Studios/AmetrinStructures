@@ -25,7 +25,8 @@ public final class LayoutGameTests {
         var layout = PiecesCommand.describe(level.getStructureManager(), pieces);
 
         int centers = layout.pieces().entrySet().stream()
-                .filter(entry -> entry.getKey().startsWith("minecraft:village/plains/town_centers/"))
+                // Zombie villages have their own, under village/plains/zombie/.
+                .filter(entry -> entry.getKey().contains("/town_centers/"))
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         helper.assertValueEqual(centers, 1, "town centers");
