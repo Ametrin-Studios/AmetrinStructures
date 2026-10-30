@@ -123,7 +123,6 @@
   "screen.ametrin_structures.conditions": "Conditions",
   "screen.ametrin_structures.conditions.tooltip": "Conditions as SNBT that must all pass where the fixture acts, or this alternative isn't drawn. Takes biomes, dimensions, heights and NeoForge conditions like neoforge:mod_loaded. Blank for always.",
   "screen.ametrin_structures.custom_name": "Name",
-  "screen.ametrin_structures.example": "e.g. %s",
   "screen.ametrin_structures.fixture": "Fixture",
   "screen.ametrin_structures.generate": "Generate now",
   "screen.ametrin_structures.generate.tooltip": "Saves, then runs this marker in place. The marker goes back into your inventory first.",
