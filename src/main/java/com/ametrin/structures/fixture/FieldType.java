@@ -36,7 +36,6 @@ import java.util.function.Predicate;
 /// @param editor      the widget that edits it
 /// @param suggestions completion candidates, or the choices of a [Editor#CHOICE]
 /// @param registry    the registry a key points into, so the screen can ask the server for its keys
-/// @param example     placeholder text
 public record FieldType<T>(
         String name,
         Codec<T> codec,
@@ -44,8 +43,7 @@ public record FieldType<T>(
         Formatter<T> formatter,
         Editor editor,
         Function<HolderLookup.Provider, List<String>> suggestions,
-        Optional<ResourceKey<? extends Registry<?>>> registry,
-        Optional<String> example) {
+        Optional<ResourceKey<? extends Registry<?>>> registry) {
 
     public enum Editor {
         TEXT,
@@ -69,7 +67,7 @@ public record FieldType<T>(
             case "true" -> DataResult.success(true);
             case "false" -> DataResult.success(false);
             default -> DataResult.error(() -> "not true or false: " + text);
-        }, (value, _) -> value.toString(), Editor.TOGGLE, _ -> List.of("true", "false"), Optional.empty(), Optional.empty());
+        }, (value, _) -> value.toString(), Editor.TOGGLE, _ -> List.of("true", "false"), Optional.empty());
     }
 
     public static FieldType<Integer> integer(int min, int max) {
@@ -79,7 +77,7 @@ public record FieldType<T>(
             } catch (NumberFormatException exception) {
                 return DataResult.error(() -> "not a whole number: " + text);
             }
-        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty(), Optional.of(Integer.toString(Math.max(min, 0))));
+        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty());
     }
 
     public static FieldType<Float> number(float min, float max) {
@@ -89,7 +87,7 @@ public record FieldType<T>(
             } catch (NumberFormatException exception) {
                 return DataResult.error(() -> "not a number: " + text);
             }
-        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty(), Optional.of(Float.toString(max)));
+        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty());
     }
 
     /// A key in `registry`. It doesn't have to exist yet, since it's only looked up when the fixture runs.
@@ -103,8 +101,7 @@ public record FieldType<T>(
                 registries -> registries.lookup(registry)
                         .map(lookup -> lookup.listElementIds().map(key -> key.identifier().toString()).toList())
                         .orElseGet(List::of),
-                Optional.of(registry),
-                Optional.empty());
+                Optional.of(registry));
     }
 
     /// Written like `/setblock` does: `minecraft:chest[facing=north]`.
@@ -115,14 +112,14 @@ public record FieldType<T>(
             } catch (CommandSyntaxException exception) {
                 return DataResult.error(exception::getMessage);
             }
-        }, (value, _) -> BlockStateParser.serialize(value), Editor.BLOCK_STATE, _ -> List.of(), Optional.empty(), Optional.of("minecraft:chest[facing=north]"));
+        }, (value, _) -> BlockStateParser.serialize(value), Editor.BLOCK_STATE, _ -> List.of(), Optional.empty());
     }
 
     /// Written like `/give` does, with an optional count: `minecraft:leather_helmet[dyed_color=255] 2`.
     public static FieldType<ItemStackTemplate> item() {
         return new FieldType<>("item", ItemStackTemplate.CODEC, FieldType::parseItem, FieldType::formatItem, Editor.TEXT,
                 _ -> BuiltInRegistries.ITEM.keySet().stream().map(Identifier::toString).toList(),
-                Optional.empty(), Optional.of("minecraft:diamond 3"));
+                Optional.empty());
     }
 
     /// SNBT, like `{Health:5f}`.
@@ -133,7 +130,7 @@ public record FieldType<T>(
             } catch (CommandSyntaxException exception) {
                 return DataResult.error(exception::getMessage);
             }
-        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty(), Optional.of("{Key:1}"));
+        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty());
     }
 
     public static <E extends Enum<E> & StringRepresentable> FieldType<E> choice(Class<E> type) {
@@ -149,7 +146,6 @@ public record FieldType<T>(
                 (value, _) -> value.getSerializedName(),
                 Editor.CHOICE,
                 _ -> Arrays.stream(constants).map(StringRepresentable::getSerializedName).toList(),
-                Optional.empty(),
                 Optional.empty());
     }
 
@@ -157,12 +153,12 @@ public record FieldType<T>(
     public FieldType<T> validated(Predicate<T> valid, String requirement) {
         Function<T, DataResult<T>> check = value -> valid.test(value) ? DataResult.success(value) : DataResult.error(() -> requirement);
         return new FieldType<>(name, codec.validate(check), (text, registries) -> parser.parse(text, registries).flatMap(check),
-                formatter, editor, suggestions, registry, example);
+                formatter, editor, suggestions, registry);
     }
 
     /// Shows values as `formatter` writes them. The text must parse back to a value that works the same.
     public FieldType<T> formattedBy(Formatter<T> formatter) {
-        return new FieldType<>(name, codec, parser, formatter, editor, suggestions, registry, example);
+        return new FieldType<>(name, codec, parser, formatter, editor, suggestions, registry);
     }
 
     /// Parses `text` and stores it as NBT.
