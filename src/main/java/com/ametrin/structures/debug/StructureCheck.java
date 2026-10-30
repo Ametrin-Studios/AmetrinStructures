@@ -3,7 +3,11 @@ package com.ametrin.structures.debug;
 import com.ametrin.structures.fixture.*;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
+import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
 import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
+import com.ametrin.structures.structure.jigsaw.JigsawSource;
+import com.ametrin.structures.structure.simple.PieceSource;
+import com.ametrin.structures.structure.simple.PieceSources;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import com.ametrin.structures.util.RegistryConditionContext;
 import net.minecraft.core.BlockPos;
@@ -131,7 +135,10 @@ public final class StructureCheck {
     /// @return false for a type it can't look into
     private boolean check(Identifier id, Structure structure) {
         switch (structure) {
-            case SimpleStructure simple -> simple.pieces().templates().forEach(entry -> template(id, entry.template()));
+            case SimpleStructure simple -> {
+                simple.pieces().templates().forEach(entry -> template(id, entry.template()));
+                jigsawSources(simple.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases()));
+            }
             case ExtendedJigsawStructure jigsaw ->
                     checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases());
             // Vanilla's start jigsaw name has no getter.
@@ -142,6 +149,16 @@ public final class StructureCheck {
             }
         }
         return true;
+    }
+
+    // Only the built-in sources can be looked into.
+    private static Stream<JigsawSource> jigsawSources(PieceSource source) {
+        return switch (source) {
+            case JigsawSource jigsaw -> Stream.of(jigsaw);
+            case PieceSources.CompoundSource compound -> compound.sources().stream().flatMap(StructureCheck::jigsawSources);
+            case PieceSources.WeightedSource weighted -> weighted.sources().unwrap().stream().flatMap(entry -> jigsawSources(entry.value()));
+            default -> Stream.empty();
+        };
     }
 
     /// Checks the template's contents the first time it's requested. A missing template is reported for `structure`.
@@ -331,6 +348,7 @@ public final class StructureCheck {
     private boolean templatesExist(Identifier structure, StructurePoolElement element) {
         return switch (element) {
             case SinglePoolElement single -> template(structure, single.getTemplateLocation()).isPresent();
+            case CountedPoolElement counted -> templatesExist(structure, counted.element());
             case ListPoolElement list -> {
                 var all = true;
                 for (var child : list.getElements()) {
@@ -345,6 +363,7 @@ public final class StructureCheck {
     private static String elementName(StructurePoolElement element) {
         return switch (element) {
             case SinglePoolElement single -> single.getTemplateLocation().toString();
+            case CountedPoolElement counted -> elementName(counted.element());
             // A list element's jigsaws are its first element's.
             case ListPoolElement list when !list.getElements().isEmpty() -> elementName(list.getElements().getFirst());
             default -> element.toString();

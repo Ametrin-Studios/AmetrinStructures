@@ -2,6 +2,9 @@ package com.ametrin.structures.debug;
 
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
+import com.ametrin.structures.structure.jigsaw.JigsawSource;
+import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import com.ametrin.structures.structure.simple.TemplateEntry;
@@ -119,6 +122,26 @@ class StructureCheckTest {
     }
 
     @Test
+    void aJigsawSourceInsideACompoundIsChecked(MinecraftServer server) throws CommandSyntaxException {
+        var template = template(server, "unmatched", """
+                {size: [1, 1, 1], entities: [],
+                 palette: [{Name: "minecraft:jigsaw", Properties: {orientation: "west_up"}}],
+                 blocks: [
+                   {pos: [0, 0, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "minecraft:village/plains/terminators", name: "minecraft:empty", target: "test:nothing", joint: "rollable", final_state: "minecraft:air"}}]}
+                """);
+        var report = check(server, jigsawSource(server, new CountedPoolElement(single(template), 0, Optional.of(1))));
+        assertEquals(List.of("STRUCTURE test:structure unmatched_jigsaw"), describe(report));
+        var arguments = ((TranslatableContents) report.problems().getFirst().message().getContents()).getArgs();
+        assertTrue(List.of(arguments).contains(template.toString()), "names the counted element's template, got " + List.of(arguments));
+    }
+
+    @Test
+    void aMissingTemplateInACountedElementIsReported(MinecraftServer server) {
+        var report = check(server, jigsawSource(server, new CountedPoolElement(single(Identifier.fromNamespaceAndPath("test", "missing")), 1, Optional.empty())));
+        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(report));
+    }
+
+    @Test
     void sidewaysJigsawsMeetAnySidewaysOneAndVerticalOnesOnlyTheirOpposite() {
         assertTrue(StructureCheck.canFace(jigsaw(FrontAndTop.WEST_UP), jigsaw(FrontAndTop.NORTH_UP)));
         assertFalse(StructureCheck.canFace(jigsaw(FrontAndTop.WEST_UP), jigsaw(FrontAndTop.DOWN_NORTH)));
@@ -139,10 +162,25 @@ class StructureCheckTest {
     }
 
     private static SimpleStructure simple(Identifier template) {
+        return simple(new PieceSources.SingleSource(TemplateEntry.of(template)));
+    }
+
+    // In a compound, so the check has to look inside it.
+    private static SimpleStructure jigsawSource(MinecraftServer server, StructurePoolElement element) {
+        var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
+        var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(Pools.EMPTY), List.of(Pair.of(element, 1))));
+        return simple(new PieceSources.CompoundSource(List.of(new JigsawSource.Builder(start).build())));
+    }
+
+    private static StructurePoolElement single(Identifier template) {
+        return StructurePoolElement.single(template.toString()).apply(StructureTemplatePool.Projection.RIGID);
+    }
+
+    private static SimpleStructure simple(PieceSource pieces) {
         return new SimpleStructure(
                 new Structure.StructureSettings(HolderSet.empty()),
                 ExtendedStructureSettings.DEFAULT,
-                new PieceSources.SingleSource(TemplateEntry.of(template)),
+                pieces,
                 SimpleStructure.ON_SURFACE_START_HEIGHT,
                 LiquidSettings.IGNORE_WATERLOGGING,
                 Optional.<Foundation>empty(),
