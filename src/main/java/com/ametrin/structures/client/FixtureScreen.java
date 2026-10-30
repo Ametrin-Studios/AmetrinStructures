@@ -209,7 +209,7 @@ public class FixtureScreen extends Screen {
         var conditionsLabel = Component.translatable(Keys.CONDITIONS);
         var conditionsBox = editBox(controlWidth(), conditionsLabel, alternative.conditions);
         conditionsBox.setMaxLength(Integer.MAX_VALUE);
-        conditionsBox.setHint(Component.literal("[{type: \"ametrin_structures:biome\", biomes: \"#minecraft:is_forest\"}]").withStyle(EditBox.SEARCH_HINT_STYLE));
+        conditionsBox.setHint(Component.translatable(Keys.NONE).withStyle(EditBox.SEARCH_HINT_STYLE));
         onEdit(conditionsBox, value -> value.isBlank() || FixtureInput.parseConditions(registries(), value).isPresent(), value -> alternative.conditions = value);
         list.addRow(new Row(conditionsLabel, tooltip(Component.translatable(Keys.CONDITIONS_TOOLTIP)), conditionsBox));
 
