@@ -3,6 +3,7 @@
 - foam items without a spread component no longer spread
 - foam uses vanilla's sneak check, so it also works while flying
 - jigsaw blocks show their pool above them, toggled by the `jigsaw_name_tags` client config
+- no longer show examples in fixture blocks to avoid confusion with default values
 
 ## 0.3.2-beta
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)

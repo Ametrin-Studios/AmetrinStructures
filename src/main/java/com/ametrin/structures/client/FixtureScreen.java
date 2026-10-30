@@ -64,7 +64,6 @@ public class FixtureScreen extends Screen {
         public static final String ALTERNATIVES = "screen.ametrin_structures.alternatives";
         public static final String REQUIRED = "screen.ametrin_structures.required";
         public static final String NONE = "screen.ametrin_structures.none";
-        public static final String EXAMPLE = "screen.ametrin_structures.example";
         public static final String CUSTOM_NAME = "screen.ametrin_structures.custom_name";
         public static final String OFFSET = "screen.ametrin_structures.offset";
         public static final String OFFSET_TOOLTIP = "screen.ametrin_structures.offset.tooltip";
@@ -212,7 +211,7 @@ public class FixtureScreen extends Screen {
         var conditionsLabel = Component.translatable(Keys.CONDITIONS);
         var conditionsBox = editBox(controlWidth(), conditionsLabel, alternative.conditions);
         conditionsBox.setMaxLength(Integer.MAX_VALUE);
-        conditionsBox.setHint(Component.literal("[{type: \"ametrin_structures:biome\", biomes: \"#minecraft:is_forest\"}]").withStyle(EditBox.SEARCH_HINT_STYLE));
+        conditionsBox.setHint(Component.translatable(Keys.NONE).withStyle(EditBox.SEARCH_HINT_STYLE));
         onEdit(conditionsBox, value -> value.isBlank() || FixtureInput.parseConditions(registries(), value).isPresent(), value -> alternative.conditions = value);
         list.addRow(new Row(conditionsLabel, tooltip(Component.translatable(Keys.CONDITIONS_TOOLTIP)), conditionsBox));
 
@@ -295,8 +294,7 @@ public class FixtureScreen extends Screen {
         return new Row(name, tooltip, box);
     }
 
-    /// What a blank field means: its default, nothing for an optional field, or an example of what a
-    /// required one takes, marked so it isn't mistaken for a default.
+    /// What a blank field means: its default, nothing for an optional field, or the kind of value a required one takes.
     private static MutableComponent hint(FixtureField<?> field, Optional<String> defaultText) {
         if (defaultText.isPresent()) {
             return Component.literal(defaultText.get());
@@ -304,9 +302,7 @@ public class FixtureScreen extends Screen {
         if (field.presence() == FixtureField.Presence.OPTIONAL) {
             return Component.translatable(Keys.NONE);
         }
-        return field.type().example()
-                .map(example -> Component.translatable(Keys.EXAMPLE, example))
-                .orElseGet(() -> Component.literal(field.type().name()));
+        return Component.literal(field.type().name());
     }
 
     /// Cycles through the choices, with a blank one standing for none when the field has no default.

@@ -85,7 +85,6 @@ public class ASLanguageProvider extends LanguageProvider {
         add(FixtureScreen.Keys.CONDITIONS_TOOLTIP, "Conditions as SNBT that must all pass where the fixture acts, or this alternative isn't drawn. Takes biomes, dimensions, heights and NeoForge conditions like neoforge:mod_loaded. Blank for always.");
         add(FixtureScreen.Keys.PARAMETERS, "Parameters");
         add(FixtureScreen.Keys.REQUIRED, "Required");
-        add(FixtureScreen.Keys.EXAMPLE, "e.g. %s");
         add(FixtureScreen.Keys.NONE, "None");
         add(FixtureScreen.Keys.CUSTOM_NAME, "Name");
         add(FixtureScreen.Keys.OFFSET, "Offset");
