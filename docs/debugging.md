@@ -104,7 +104,7 @@ The structure isn't placed, so processors that would remove or replace a chest d
 
 ## Structure blocks
 
-The structure block's name box completes every template id the server can load, from mods, datapacks and the world's saved templates. The jigsaw block's pool box completes the server's template pools.
+The structure block's name box completes every template id the server can load, from mods, datapacks and the world's saved templates. The jigsaw block's pool box completes the server's template pools, and its "Turns into" box completes block states.
 
 `/ametrin structures save [radius]` saves every structure block in save mode within `radius` blocks (64 by default), as if you pressed each one's save button.
 
