@@ -1,6 +1,7 @@
 package com.ametrin.structures.util;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,5 +29,10 @@ public final class ASCodecs {
         return BuiltInRegistries.BLOCK.byNameCodec().dispatch("Name", BlockState::getBlock, block -> block.getStateDefinition().propertiesCodec().codec()
                 .lenientOptionalFieldOf("Properties")
                 .xmap(state -> state.orElseGet(block::defaultBlockState), Optional::of));
+    }
+
+    /// Success with `value`, or an error with `problem`.
+    public static <T> DataResult<T> check(T value, Optional<String> problem) {
+        return problem.<DataResult<T>>map(message -> DataResult.error(() -> message)).orElseGet(() -> DataResult.success(value));
     }
 }

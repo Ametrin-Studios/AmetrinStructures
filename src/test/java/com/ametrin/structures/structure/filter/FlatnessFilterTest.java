@@ -6,7 +6,6 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /// Where the flatness filter samples, and how a datapack author writes it.
 class FlatnessFilterTest {
@@ -22,7 +21,7 @@ class FlatnessFilterTest {
     void marginOutsideTheRangeIsRejected() {
         var result = PlacementFilters.Flatness.CODEC.codec()
                 .parse(JsonOps.INSTANCE, JsonParser.parseString("{\"max_variance\":3,\"margin\":-65}"));
-        assertTrue(result.isError());
+        assertEquals("flatness margin -65 is outside -64 to 64", result.error().orElseThrow().message());
     }
 
     @Test
