@@ -10,7 +10,9 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
@@ -22,12 +24,19 @@ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementTy
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
 
+import java.util.List;
 import java.util.Optional;
 
 public class ExtendedSinglePoolElement extends SinglePoolElement {
+    static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
+    private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty"));
+
     public static final MapCodec<ExtendedSinglePoolElement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     templateCodec(),
-                    processorsCodec(),
+                    // Unlike vanilla's element, it can be left out when there are none.
+                    StructureProcessorType.LIST_CODEC.optionalFieldOf("processors")
+                            .<Holder<StructureProcessorList>>xmap(processors -> processors.orElse(NO_PROCESSORS), processors -> hasNone(processors) ? Optional.empty() : Optional.of(processors))
+                            .forGetter(element -> element.processors),
                     projectionCodec(),
                     overrideLiquidSettingsCodec(),
                     Codec.BOOL.optionalFieldOf("process_foam", true).forGetter(element -> element.processFoam),
@@ -36,6 +45,11 @@ public class ExtendedSinglePoolElement extends SinglePoolElement {
 
     private final boolean processFoam;
     private final Optional<Foundation> foundation;
+
+    // Doesn't read a registered list's contents, since the registry may not be bound yet in datagen.
+    private static boolean hasNone(Holder<StructureProcessorList> processors) {
+        return processors.is(EMPTY_PROCESSORS) || processors.kind() == Holder.Kind.DIRECT && processors.value().list().isEmpty();
+    }
 
     public ExtendedSinglePoolElement(
             Either<Identifier, StructureTemplate> template,
