@@ -97,7 +97,8 @@ public class SimpleStructure extends ExtendedStructure {
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
         var builder = new StructurePiecesBuilder();
-        var growth = pieces.appendPieces(builder, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings, foundation, processors()));
+        var pieceContext = new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings, foundation, processors());
+        pieces.appendPieces(builder, pieceContext);
         timer.pieces(System.nanoTime() - start);
         if (builder.isEmpty()) {
             return Either.right(new Evaluation.NoPieces());
@@ -114,15 +115,15 @@ public class SimpleStructure extends ExtendedStructure {
 
         var origin = unplaced.atY(sampled.getAsInt());
         builder.offsetPiecesVertically(origin.getY());
-        if (growth != PieceSource.Growth.NONE) {
-            // Growing is expensive, so rule out the wrong biome first, as the evaluation would afterward.
+        if (!pieceContext.placementSteps().isEmpty()) {
+            // The steps can be expensive, like growing a jigsaw layout, so rule out the wrong biome first, as the evaluation would afterward.
             if (!isValidBiome(context, origin)) {
                 return Either.right(new Evaluation.WrongBiome(origin));
             }
             start = System.nanoTime();
-            var grown = growth.grow(builder, origin);
+            var placed = pieceContext.place(builder, origin);
             timer.pieces(System.nanoTime() - start);
-            if (!grown) {
+            if (!placed) {
                 return Either.right(new Evaluation.NoPieces());
             }
         }

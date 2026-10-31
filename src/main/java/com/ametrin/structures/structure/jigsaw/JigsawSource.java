@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 /// Grows a jigsaw layout from `start_pool`, like vanilla's jigsaw structure, and keeps [CountedPoolElement]s within their counts.
 ///
 /// The start piece's ground level is at the start height, measured under the start piece. With `start_jigsaw_name`, that jigsaw is at the origin instead, one block lower.
-/// The rest of the layout grows once the start piece is in place, since terrain matching pieces follow the terrain. It keeps clear of the structure's other pieces.
+/// The rest of the layout grows once all pieces are at their start height, since terrain matching pieces follow the terrain. It keeps clear of the structure's other pieces.
 ///
 /// @param size          how many jigsaws deep the layout grows, from {@value JigsawStructure#MIN_DEPTH} to {@value JigsawStructure#MAX_DEPTH}. At the last depth only fallback pools attach.
 /// @param maxBacktracks how often the layout may go back to place an element below its soft minimum before it settles for fewer, or gives up on the spot below the minimum
@@ -74,7 +74,7 @@ public record JigsawSource(
     }
 
     @Override
-    public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
+    public void appendPieces(StructurePiecesBuilder builder, Context context) {
         var generation = context.generation();
         var random = generation.random();
         var templates = generation.structureTemplateManager();
@@ -85,7 +85,7 @@ public record JigsawSource(
         var pool = startPool.unwrapKey().flatMap(key -> pools.getOptional(aliases.lookup(key))).orElse(startPool.value());
         var element = pool.getRandomTemplate(random);
         if (element == EmptyPoolElement.INSTANCE) {
-            return Growth.NONE;
+            return;
         }
 
         var position = origin;
@@ -94,7 +94,7 @@ public record JigsawSource(
             var anchor = element.getShuffledJigsawBlocks(templates, origin, rotation, random).stream().filter(jigsaw -> name.equals(jigsaw.name())).findFirst();
             if (anchor.isEmpty()) {
                 ASLog.error("No starting jigsaw {} found in start pool {}", name, startPool.unwrapKey().map(key -> key.identifier().toString()).orElse("<unregistered>"));
-                return Growth.NONE;
+                return;
             }
             position = origin.subtract(anchor.get().info().pos().subtract(origin));
         }
@@ -103,7 +103,7 @@ public record JigsawSource(
         builder.addPiece(start);
 
         int depth = size.sample(random);
-        return (pieces, placedOrigin) -> {
+        context.afterPlacement((pieces, placedOrigin) -> {
             var box = start.getBoundingBox();
             if (dimensionPadding != DimensionPadding.ZERO && (box.minY() < generation.heightAccessor().getMinY() + dimensionPadding.bottom() || box.maxY() > generation.heightAccessor().getMaxY() - dimensionPadding.top())) {
                 return false;
@@ -114,7 +114,7 @@ public record JigsawSource(
             var assembled = assembler.assemble(start, element, free, others);
             assembled.ifPresent(all -> all.subList(1, all.size()).forEach(pieces::addPiece));
             return assembled.isPresent();
-        };
+        });
     }
 
     @Override

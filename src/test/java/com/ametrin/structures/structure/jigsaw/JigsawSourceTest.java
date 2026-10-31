@@ -325,9 +325,10 @@ class JigsawSourceTest {
 
             var context = context(server, seed);
             var pieces = new StructurePiecesBuilder();
-            var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty()));
+            var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
+            source.appendPieces(pieces, pieceContext);
             pieces.offsetPiecesVertically(y);
-            assertTrue(growth.grow(pieces, new BlockPos(0, y, 0)));
+            assertTrue(pieceContext.place(pieces, new BlockPos(0, y, 0)));
 
             assertEquals(expected, pieces.build().pieces().stream().map(Placed::of).toList(), "seed " + seed);
         }
@@ -337,8 +338,9 @@ class JigsawSourceTest {
     private static List<StructurePiece> grow(MinecraftServer server, PieceSource source, long seed) {
         var context = context(server, seed);
         var pieces = new StructurePiecesBuilder();
-        var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty()));
-        assertTrue(growth.grow(pieces, BlockPos.ZERO));
+        var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
+        source.appendPieces(pieces, pieceContext);
+        assertTrue(pieceContext.place(pieces, BlockPos.ZERO));
         return pieces.build().pieces();
     }
 

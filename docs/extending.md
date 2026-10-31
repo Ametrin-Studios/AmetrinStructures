@@ -37,7 +37,7 @@ Reference: [`PlacementFilters`](../src/main/java/com/ametrin/structures/structur
 
 A piece source decides which pieces a simple structure places. Register a `PieceSourceType` in `ASRegistries.PIECE_SOURCE_TYPE` and pass your source to `.pieces(...)`.
 
-`PieceSources.createPiece(template, context)` creates the same piece the built-in sources use. The context holds the structure's settings: terrain adaptation, liquid settings, foundation and processors. `createPiece` applies them, and pieces you create yourself need to take them from the context, since the structure doesn't hand them over afterwards. Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards. `appendPieces` returns a `Growth` that adds more pieces once the first ones are at their start height, for pieces that depend on the terrain. Most sources return `Growth.NONE`.
+`PieceSources.createPiece(template, context)` creates the same piece the built-in sources use. The context holds the structure's settings: terrain adaptation, liquid settings, foundation and processors. `createPiece` applies them, and pieces you create yourself need to take them from the context, since the structure doesn't hand them over afterwards. Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards. Pieces that depend on the terrain or on the other pieces, like a jigsaw layout's, can be added in a step registered with `context.afterPlacement(...)`. It runs once every source appended its pieces and they're at their start height, and returns false to reject the spot.
 
 `templates()` lists every template the source can place. `/ametrin structures check` uses it.
 

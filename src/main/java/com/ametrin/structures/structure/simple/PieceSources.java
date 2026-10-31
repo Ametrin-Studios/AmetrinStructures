@@ -24,9 +24,8 @@ public final class PieceSources {
         public static final MapCodec<SingleSource> CODEC = TemplateEntry.MAP_CODEC.xmap(SingleSource::new, SingleSource::template);
 
         @Override
-        public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
             builder.addPiece(createPiece(template, context));
-            return Growth.NONE;
         }
 
         @Override
@@ -47,8 +46,8 @@ public final class PieceSources {
                 .apply(instance, WeightedSource::new));
 
         @Override
-        public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
-            return sources.getRandom(context.generation().random()).map(source -> source.appendPieces(builder, context)).orElse(Growth.NONE);
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
+            sources.getRandom(context.generation().random()).ifPresent(source -> source.appendPieces(builder, context));
         }
 
         @Override
@@ -73,12 +72,10 @@ public final class PieceSources {
         }
 
         @Override
-        public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
-            var growth = Growth.NONE;
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
             for (var source : sources) {
-                growth = growth.andThen(source.appendPieces(builder, context));
+                source.appendPieces(builder, context);
             }
-            return growth;
         }
 
         @Override
