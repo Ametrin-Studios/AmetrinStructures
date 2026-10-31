@@ -2,7 +2,7 @@ package com.ametrin.structures.debug;
 
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
-import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
+import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
@@ -136,15 +136,15 @@ class StructureCheckTest {
                  blocks: [
                    {pos: [0, 0, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "minecraft:village/plains/terminators", name: "minecraft:empty", target: "test:nothing", joint: "rollable", final_state: "minecraft:air"}}]}
                 """);
-        var report = check(server, jigsawSource(server, new CountedPoolElement(single(template), 0, 0, Optional.of(1))));
+        var report = check(server, jigsawSource(server, new ConditionalPoolElement(single(template), 0, 0, Optional.of(1))));
         assertEquals(List.of("STRUCTURE test:structure unmatched_jigsaw"), describe(report));
         var arguments = ((TranslatableContents) report.problems().getFirst().message().getContents()).getArgs();
-        assertTrue(List.of(arguments).contains(template.toString()), "names the counted element's template, got " + List.of(arguments));
+        assertTrue(List.of(arguments).contains(template.toString()), "names the conditional element's template, got " + List.of(arguments));
     }
 
     @Test
-    void aMissingTemplateInACountedElementIsReported(MinecraftServer server) {
-        var report = check(server, jigsawSource(server, new CountedPoolElement(single(Identifier.fromNamespaceAndPath("test", "missing")), 1, 1, Optional.empty())));
+    void aMissingTemplateInAConditionalElementIsReported(MinecraftServer server) {
+        var report = check(server, jigsawSource(server, new ConditionalPoolElement(single(Identifier.fromNamespaceAndPath("test", "missing")), 1, 1, Optional.empty())));
         assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(report));
     }
 

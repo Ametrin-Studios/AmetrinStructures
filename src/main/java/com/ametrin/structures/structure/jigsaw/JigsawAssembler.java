@@ -11,9 +11,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.JigsawBlock;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
@@ -36,21 +34,18 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/// Grows a layout from its start piece the way vanilla's `JigsawPlacement` does, drawing from the random in the same order, and enforces [CountedPoolElement] counts.
+/// Grows a layout from its start piece the way vanilla's `JigsawPlacement` does, drawing from the random in the same order, and enforces [ConditionalPoolElement] counts.
 ///
 /// While an element is below its soft minimum, jigsaws whose pools can't lead to it wait until the rest of the layout is done, so other pieces don't take its space first.
 /// When the layout still ends with an element below its soft minimum, it undoes everything back to the latest jigsaw that could still attach that element, attaches it there and grows on from that point.
 /// Every change to the layout is recorded so it can be undone.
 ///
-/// Pieces hold the element itself rather than its [CountedPoolElement], and are created with the structure's settings.
+/// Pieces hold the element itself rather than its [ConditionalPoolElement], and are created with the structure's settings.
 final class JigsawAssembler {
     private static final int UNSET = Integer.MIN_VALUE;
 
     private final Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools;
     private final StructureTemplateManager templates;
-    private final ChunkGenerator generator;
-    private final LevelHeightAccessor heightAccessor;
-    private final RandomState randomState;
     private final RandomSource random;
     private final int maxDepth;
     private final boolean expansionHack;
@@ -63,12 +58,12 @@ final class JigsawAssembler {
     private final List<Decision> decisions = new ArrayList<>();
     // Vanilla visits the highest priority first, in the order they were placed.
     private final NavigableMap<Integer, ArrayDeque<Node>> queue = new TreeMap<>(Comparator.reverseOrder());
-    private final Map<CountedPoolElement, Integer> counts = new HashMap<>();
+    private final Map<ConditionalPoolElement, Integer> counts = new HashMap<>();
     // Elements with a soft minimum that the layout reached. Only grows, so a soft minimum stays once reached, even if that part is undone.
-    private final Set<CountedPoolElement> softMinimums = new LinkedHashSet<>();
+    private final Set<ConditionalPoolElement> softMinimums = new LinkedHashSet<>();
     private @Nullable Visit visit;
     private VoxelShape blocked = Shapes.empty();
-    private Map<CountedPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools = Map.of();
+    private Map<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools = Map.of();
     private final ArrayDeque<Deferred> deferred = new ArrayDeque<>();
     private boolean deferring;
     // Only for listing jigsaws, so the layout's own random isn't drawn from. Layouts run on several threads, so each has its own.
@@ -79,9 +74,6 @@ final class JigsawAssembler {
         var generation = context.generation();
         this.pools = pools;
         this.templates = generation.structureTemplateManager();
-        this.generator = generation.chunkGenerator();
-        this.heightAccessor = generation.heightAccessor();
-        this.randomState = generation.randomState();
         this.random = generation.random();
         this.maxDepth = maxDepth;
         this.expansionHack = expansionHack;
@@ -92,7 +84,7 @@ final class JigsawAssembler {
 
     /// A piece for `element` with the structure's settings, see [StructureElements].
     static PoolElementStructurePiece createPiece(PieceSource.Context context, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box) {
-        var inner = element instanceof CountedPoolElement counted ? counted.element() : element;
+        var inner = element instanceof ConditionalPoolElement counted ? counted.element() : element;
         var placed = StructureElements.withStructureSettings(inner, context.processors(), context.foundation());
         return new PoolElementStructurePiece(context.generation().structureTemplateManager(), placed, position, groundLevelDelta, rotation, box, context.liquidSettings());
     }
@@ -120,14 +112,14 @@ final class JigsawAssembler {
         this.blocked = blocked;
         var root = new Node(start, element, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
         placed.add(root);
-        if (element instanceof CountedPoolElement counted) {
+        if (element instanceof ConditionalPoolElement counted) {
             counts.put(counted, 1);
         }
         visit(root);
         leadingPools = leadingPools(Objects.requireNonNull(visit).jigsaws);
         deferring = !leadingPools.isEmpty();
         int backtracks = 0;
-        var givenUp = new HashSet<CountedPoolElement>();
+        var givenUp = new HashSet<ConditionalPoolElement>();
         while (true) {
             if (step()) {
                 continue;
@@ -206,9 +198,9 @@ final class JigsawAssembler {
     }
 
     /// For each element with a soft minimum that the jigsaws can lead to, the pools that lead to it: through their elements, their fallback and the pools their elements' jigsaws point to.
-    private Map<CountedPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools(List<StructureTemplate.JigsawBlockInfo> jigsaws) {
+    private Map<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools(List<StructureTemplate.JigsawBlockInfo> jigsaws) {
         var parents = new HashMap<Holder<StructureTemplatePool>, Set<Holder<StructureTemplatePool>>>();
-        var containing = new HashMap<CountedPoolElement, Set<Holder<StructureTemplatePool>>>();
+        var containing = new HashMap<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>>();
         var visited = new HashSet<Holder<StructureTemplatePool>>();
         var queue = new ArrayDeque<Holder<StructureTemplatePool>>();
         jigsaws.forEach(jigsaw -> pools.apply(aliases.lookup(jigsaw.pool())).ifPresent(queue::add));
@@ -221,7 +213,7 @@ final class JigsawAssembler {
             children.add(pool.value().getFallback());
             for (var entry : pool.value().getTemplates()) {
                 var element = entry.getFirst();
-                if (element instanceof CountedPoolElement counted && counted.softMinCount() > 0) {
+                if (element instanceof ConditionalPoolElement counted && counted.softMinCount() > 0) {
                     containing.computeIfAbsent(counted, _ -> new HashSet<>()).add(pool);
                 }
                 element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, listing)
@@ -233,7 +225,7 @@ final class JigsawAssembler {
             }
         }
 
-        var leading = new HashMap<CountedPoolElement, Set<Holder<StructureTemplatePool>>>();
+        var leading = new HashMap<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>>();
         containing.forEach((element, holders) -> {
             var found = new HashSet<>(holders);
             var back = new ArrayDeque<>(holders);
@@ -287,7 +279,7 @@ final class JigsawAssembler {
         }
         elements.addAll(fallback.value().getShuffledTemplates(random));
         for (var element : elements) {
-            if (element instanceof CountedPoolElement counted && counted.softMinCount() > 0) {
+            if (element instanceof ConditionalPoolElement counted && counted.softMinCount() > 0) {
                 softMinimums.add(counted);
             }
         }
@@ -299,7 +291,7 @@ final class JigsawAssembler {
         decision.placeNext(_ -> true, false);
     }
 
-    private boolean backtrack(CountedPoolElement missing) {
+    private boolean backtrack(ConditionalPoolElement missing) {
         for (int i = decisions.size() - 1; i >= 0; i--) {
             var decision = decisions.get(i);
             // Undoing the element's own placement to place it again elsewhere doesn't add one.
@@ -321,12 +313,12 @@ final class JigsawAssembler {
         }
     }
 
-    private int count(CountedPoolElement element) {
+    private int count(ConditionalPoolElement element) {
         return counts.getOrDefault(element, 0);
     }
 
     private boolean isFull(StructurePoolElement element) {
-        return element instanceof CountedPoolElement counted && counted.maxCount().filter(max -> count(counted) >= max).isPresent();
+        return element instanceof ConditionalPoolElement counted && counted.maxCount().filter(max -> count(counted) >= max).isPresent();
     }
 
     private void place(Decision decision, Node node, JigsawJunction sourceJunction, JigsawJunction targetJunction) {
@@ -344,7 +336,7 @@ final class JigsawAssembler {
         undo.add(placed::removeLast);
         decision.attached = node.element;
         undo.add(() -> decision.attached = null);
-        if (node.element instanceof CountedPoolElement counted) {
+        if (node.element instanceof ConditionalPoolElement counted) {
             counts.merge(counted, 1, Integer::sum);
             undo.add(() -> counts.merge(counted, -1, Integer::sum));
         }
@@ -504,7 +496,7 @@ final class JigsawAssembler {
         private int baseHeight() {
             if (baseHeight == UNSET) {
                 var pos = jigsaw.info().pos();
-                baseHeight = generator.getFirstFreeHeight(pos.getX(), pos.getZ(), Heightmap.Types.WORLD_SURFACE_WG, heightAccessor, randomState);
+                baseHeight = context.terrain().surfaceHeight(Heightmap.Types.WORLD_SURFACE_WG, pos.getX(), pos.getZ());
             }
             return baseHeight;
         }

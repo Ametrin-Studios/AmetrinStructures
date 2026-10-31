@@ -28,6 +28,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProc
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -97,7 +98,8 @@ public class SimpleStructure extends ExtendedStructure {
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
         var builder = new StructurePiecesBuilder();
-        var pieceContext = new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings, foundation, processors());
+        var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
+        var pieceContext = new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings, foundation, processors(), terrain, new ArrayList<>());
         pieces.appendPieces(builder, pieceContext);
         timer.pieces(System.nanoTime() - start);
         if (builder.isEmpty()) {
@@ -106,7 +108,6 @@ public class SimpleStructure extends ExtendedStructure {
         var unplacedFootprint = builder.getBoundingBox();
 
         start = System.nanoTime();
-        var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
         var sampled = startHeight.sample(context.random(), world, (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint));
         timer.startHeight(System.nanoTime() - start);
         if (sampled.isEmpty()) {

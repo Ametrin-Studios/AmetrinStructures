@@ -10,7 +10,7 @@ import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.structure.StructureSetOrder;
-import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
+import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -202,7 +202,7 @@ final class StructureLoot {
                         new StructurePlaceSettings().setRotation(piece.getRotation()),
                         piece.getPosition());
                 case ListPoolElement list -> list.getElements().forEach(child -> collect(child, piece));
-                case CountedPoolElement counted -> collect(counted.element(), piece);
+                case ConditionalPoolElement counted -> collect(counted.element(), piece);
                 case EmptyPoolElement _, FeaturePoolElement _ -> {}
                 default -> codePieces++;
             }

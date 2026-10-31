@@ -102,7 +102,7 @@ class JigsawSourceTest {
         var unlimited = countAcrossSeeds(server, SMALL_HOUSE, element -> element);
         assertTrue(unlimited.stream().anyMatch(count -> count > 1), "the test needs a house that appears more than once on its own, got " + unlimited);
 
-        var limited = countAcrossSeeds(server, SMALL_HOUSE, element -> new CountedPoolElement(element, 0, 0, Optional.of(1)));
+        var limited = countAcrossSeeds(server, SMALL_HOUSE, element -> new ConditionalPoolElement(element, 0, 0, Optional.of(1)));
         assertTrue(limited.stream().allMatch(count -> count <= 1), "at most one, got " + limited);
     }
 
@@ -111,7 +111,7 @@ class JigsawSourceTest {
         var unlimited = countAcrossSeeds(server, TEMPLE, element -> element);
         assertTrue(unlimited.stream().anyMatch(count -> count >= 0 && count < 2), "the test needs a house that's often missing on its own, got " + unlimited);
 
-        var required = countAcrossSeeds(server, TEMPLE, element -> new CountedPoolElement(element, 2, 2, Optional.empty()));
+        var required = countAcrossSeeds(server, TEMPLE, element -> new ConditionalPoolElement(element, 2, 2, Optional.empty()));
         var generated = required.stream().filter(count -> count != FAILED).toList();
         assertTrue(generated.stream().allMatch(count -> count == UNREACHED || count >= 2), "at least two wherever the houses are reached, got " + required);
         assertTrue(generated.size() >= SEEDS * 3 / 4, "most layouts can meet it, got " + required);
@@ -120,7 +120,7 @@ class JigsawSourceTest {
     @Test
     void aSoftMinCountNeverRejectsTheSpot(MinecraftServer server) {
         // The library rarely fits, so its soft minimum often can't be met.
-        var counts = countAcrossSeeds(server, Identifier.withDefaultNamespace("village/plains/houses/plains_library_1"), element -> new CountedPoolElement(element, 0, 1, Optional.empty()));
+        var counts = countAcrossSeeds(server, Identifier.withDefaultNamespace("village/plains/houses/plains_library_1"), element -> new ConditionalPoolElement(element, 0, 1, Optional.empty()));
         assertTrue(counts.stream().noneMatch(count -> count == FAILED), "every spot generates, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count == 0), "the test needs a layout that can't meet it, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count >= 1), "it's met where it fits, got " + counts);
@@ -128,7 +128,7 @@ class JigsawSourceTest {
 
     @Test
     void jigsawsThatCantLeadToAMissingElementWait(MinecraftServer server) {
-        var lookup = housesWith(server, TEMPLE, element -> new CountedPoolElement(element, 0, 1, Optional.empty()));
+        var lookup = housesWith(server, TEMPLE, element -> new ConditionalPoolElement(element, 0, 1, Optional.empty()));
         int checked = 0;
         for (int seed = 0; seed < SEEDS; seed++) {
             // Without backtracking, so the order is what growing produced.
@@ -150,7 +150,7 @@ class JigsawSourceTest {
     @Test
     void anUnreachableMinCountDoesNotStopTheLayout(MinecraftServer server) {
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
-        var unreachable = new CountedPoolElement(StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID), 1, 1, Optional.empty());
+        var unreachable = new ConditionalPoolElement(StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID), 1, 1, Optional.empty());
         var pool = new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(unreachable, 1)));
         var lookup = overriding(server, pool("unused"), pool);
         assertTrue(assemble(server, lookup, 0, JigsawSource.DEFAULT_MAX_BACKTRACKS).isPresent());
@@ -208,12 +208,12 @@ class JigsawSourceTest {
     }
 
     @Test
-    void piecesHoldTheElementInsideACountedOne(MinecraftServer server) {
-        var houses = housesWith(server, SMALL_HOUSE, element -> new CountedPoolElement(element, 0, 0, Optional.of(1)));
+    void piecesHoldTheElementInsideAConditionalOne(MinecraftServer server) {
+        var houses = housesWith(server, SMALL_HOUSE, element -> new ConditionalPoolElement(element, 0, 0, Optional.of(1)));
         var withHouse = false;
         for (int seed = 0; seed < SEEDS; seed++) {
             var pieces = assemble(server, houses.lookup(), seed, JigsawSource.DEFAULT_MAX_BACKTRACKS).orElseThrow();
-            assertTrue(pieces.stream().noneMatch(piece -> piece.getElement() instanceof CountedPoolElement), "seed " + seed);
+            assertTrue(pieces.stream().noneMatch(piece -> piece.getElement() instanceof ConditionalPoolElement), "seed " + seed);
             withHouse |= pieces.stream().anyMatch(piece -> piece.getElement() == houses.placed());
         }
         assertTrue(withHouse, "the test needs a layout with the house");
@@ -291,20 +291,20 @@ class JigsawSourceTest {
     @Test
     void invalidCountsAreRejectedWhenBuilt() {
         var element = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
-        assertThrows(IllegalArgumentException.class, () -> new CountedPoolElement(element, 2, 2, Optional.of(1)));
-        assertThrows(IllegalArgumentException.class, () -> new CountedPoolElement(element, -1, 0, Optional.empty()));
-        assertThrows(IllegalArgumentException.class, () -> new CountedPoolElement(element, 2, 1, Optional.empty()));
+        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 2, Optional.of(1)));
+        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, -1, 0, Optional.empty()));
+        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 1, Optional.empty()));
     }
 
     @Test
     void theSoftMinCountDefaultsToTheMinCount(MinecraftServer server) {
         var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-        var minOnly = assertInstanceOf(CountedPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
-                {"element_type": "ametrin_structures:counted", "min_count": 2, "element": {"element_type": "minecraft:empty_pool_element"}}
+        var minOnly = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_count": 2, "element": {"element_type": "minecraft:empty_pool_element"}}
                 """)).getOrThrow());
         assertEquals(2, minOnly.softMinCount());
-        var all = assertInstanceOf(CountedPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
-                {"element_type": "ametrin_structures:counted", "min_count": 1, "soft_min_count": 3, "max_count": 4, "element": {"element_type": "minecraft:empty_pool_element"}}
+        var all = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_count": 1, "soft_min_count": 3, "max_count": 4, "element": {"element_type": "minecraft:empty_pool_element"}}
                 """)).getOrThrow());
         assertEquals(List.of(1, 3, Optional.of(4)), List.of(all.minCount(), all.softMinCount(), all.maxCount()));
     }
@@ -312,7 +312,7 @@ class JigsawSourceTest {
     @Test
     void aMaxCountBelowTheMinCountIsRejected(MinecraftServer server) {
         var json = JsonParser.parseString("""
-                {"element_type": "ametrin_structures:counted", "min_count": 2, "max_count": 1,
+                {"element_type": "ametrin_structures:conditional", "min_count": 2, "max_count": 1,
                  "element": {"element_type": "minecraft:empty_pool_element"}}
                 """);
         assertTrue(StructurePoolElement.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), json).isError());
@@ -359,7 +359,7 @@ class JigsawSourceTest {
         return counts;
     }
 
-    /// @param placed   the element pieces hold for `template`, without a counted element around it
+    /// @param placed   the element pieces hold for `template`, without a conditional element around it
     /// @param elements the elements pieces from the houses pool hold
     private record Houses(Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> lookup, StructurePoolElement placed, List<StructurePoolElement> elements) {}
 

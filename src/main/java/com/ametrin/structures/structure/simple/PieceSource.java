@@ -2,12 +2,14 @@ package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.filter.TerrainSampler;
 import com.ametrin.structures.util.ASCodecs;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
@@ -43,10 +45,12 @@ public interface PieceSource {
     /// The structure's settings, for the pieces to be created with.
     ///
     /// @param processors     the structure's processors, for template pieces without their own, see [com.ametrin.structures.structure.InlineFromStructureProcessor]
+    /// @param terrain        the structure's cached terrain lookups, shared with its start height and filters. Use it instead of the chunk generator.
     /// @param placementSteps the steps registered with [#afterPlacement], in order
-    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings, Optional<Foundation> foundation, Optional<Holder<StructureProcessorList>> processors, List<PlacementStep> placementSteps) {
+    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings, Optional<Foundation> foundation, Optional<Holder<StructureProcessorList>> processors, TerrainSampler terrain, List<PlacementStep> placementSteps) {
+        /// With a new terrain sampler on the world surface and no steps yet.
         public Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings, Optional<Foundation> foundation, Optional<Holder<StructureProcessorList>> processors) {
-            this(generation, origin, rotation, terrainAdaptation, liquidSettings, foundation, processors, new ArrayList<>());
+            this(generation, origin, rotation, terrainAdaptation, liquidSettings, foundation, processors, new TerrainSampler(generation, Heightmap.Types.WORLD_SURFACE_WG), new ArrayList<>());
         }
 
         /// Runs `step` once every source appended its pieces and they're at their start height. Steps run in the order they're registered, and a step can register more.

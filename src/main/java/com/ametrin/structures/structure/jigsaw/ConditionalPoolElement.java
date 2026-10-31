@@ -29,7 +29,7 @@ import java.util.Optional;
 ///
 /// The layout tries to place `soft_min_count` of the element once it reaches a jigsaw that could attach it, and generates with fewer where it can't fit them.
 /// A spot where it can't fit `min_count` gets no structure, so a `min_count` above 0 makes the structure generate less often.
-public class CountedPoolElement extends StructurePoolElement {
+public class ConditionalPoolElement extends StructurePoolElement {
     private record Counts(int min, Optional<Integer> softMin, Optional<Integer> max) {}
 
     private static final MapCodec<Counts> COUNTS_CODEC = RecordCodecBuilder.<Counts>mapCodec(instance -> instance.group(
@@ -40,10 +40,10 @@ public class CountedPoolElement extends StructurePoolElement {
             .validate(counts -> problem(counts.min(), counts.softMin().orElse(counts.min()), counts.max())
                     .map(problem -> DataResult.<Counts>error(() -> problem))
                     .orElseGet(() -> DataResult.success(counts)));
-    public static final MapCodec<CountedPoolElement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                    StructurePoolElement.CODEC.fieldOf("element").forGetter(CountedPoolElement::element),
+    public static final MapCodec<ConditionalPoolElement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+                    StructurePoolElement.CODEC.fieldOf("element").forGetter(ConditionalPoolElement::element),
                     COUNTS_CODEC.forGetter(counted -> new Counts(counted.minCount, Optional.of(counted.softMinCount).filter(softMin -> softMin != counted.minCount), counted.maxCount)))
-            .apply(instance, (element, counts) -> new CountedPoolElement(element, counts.min(), counts.softMin().orElse(counts.min()), counts.max())));
+            .apply(instance, (element, counts) -> new ConditionalPoolElement(element, counts.min(), counts.softMin().orElse(counts.min()), counts.max())));
 
     private final StructurePoolElement element;
     private final int minCount;
@@ -53,7 +53,7 @@ public class CountedPoolElement extends StructurePoolElement {
     /// @param minCount     how many a structure needs, or it doesn't generate at the spot
     /// @param softMinCount how many the layout tries for at least, fewer where they don't fit. At least `minCount`.
     /// @param maxCount     how many a structure can have at most, empty for no limit
-    public CountedPoolElement(StructurePoolElement element, int minCount, int softMinCount, Optional<Integer> maxCount) {
+    public ConditionalPoolElement(StructurePoolElement element, int minCount, int softMinCount, Optional<Integer> maxCount) {
         super(element.getProjection());
         problem(minCount, softMinCount, maxCount).ifPresent(problem -> {
             throw new IllegalArgumentException(problem);
@@ -145,11 +145,11 @@ public class CountedPoolElement extends StructurePoolElement {
 
     @Override
     public StructurePoolElementType<?> getType() {
-        return ASPoolElements.COUNTED.get();
+        return ASPoolElements.CONDITIONAL.get();
     }
 
     @Override
     public String toString() {
-        return "Counted[" + element + ", " + minCount + "/" + softMinCount + ".." + maxCount.map(String::valueOf).orElse("") + "]";
+        return "Conditional[" + element + ", " + minCount + "/" + softMinCount + ".." + maxCount.map(String::valueOf).orElse("") + "]";
     }
 }

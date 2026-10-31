@@ -3,7 +3,7 @@ package com.ametrin.structures.debug;
 import com.ametrin.structures.fixture.*;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
-import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
+import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
@@ -347,7 +347,7 @@ public final class StructureCheck {
     private boolean templatesExist(Identifier structure, StructurePoolElement element) {
         return switch (element) {
             case SinglePoolElement single -> template(structure, single.getTemplateLocation()).isPresent();
-            case CountedPoolElement counted -> templatesExist(structure, counted.element());
+            case ConditionalPoolElement counted -> templatesExist(structure, counted.element());
             case ListPoolElement list -> {
                 var all = true;
                 for (var child : list.getElements()) {
@@ -362,7 +362,7 @@ public final class StructureCheck {
     private static String elementName(StructurePoolElement element) {
         return switch (element) {
             case SinglePoolElement single -> single.getTemplateLocation().toString();
-            case CountedPoolElement counted -> elementName(counted.element());
+            case ConditionalPoolElement counted -> elementName(counted.element());
             // A list element's jigsaws are its first element's.
             case ListPoolElement list when !list.getElements().isEmpty() -> elementName(list.getElements().getFirst());
             default -> element.toString();

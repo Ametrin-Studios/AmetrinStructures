@@ -30,12 +30,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-/// Grows a jigsaw layout from `start_pool`, like vanilla's jigsaw structure, and keeps [CountedPoolElement]s within their counts.
+/// Grows a jigsaw layout from `start_pool`, like vanilla's jigsaw structure, and keeps [ConditionalPoolElement]s within their counts.
 ///
 /// The start piece's ground level is at the start height, measured under the start piece. With `start_jigsaw_name`, that jigsaw is at the origin instead, one block lower.
 /// The rest of the layout grows once all pieces are at their start height, since terrain matching pieces follow the terrain. It keeps clear of the structure's other pieces.
 ///
-/// @param size          how many jigsaws deep the layout grows, from {@value JigsawStructure#MIN_DEPTH} to {@value JigsawStructure#MAX_DEPTH}. At the last depth only fallback pools attach.
+/// @param size          how many jigsaws deep the layout grows, from 0 to {@value #MAX_SIZE}. At the last depth only fallback pools attach.
 /// @param maxBacktracks how often the layout may go back to place an element below its soft minimum before it settles for fewer, or gives up on the spot below the minimum
 public record JigsawSource(
         Holder<StructureTemplatePool> startPool,
@@ -47,13 +47,15 @@ public record JigsawSource(
         DimensionPadding dimensionPadding,
         int maxBacktracks) implements PieceSource {
     public static final int DEFAULT_MAX_BACKTRACKS = 16;
+    // Vanilla stops at 20. Deeper layouts, like a shaft down to a fixed height, need more.
+    public static final int MAX_SIZE = 128;
     // The margin terrain adaptation needs around the structure.
     private static final int TERRAIN_ADAPTATION_MARGIN = 12;
 
     public static final MapCodec<JigsawSource> CODEC = RecordCodecBuilder.<JigsawSource>mapCodec(instance -> instance.group(
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(JigsawSource::startPool),
                     Identifier.CODEC.optionalFieldOf("start_jigsaw_name").forGetter(JigsawSource::startJigsawName),
-                    IntProviders.codec(JigsawStructure.MIN_DEPTH, JigsawStructure.MAX_DEPTH).optionalFieldOf("size", ConstantInt.of(7)).forGetter(JigsawSource::size),
+                    IntProviders.codec(0, MAX_SIZE).optionalFieldOf("size", ConstantInt.of(7)).forGetter(JigsawSource::size),
                     Codec.BOOL.optionalFieldOf("use_expansion_hack", false).forGetter(JigsawSource::useExpansionHack),
                     JigsawStructure.MaxDistance.CODEC.optionalFieldOf("max_distance_from_center", new JigsawStructure.MaxDistance(80)).forGetter(JigsawSource::maxDistanceFromCenter),
                     Codec.list(PoolAliasBinding.CODEC).optionalFieldOf("pool_aliases", List.of()).forGetter(JigsawSource::poolAliases),
