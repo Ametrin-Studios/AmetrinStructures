@@ -162,6 +162,7 @@ public final class JigsawPools {
         private boolean processFoam = true;
         private Optional<Foundation> foundation = Optional.empty();
         private int minCount = 0;
+        private Optional<Integer> softMinCount = Optional.empty();
         private Optional<Integer> maxCount = Optional.empty();
 
         private Element() {
@@ -219,9 +220,15 @@ public final class JigsawPools {
             return this;
         }
 
-        /// At least `min` of this element per structure, see [CountedPoolElement].
+        /// At least `min` of this element per structure. A spot where the layout can't fit them gets no structure, so the structure generates less often. See [CountedPoolElement].
         public Element minCount(int min) {
             this.minCount = min;
+            return this;
+        }
+
+        /// At least `min` of this element per structure where the layout can fit them, fewer where it can't. Defaults to [#minCount(int)]. See [CountedPoolElement].
+        public Element softMinCount(int min) {
+            this.softMinCount = Optional.of(min);
             return this;
         }
 
@@ -231,11 +238,12 @@ public final class JigsawPools {
             var foam = processFoam;
             var base = foundation;
             var min = minCount;
+            var softMin = softMinCount.orElse(minCount);
             var max = maxCount;
-            if (min == 0 && max.isEmpty()) {
+            if (softMin == 0 && max.isEmpty()) {
                 return projection -> new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base);
             }
-            return projection -> new CountedPoolElement(new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base), min, max);
+            return projection -> new CountedPoolElement(new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base), min, softMin, max);
         }
     }
 }

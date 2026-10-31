@@ -38,8 +38,8 @@ import java.util.function.Predicate;
 
 /// Grows a layout from its start piece the way vanilla's `JigsawPlacement` does, drawing from the random in the same order, and enforces [CountedPoolElement] counts.
 ///
-/// While an element is below its minimum, jigsaws whose pools can't lead to it wait until the rest of the layout is done, so other pieces don't take its space first.
-/// When the layout still ends with an element below its minimum, it undoes everything back to the latest jigsaw that could still attach that element, attaches it there and grows on from that point.
+/// While an element is below its soft minimum, jigsaws whose pools can't lead to it wait until the rest of the layout is done, so other pieces don't take its space first.
+/// When the layout still ends with an element below its soft minimum, it undoes everything back to the latest jigsaw that could still attach that element, attaches it there and grows on from that point.
 /// Every change to the layout is recorded so it can be undone.
 ///
 /// Pieces hold the element itself rather than its [CountedPoolElement], and are created with the structure's settings.
@@ -64,8 +64,8 @@ final class JigsawAssembler {
     // Vanilla visits the highest priority first, in the order they were placed.
     private final NavigableMap<Integer, ArrayDeque<Node>> queue = new TreeMap<>(Comparator.reverseOrder());
     private final Map<CountedPoolElement, Integer> counts = new HashMap<>();
-    // Only grows, so a requirement stays once the layout reached it, even if that part is undone.
-    private final Set<CountedPoolElement> required = new LinkedHashSet<>();
+    // Elements with a soft minimum that the layout reached. Only grows, so a soft minimum stays once reached, even if that part is undone.
+    private final Set<CountedPoolElement> softMinimums = new LinkedHashSet<>();
     private @Nullable Visit visit;
     private VoxelShape blocked = Shapes.empty();
     private Map<CountedPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools = Map.of();
@@ -115,7 +115,7 @@ final class JigsawAssembler {
     ///
     /// @param element the pool element `start` was created from
     /// @param blocked taken by pieces outside the layout, which even pieces attached inside another one stay out of
-    /// @return every piece in the order it was placed, `start` first, or empty if the counts can't be met
+    /// @return every piece in the order it was placed, `start` first, or empty if a minimum can't be met
     Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, StructurePoolElement element, VoxelShape free, VoxelShape blocked) {
         this.blocked = blocked;
         var root = new Node(start, element, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
@@ -127,17 +127,24 @@ final class JigsawAssembler {
         leadingPools = leadingPools(Objects.requireNonNull(visit).jigsaws);
         deferring = !leadingPools.isEmpty();
         int backtracks = 0;
+        var givenUp = new HashSet<CountedPoolElement>();
         while (true) {
             if (step()) {
                 continue;
             }
-            var missing = required.stream().filter(counted -> count(counted) < counted.minCount()).findFirst();
+            var missing = softMinimums.stream().filter(counted -> count(counted) < counted.softMinCount() && !givenUp.contains(counted)).findFirst();
             if (missing.isEmpty()) {
                 break;
             }
-            if (backtracks++ >= maxBacktracks || !backtrack(missing.get())) {
-                return Optional.empty();
+            if (backtracks++ < maxBacktracks && backtrack(missing.get())) {
+                continue;
             }
+            // A failed backtrack may have undone part of the layout, so it grows on from there before it's done.
+            givenUp.add(missing.get());
+        }
+        // Backtracking for one element can take away another's, so the minimums are only checked at the end.
+        if (softMinimums.stream().anyMatch(counted -> count(counted) < counted.minCount())) {
+            return Optional.empty();
         }
         for (var node : placed) {
             node.junctions.forEach(node.piece::addJunction);
@@ -180,7 +187,7 @@ final class JigsawAssembler {
         return false;
     }
 
-    // Whether the jigsaw's pool can lead to an element below its minimum. Jigsaws that point to an unknown pool don't wait.
+    // Whether the jigsaw's pool can lead to an element below its soft minimum. Jigsaws that point to an unknown pool don't wait.
     private boolean leadsToMissing(StructureTemplate.JigsawBlockInfo jigsaw) {
         var pool = pools.apply(aliases.lookup(jigsaw.pool()));
         if (pool.isEmpty()) {
@@ -188,7 +195,7 @@ final class JigsawAssembler {
         }
         var missing = false;
         for (var entry : leadingPools.entrySet()) {
-            if (count(entry.getKey()) < entry.getKey().minCount()) {
+            if (count(entry.getKey()) < entry.getKey().softMinCount()) {
                 if (entry.getValue().contains(pool.get())) {
                     return true;
                 }
@@ -198,7 +205,7 @@ final class JigsawAssembler {
         return !missing;
     }
 
-    /// For each element with a minimum that the jigsaws can lead to, the pools that lead to it: through their elements, their fallback and the pools their elements' jigsaws point to.
+    /// For each element with a soft minimum that the jigsaws can lead to, the pools that lead to it: through their elements, their fallback and the pools their elements' jigsaws point to.
     private Map<CountedPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools(List<StructureTemplate.JigsawBlockInfo> jigsaws) {
         var parents = new HashMap<Holder<StructureTemplatePool>, Set<Holder<StructureTemplatePool>>>();
         var containing = new HashMap<CountedPoolElement, Set<Holder<StructureTemplatePool>>>();
@@ -214,7 +221,7 @@ final class JigsawAssembler {
             children.add(pool.value().getFallback());
             for (var entry : pool.value().getTemplates()) {
                 var element = entry.getFirst();
-                if (element instanceof CountedPoolElement counted && counted.minCount() > 0) {
+                if (element instanceof CountedPoolElement counted && counted.softMinCount() > 0) {
                     containing.computeIfAbsent(counted, _ -> new HashSet<>()).add(pool);
                 }
                 element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, listing)
@@ -280,8 +287,8 @@ final class JigsawAssembler {
         }
         elements.addAll(fallback.value().getShuffledTemplates(random));
         for (var element : elements) {
-            if (element instanceof CountedPoolElement counted && counted.minCount() > 0) {
-                required.add(counted);
+            if (element instanceof CountedPoolElement counted && counted.softMinCount() > 0) {
+                softMinimums.add(counted);
             }
         }
 

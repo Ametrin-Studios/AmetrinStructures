@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 /// The rest of the layout grows once the start piece is in place, since terrain matching pieces follow the terrain. It keeps clear of the structure's other pieces.
 ///
 /// @param size          how many jigsaws deep the layout grows, from {@value JigsawStructure#MIN_DEPTH} to {@value JigsawStructure#MAX_DEPTH}. At the last depth only fallback pools attach.
-/// @param maxBacktracks how often the layout may go back to place an element below its minimum before the structure gives up on the spot
+/// @param maxBacktracks how often the layout may go back to place an element below its soft minimum before it settles for fewer, or gives up on the spot below the minimum
 public record JigsawSource(
         Holder<StructureTemplatePool> startPool,
         Optional<Identifier> startJigsawName,
