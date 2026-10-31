@@ -90,16 +90,11 @@ final class JigsawAssembler {
         this.maxBacktracks = maxBacktracks;
     }
 
-    /// A piece for `element` with the structure's settings. A rigid extended single element without a foundation of its own gets the structure's.
+    /// A piece for `element` with the structure's settings, see [StructureElements].
     static PoolElementStructurePiece createPiece(PieceSource.Context context, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box) {
         var inner = element instanceof CountedPoolElement counted ? counted.element() : element;
-        var placed = context.foundation()
-                .filter(_ -> inner.getProjection() == StructureTemplatePool.Projection.RIGID)
-                .map(foundation -> ExtendedSinglePoolElement.withDefaultFoundation(inner, foundation))
-                .orElse(inner);
-        var piece = new PoolElementStructurePiece(context.generation().structureTemplateManager(), placed, position, groundLevelDelta, rotation, box, context.liquidSettings());
-        JigsawStructureProcessors.set(piece, context.processors());
-        return piece;
+        var placed = StructureElements.withStructureSettings(inner, context.processors(), context.foundation());
+        return new PoolElementStructurePiece(context.generation().structureTemplateManager(), placed, position, groundLevelDelta, rotation, box, context.liquidSettings());
     }
 
     /// The space pieces can take: the box `maxDistance` around the center, within the world's height and `padding`, without the start piece.

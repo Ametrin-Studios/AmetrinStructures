@@ -4,7 +4,6 @@ import com.ametrin.structures.fixture.*;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.jigsaw.CountedPoolElement;
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
@@ -140,8 +139,6 @@ public final class StructureCheck {
                 simple.pieces().templates().forEach(entry -> template(id, entry.template()));
                 jigsawSources(simple.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases()));
             }
-            case ExtendedJigsawStructure jigsaw ->
-                    checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases());
             // Vanilla's start jigsaw name has no getter.
             case JigsawStructure jigsaw ->
                     checkJigsaw(id, jigsaw.getStartPool(), Optional.empty(), jigsaw.getPoolAliases());

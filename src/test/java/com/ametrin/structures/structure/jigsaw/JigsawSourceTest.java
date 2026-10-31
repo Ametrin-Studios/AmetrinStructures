@@ -3,6 +3,7 @@ package com.ametrin.structures.structure.jigsaw;
 import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
@@ -20,8 +21,8 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.data.worldgen.BootstrapContext;
+import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
@@ -41,6 +42,7 @@ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
@@ -50,6 +52,7 @@ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
+import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -190,9 +193,9 @@ class JigsawSourceTest {
         var own = Foundation.of(Blocks.STONE.defaultBlockState(), 4);
         var element = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
                 StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own));
-        assertSame(element, ExtendedSinglePoolElement.withDefaultFoundation(element, Foundation.repeating()));
+        assertSame(element, StructureElements.withStructureSettings(element, Optional.empty(), Optional.of(Foundation.repeating())));
         var vanilla = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
-        assertSame(vanilla, ExtendedSinglePoolElement.withDefaultFoundation(vanilla, Foundation.repeating()));
+        assertSame(vanilla, StructureElements.withStructureSettings(vanilla, Optional.empty(), Optional.of(Foundation.repeating())));
     }
 
     @Test
@@ -208,18 +211,54 @@ class JigsawSourceTest {
     }
 
     @Test
-    void piecesAreCreatedWithTheStructuresProcessors(MinecraftServer server) {
-        var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
-        var source = new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(2).build();
-        var context = context(server, 0);
+    void anElementWithoutProcessorsGetsTheStructuresAndKeepsThemWhenSaved(MinecraftServer server) {
+        var mossify = mossify(server);
+        var element = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
+        var piece = startPiece(server, element, Optional.of(mossify));
+        assertSame(mossify, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
+
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        var reloaded = new PoolElementStructurePiece(context, piece.createTag(context));
+        assertEquals(mossify.unwrapKey(), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
+    }
+
+    @Test
+    void anElementsOwnProcessorsReplaceTheStructuresUnlessTheyInlineThem(MinecraftServer server) {
+        var mossify = mossify(server);
+        var own = Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE)))));
+        var element = StructurePoolElement.single(TEMPLE.toString(), own).apply(StructureTemplatePool.Projection.RIGID);
+        assertSame(element, StructureElements.withStructureSettings(element, Optional.of(mossify), Optional.empty()));
+
+        var inlining = StructurePoolElement.single(TEMPLE.toString(), Holder.direct(new StructureProcessorList(List.of(InlineFromStructureProcessor.INSTANCE))))
+                .apply(StructureTemplatePool.Projection.RIGID);
+        var copy = assertInstanceOf(SinglePoolElement.class, StructureElements.withStructureSettings(inlining, Optional.of(mossify), Optional.empty()));
+        assertEquals(mossify.value().list(), copy.processors.value().list());
+    }
+
+    @Test
+    void anElementOfItsOwnDecidesWhatItTakes(MinecraftServer server) {
+        var replacement = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
+        var element = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty()) {
+            @Override
+            public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
+                return replacement;
+            }
+        };
+        assertSame(replacement, StructureElements.withStructureSettings(element, Optional.of(mossify(server)), Optional.empty()));
+    }
+
+    private static PoolElementStructurePiece startPiece(MinecraftServer server, StructurePoolElement element, Optional<Holder<StructureProcessorList>> processors) {
+        var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
+        var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(element, 1))));
+        var source = new JigsawSource.Builder(start).size(0).build();
         var builder = new StructurePiecesBuilder();
-        var growth = source.appendPieces(builder, new PieceSource.Context(context, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.of(mossify)));
-        assertTrue(growth.grow(builder, BlockPos.ZERO));
-        var pieces = builder.build().pieces();
-        assertTrue(pieces.size() > 1);
-        for (var piece : pieces) {
-            assertEquals(Optional.of(mossify), JigsawStructureProcessors.get((PoolElementStructurePiece) piece));
-        }
+        source.appendPieces(builder, new PieceSource.Context(context(server, 0), BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), processors));
+        return (PoolElementStructurePiece) builder.build().pieces().getFirst();
+    }
+
+    private static Holder<StructureProcessorList> mossify(MinecraftServer server) {
+        return server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
     }
 
     @Test

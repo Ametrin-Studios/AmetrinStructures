@@ -19,7 +19,6 @@ import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.pools.ListPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
@@ -29,7 +28,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.*;
 import java.util.List;
 import java.util.Optional;
 
-public class ExtendedSinglePoolElement extends SinglePoolElement {
+public class ExtendedSinglePoolElement extends SinglePoolElement implements StructureSettingsElement {
     static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
     private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty"));
 
@@ -98,17 +97,15 @@ public class ExtendedSinglePoolElement extends SinglePoolElement {
         return foundation;
     }
 
-    /// `element` with `foundation` on each of its extended single elements that has none of its own, or `element` itself if there are none.
-    public static StructurePoolElement withDefaultFoundation(StructurePoolElement element, Foundation foundation) {
-        return switch (element) {
-            case ExtendedSinglePoolElement single when single.foundation.isEmpty() ->
-                    new ExtendedSinglePoolElement(single.template, single.processors, single.getProjection(), single.overrideLiquidSettings, single.processFoam, Optional.of(foundation));
-            case ListPoolElement list -> {
-                var elements = list.getElements().stream().map(child -> withDefaultFoundation(child, foundation)).toList();
-                yield elements.equals(list.getElements()) ? list : new ListPoolElement(elements, list.getProjection());
-            }
-            default -> element;
-        };
+    /// Its own foundation replaces the structure's, and only rigid elements take the structure's.
+    @Override
+    public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
+        var withProcessors = StructureSettingsElement.processors(this.processors, processors);
+        var withFoundation = this.foundation.isEmpty() && getProjection() == StructureTemplatePool.Projection.RIGID ? foundation : this.foundation;
+        if (withProcessors == this.processors && withFoundation.equals(this.foundation)) {
+            return this;
+        }
+        return new ExtendedSinglePoolElement(template, withProcessors, getProjection(), overrideLiquidSettings, processFoam, withFoundation);
     }
 
     @Override

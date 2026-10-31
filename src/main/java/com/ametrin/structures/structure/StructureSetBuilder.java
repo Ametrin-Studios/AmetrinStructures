@@ -2,7 +2,6 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.placement.EvenSpreadPlacement;
 import com.ametrin.structures.placement.ScatteredGridPlacement;
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -43,14 +42,6 @@ public final class StructureSetBuilder {
 
     public StructureSetBuilder simple(Consumer<SimpleStructure.Builder> configure) {
         return simple("", 1, configure);
-    }
-
-    public StructureSetBuilder jigsaw(String suffix, int weight, ResourceKey<StructureTemplatePool> startPool, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        return add(suffix, weight, StructureBuilder.configured(new ExtendedJigsawStructure.Builder(compose(suffix), startPool), configure));
-    }
-
-    public StructureSetBuilder jigsaw(ResourceKey<StructureTemplatePool> startPool, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        return jigsaw("", 1, startPool, configure);
     }
 
     public StructureSetBuilder structure(String suffix, int weight, CustomStructureBuilder.Factory factory, Consumer<CustomStructureBuilder> configure) {

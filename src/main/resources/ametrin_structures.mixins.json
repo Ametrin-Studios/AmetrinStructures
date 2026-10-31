@@ -7,8 +7,6 @@
     "ChunkMapMixin",
     "LakeFeatureMixin",
     "MinecartSpawnerMixin",
-    "PoolElementStructurePieceMixin",
-    "SinglePoolElementMixin",
     "SpawnerBlockEntityMixin"
   ],
   "injectors": {

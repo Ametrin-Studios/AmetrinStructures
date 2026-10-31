@@ -47,6 +47,8 @@ public record JigsawSource(
         DimensionPadding dimensionPadding,
         int maxBacktracks) implements PieceSource {
     public static final int DEFAULT_MAX_BACKTRACKS = 16;
+    // The margin terrain adaptation needs around the structure.
+    private static final int TERRAIN_ADAPTATION_MARGIN = 12;
 
     public static final MapCodec<JigsawSource> CODEC = RecordCodecBuilder.<JigsawSource>mapCodec(instance -> instance.group(
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(JigsawSource::startPool),
@@ -66,8 +68,8 @@ public record JigsawSource(
 
     // The source doesn't know the structure's terrain adaptation, so it always leaves room for its margin.
     private static DataResult<JigsawSource> verifyRange(JigsawSource source) {
-        return source.maxDistanceFromCenter.horizontal() + ExtendedJigsawStructure.TERRAIN_ADAPTATION_MARGIN > JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE
-                ? DataResult.error(() -> "max_distance_from_center must be at most " + (JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE - ExtendedJigsawStructure.TERRAIN_ADAPTATION_MARGIN))
+        return source.maxDistanceFromCenter.horizontal() + TERRAIN_ADAPTATION_MARGIN > JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE
+                ? DataResult.error(() -> "max_distance_from_center must be at most " + (JigsawStructure.MAX_TOTAL_STRUCTURE_RANGE - TERRAIN_ADAPTATION_MARGIN))
                 : DataResult.success(source);
     }
 
