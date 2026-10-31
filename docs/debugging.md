@@ -76,7 +76,7 @@ These lay out a structure at random seeds where you stand. They ignore the biome
 /ametrin structures pieces <structure> [layouts]
 ```
 
-Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything. It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first. Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
+Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything. It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first. Hover over a template to see how many of it a layout has and how many jigsaws deep it sits, counted from the start piece. Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
 
 ```
 /ametrin structures gallery <structure> [count]

@@ -9,6 +9,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -30,6 +31,13 @@ public final class LayoutGameTests {
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         helper.assertValueEqual(centers, 1, "town centers");
+        var centerDepths = layout.depths().entrySet().stream()
+                .filter(entry -> entry.getKey().contains("/town_centers/"))
+                .flatMap(entry -> entry.getValue().stream())
+                .toList();
+        helper.assertValueEqual(centerDepths, List.of(0), "the town center's depth");
+        helper.assertTrue(layout.depths().entrySet().stream().filter(entry -> !entry.getKey().contains("/town_centers/")).allMatch(entry -> entry.getValue().stream().allMatch(depth -> depth > 0)),
+                "every other piece is attached to something, got " + layout.depths());
         helper.assertValueEqual(layout.pieces().values().stream().mapToInt(Integer::intValue).sum(), pieces.pieces().size(), "pieces");
         helper.assertFalse(layout.openJigsaws().containsKey("minecraft:empty"), "jigsaws into the empty pool are never open");
         // Each piece but the start hangs off a jigsaw into a pool, so at least that many of those are attached.

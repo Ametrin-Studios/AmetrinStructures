@@ -49,6 +49,7 @@
   "commands.ametrin_structures.loot_stats.structure_summary": "%s: %s layouts within %s chunks with luck %s, %s%% without loot",
   "commands.ametrin_structures.loot_stats.summary": "%s opened %s times with luck %s, %s%% empty",
   "commands.ametrin_structures.pieces.count": " %s pieces per layout, %s to %s",
+  "commands.ametrin_structures.pieces.depth": "%s to %s jigsaws deep, %s on average",
   "commands.ametrin_structures.pieces.failed": "The pieces report failed: %s",
   "commands.ametrin_structures.pieces.none": "%s laid out no pieces in %s tries",
   "commands.ametrin_structures.pieces.open_jigsaws": " %s open jigsaws per layout",

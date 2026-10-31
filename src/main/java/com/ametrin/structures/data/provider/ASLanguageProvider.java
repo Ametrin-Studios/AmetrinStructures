@@ -128,6 +128,7 @@ public class ASLanguageProvider extends LanguageProvider {
         add(PiecesCommand.Keys.SIZE, " %s × %s × %s blocks on average, up to %s × %s × %s");
         add(PiecesCommand.Keys.OPEN_JIGSAWS, " %s open jigsaws per layout");
         add(PiecesCommand.Keys.RANGE, "%s to %s per layout");
+        add(PiecesCommand.Keys.DEPTH, "%s to %s jigsaws deep, %s on average");
 
         add(GalleryCommand.Keys.STARTED, "Laying out %2$s at %1$s random seeds…");
         add(GalleryCommand.Keys.FAILED, "The gallery failed: %s");
