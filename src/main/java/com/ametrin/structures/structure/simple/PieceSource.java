@@ -1,17 +1,20 @@
 package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.registry.ASRegistries;
+import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.util.ASCodecs;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
-import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -28,16 +31,17 @@ public interface PieceSource {
     /// Appends the pieces to `builder`. `context.origin()` has Y 0. The structure moves the pieces to their start height afterward, measuring it under them. Sources that combine others pass them the same `context`.
     ///
     /// @return the pieces to add once the first ones are at their start height, for pieces that depend on the terrain. [Growth#NONE] for most sources.
-    Growth appendPieces(List<StructurePiece> builder, Context context);
+    Growth appendPieces(StructurePiecesBuilder builder, Context context);
 
     PieceSourceType type();
 
     /// Every template the source can place, so `/ametrin structures check` can look into them.
     Stream<TemplateEntry> templates();
 
-    /// @param terrainAdaptation the structure's, for [com.ametrin.structures.structure.ExtendedTemplateStructurePiece]s
-    /// @param liquidSettings    the structure's, for pieces that take them when they're created
-    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings) {
+    /// The structure's settings, for the pieces to be created with.
+    ///
+    /// @param processors the structure's processors, for template pieces without their own, see [com.ametrin.structures.structure.InlineFromStructureProcessor]
+    record Context(Structure.GenerationContext generation, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings, Optional<Foundation> foundation, Optional<Holder<StructureProcessorList>> processors) {
     }
 
     @FunctionalInterface
@@ -48,7 +52,7 @@ public interface PieceSource {
         ///
         /// @param origin the context's origin at the start height
         /// @return false if the structure can't generate here after all
-        boolean grow(List<StructurePiece> builder, BlockPos origin);
+        boolean grow(StructurePiecesBuilder builder, BlockPos origin);
 
         default Growth andThen(Growth next) {
             if (this == NONE) {

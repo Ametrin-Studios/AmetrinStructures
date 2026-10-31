@@ -3,7 +3,6 @@ package com.ametrin.structures.structure.simple;
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.*;
 import com.ametrin.structures.structure.filter.TerrainSampler;
-import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.MapCodec;
@@ -20,21 +19,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -103,65 +96,38 @@ public class SimpleStructure extends ExtendedStructure {
 
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
-        var created = new ArrayList<StructurePiece>();
-        var growth = pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings));
-        var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
+        var builder = new StructurePiecesBuilder();
+        var growth = pieces.appendPieces(builder, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings, foundation, processors()));
         timer.pieces(System.nanoTime() - start);
-        if (unplacedFootprint.isEmpty()) {
+        if (builder.isEmpty()) {
             return Either.right(new Evaluation.NoPieces());
         }
+        var unplacedFootprint = builder.getBoundingBox();
 
         start = System.nanoTime();
         var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
-        var sampled = startHeight.sample(context.random(), world, (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint.get()));
+        var sampled = startHeight.sample(context.random(), world, (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint));
         timer.startHeight(System.nanoTime() - start);
         if (sampled.isEmpty()) {
             return Either.right(new Evaluation.NoStartHeight());
         }
 
         var origin = unplaced.atY(sampled.getAsInt());
-        created.forEach(piece -> piece.move(0, origin.getY(), 0));
+        builder.offsetPiecesVertically(origin.getY());
         if (growth != PieceSource.Growth.NONE) {
             // Growing is expensive, so rule out the wrong biome first, as the evaluation would afterward.
             if (!isValidBiome(context, origin)) {
                 return Either.right(new Evaluation.WrongBiome(origin));
             }
             start = System.nanoTime();
-            var grown = growth.grow(created, origin);
+            var grown = growth.grow(builder, origin);
             timer.pieces(System.nanoTime() - start);
             if (!grown) {
                 return Either.right(new Evaluation.NoPieces());
             }
         }
-        var footprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList()).orElseThrow();
-        return Either.left(new Candidate(origin, terrain, () -> footprint, () -> place(created, origin, context.structureTemplateManager())));
-    }
-
-    // Hands the pieces the structure's settings.
-    private GenerationStub place(List<StructurePiece> created, BlockPos origin, StructureTemplateManager templates) {
-        var builder = new StructurePiecesBuilder();
-        for (var piece : created) {
-            if (piece instanceof ExtendedTemplateStructurePiece template) {
-                template.setLiquidSettings(liquidSettings);
-                template.setFoundation(foundation);
-            }
-            builder.addPiece(piece instanceof PoolElementStructurePiece pooled ? withFoundation(pooled, templates) : piece);
-        }
-        return new GenerationStub(origin, Either.right(builder));
-    }
-
-    // Pool elements are shared between structures, so the piece gets a copy of its element with the foundation. Terrain matching pieces already follow the ground.
-    private PoolElementStructurePiece withFoundation(PoolElementStructurePiece piece, StructureTemplateManager templates) {
-        if (foundation.isEmpty() || piece.getElement().getProjection() != StructureTemplatePool.Projection.RIGID) {
-            return piece;
-        }
-        var element = ExtendedSinglePoolElement.withDefaultFoundation(piece.getElement(), foundation.get());
-        if (element == piece.getElement()) {
-            return piece;
-        }
-        var copy = new PoolElementStructurePiece(templates, element, piece.getPosition(), piece.getGroundLevelDelta(), piece.getRotation(), piece.getBoundingBox(), liquidSettings);
-        piece.getJunctions().forEach(copy::addJunction);
-        return copy;
+        var footprint = builder.getBoundingBox();
+        return Either.left(new Candidate(origin, terrain, () -> footprint, () -> new GenerationStub(origin, Either.right(builder))));
     }
 
     public PieceSource pieces() {

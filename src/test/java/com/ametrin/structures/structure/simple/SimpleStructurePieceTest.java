@@ -158,7 +158,7 @@ class SimpleStructurePieceTest {
                 LevelHeightAccessor.create(-64, 384),
                 HolderSet.direct(plains)::contains);
         var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING);
+        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
         var piece = (SimpleStructurePiece) PieceSources.createPiece(entry, context);
         piece.setStructureProcessors(structureProcessors);
         return piece;

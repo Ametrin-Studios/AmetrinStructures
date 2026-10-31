@@ -16,8 +16,7 @@ import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.util.valueproviders.IntProviders;
 import net.minecraft.util.valueproviders.UniformInt;
-import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
-import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
@@ -73,7 +72,7 @@ public record JigsawSource(
     }
 
     @Override
-    public Growth appendPieces(List<StructurePiece> builder, Context context) {
+    public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
         var generation = context.generation();
         var random = generation.random();
         var templates = generation.structureTemplateManager();
@@ -97,9 +96,9 @@ public record JigsawSource(
             }
             position = origin.subtract(anchor.get().info().pos().subtract(origin));
         }
-        var start = new PoolElementStructurePiece(templates, element, position, element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation), context.liquidSettings());
+        var start = JigsawAssembler.createPiece(context, element, position, element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation));
         start.move(0, position.getY() - (start.getBoundingBox().minY() + start.getGroundLevelDelta()), 0);
-        builder.add(start);
+        builder.addPiece(start);
 
         int depth = size.sample(random);
         return (pieces, placedOrigin) -> {
@@ -108,10 +107,10 @@ public record JigsawSource(
                 return false;
             }
             var free = JigsawAssembler.freeSpace(box, placedOrigin.getY(), maxDistanceFromCenter, generation.heightAccessor(), dimensionPadding);
-            var others = pieces.stream().filter(piece -> piece != start).map(piece -> Shapes.create(AABB.of(piece.getBoundingBox()))).reduce(Shapes.empty(), Shapes::or);
-            var assembler = new JigsawAssembler(generation, pools::get, depth, useExpansionHack, aliases, context.liquidSettings(), maxBacktracks);
-            var assembled = assembler.assemble(start, free, others);
-            assembled.ifPresent(all -> pieces.addAll(all.subList(1, all.size())));
+            var others = pieces.build().pieces().stream().filter(piece -> piece != start).map(piece -> Shapes.create(AABB.of(piece.getBoundingBox()))).reduce(Shapes.empty(), Shapes::or);
+            var assembler = new JigsawAssembler(context, pools::get, depth, useExpansionHack, aliases, maxBacktracks);
+            var assembled = assembler.assemble(start, element, free, others);
+            assembled.ifPresent(all -> all.subList(1, all.size()).forEach(pieces::addPiece));
             return assembled.isPresent();
         };
     }

@@ -103,10 +103,6 @@ public class ExtendedSinglePoolElement extends SinglePoolElement {
         return switch (element) {
             case ExtendedSinglePoolElement single when single.foundation.isEmpty() ->
                     new ExtendedSinglePoolElement(single.template, single.processors, single.getProjection(), single.overrideLiquidSettings, single.processFoam, Optional.of(foundation));
-            case CountedPoolElement counted -> {
-                var inner = withDefaultFoundation(counted.element(), foundation);
-                yield inner == counted.element() ? counted : new CountedPoolElement(inner, counted.minCount(), counted.maxCount());
-            }
             case ListPoolElement list -> {
                 var elements = list.getElements().stream().map(child -> withDefaultFoundation(child, foundation)).toList();
                 yield elements.equals(list.getElements()) ? list : new ListPoolElement(elements, list.getProjection());

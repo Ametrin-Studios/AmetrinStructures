@@ -18,13 +18,14 @@ import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -107,8 +108,8 @@ class PieceSourcesTest {
                 new ChunkPos(0, 0),
                 LevelHeightAccessor.create(-64, 384),
                 HolderSet.direct(plains)::contains);
-        var pieces = new ArrayList<StructurePiece>();
-        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING));
-        return pieces;
+        var pieces = new StructurePiecesBuilder();
+        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty()));
+        return pieces.build().pieces();
     }
 }

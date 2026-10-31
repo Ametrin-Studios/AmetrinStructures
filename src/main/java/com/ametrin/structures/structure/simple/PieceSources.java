@@ -8,6 +8,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import java.util.List;
@@ -23,8 +24,8 @@ public final class PieceSources {
         public static final MapCodec<SingleSource> CODEC = TemplateEntry.MAP_CODEC.xmap(SingleSource::new, SingleSource::template);
 
         @Override
-        public Growth appendPieces(List<StructurePiece> builder, Context context) {
-            builder.add(createPiece(template, context));
+        public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
+            builder.addPiece(createPiece(template, context));
             return Growth.NONE;
         }
 
@@ -46,7 +47,7 @@ public final class PieceSources {
                 .apply(instance, WeightedSource::new));
 
         @Override
-        public Growth appendPieces(List<StructurePiece> builder, Context context) {
+        public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
             return sources.getRandom(context.generation().random()).map(source -> source.appendPieces(builder, context)).orElse(Growth.NONE);
         }
 
@@ -72,7 +73,7 @@ public final class PieceSources {
         }
 
         @Override
-        public Growth appendPieces(List<StructurePiece> builder, Context context) {
+        public Growth appendPieces(StructurePiecesBuilder builder, Context context) {
             var growth = Growth.NONE;
             for (var source : sources) {
                 growth = growth.andThen(source.appendPieces(builder, context));
@@ -92,7 +93,7 @@ public final class PieceSources {
     }
 
     public static StructurePiece createPiece(TemplateEntry entry, PieceSource.Context context) {
-        return new SimpleStructurePiece(
+        var piece = new SimpleStructurePiece(
                 context.generation().structureTemplateManager(),
                 entry.template(),
                 context.origin().offset(entry.offset().rotate(context.rotation())),
@@ -101,6 +102,10 @@ public final class PieceSources {
                 context.terrainAdaptation(),
                 entry.terrainBox(),
                 -entry.offset().getY());
+        piece.setLiquidSettings(context.liquidSettings());
+        piece.setFoundation(context.foundation());
+        piece.setStructureProcessors(context.processors());
+        return piece;
     }
 
     public abstract static class NestingBuilder {

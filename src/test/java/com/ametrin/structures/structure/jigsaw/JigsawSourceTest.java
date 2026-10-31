@@ -20,6 +20,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
@@ -40,6 +41,7 @@ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement;
@@ -119,7 +121,7 @@ class JigsawSourceTest {
         for (int seed = 0; seed < SEEDS; seed++) {
             // Without backtracking, so the order is what growing produced.
             var names = assemble(server, lookup.lookup(), seed, 0).stream().flatMap(List::stream)
-                    .map(piece -> piece.getElement() == lookup.replacement() ? "temple" : piece.getElement().toString())
+                    .map(piece -> piece.getElement() == lookup.placed() ? "temple" : piece.getElement().toString())
                     .toList();
             int firstVillager = indexOf(names, name -> name.contains("/villagers/"));
             if (firstVillager < 0) {
@@ -194,6 +196,33 @@ class JigsawSourceTest {
     }
 
     @Test
+    void piecesHoldTheElementInsideACountedOne(MinecraftServer server) {
+        var houses = housesWith(server, SMALL_HOUSE, element -> new CountedPoolElement(element, 0, Optional.of(1)));
+        var withHouse = false;
+        for (int seed = 0; seed < SEEDS; seed++) {
+            var pieces = assemble(server, houses.lookup(), seed, JigsawSource.DEFAULT_MAX_BACKTRACKS).orElseThrow();
+            assertTrue(pieces.stream().noneMatch(piece -> piece.getElement() instanceof CountedPoolElement), "seed " + seed);
+            withHouse |= pieces.stream().anyMatch(piece -> piece.getElement() == houses.placed());
+        }
+        assertTrue(withHouse, "the test needs a layout with the house");
+    }
+
+    @Test
+    void piecesAreCreatedWithTheStructuresProcessors(MinecraftServer server) {
+        var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
+        var source = new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(2).build();
+        var context = context(server, 0);
+        var builder = new StructurePiecesBuilder();
+        var growth = source.appendPieces(builder, new PieceSource.Context(context, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.of(mossify)));
+        assertTrue(growth.grow(builder, BlockPos.ZERO));
+        var pieces = builder.build().pieces();
+        assertTrue(pieces.size() > 1);
+        for (var piece : pieces) {
+            assertEquals(Optional.of(mossify), JigsawStructureProcessors.get((PoolElementStructurePiece) piece));
+        }
+    }
+
+    @Test
     void readsFromJson(MinecraftServer server) {
         var json = JsonParser.parseString("""
                 {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "size": 3}
@@ -233,22 +262,22 @@ class JigsawSourceTest {
             var expected = vanilla.orElseThrow().getPiecesBuilder().build().pieces().stream().map(Placed::of).toList();
 
             var context = context(server, seed);
-            var pieces = new ArrayList<StructurePiece>();
-            var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING));
-            pieces.forEach(piece -> piece.move(0, y, 0));
+            var pieces = new StructurePiecesBuilder();
+            var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty()));
+            pieces.offsetPiecesVertically(y);
             assertTrue(growth.grow(pieces, new BlockPos(0, y, 0)));
 
-            assertEquals(expected, pieces.stream().map(Placed::of).toList(), "seed " + seed);
+            assertEquals(expected, pieces.build().pieces().stream().map(Placed::of).toList(), "seed " + seed);
         }
     }
 
     // The source's pieces at Y 0, grown.
     private static List<StructurePiece> grow(MinecraftServer server, PieceSource source, long seed) {
         var context = context(server, seed);
-        var pieces = new ArrayList<StructurePiece>();
-        var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING));
+        var pieces = new StructurePiecesBuilder();
+        var growth = source.appendPieces(pieces, new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty()));
         assertTrue(growth.grow(pieces, BlockPos.ZERO));
-        return pieces;
+        return pieces.build().pieces();
     }
 
     // How often `template` appears in a village layout at each seed, with the houses pool's element for it replaced by `replace`.
@@ -260,13 +289,15 @@ class JigsawSourceTest {
             counts.add(assemble(server, houses.lookup(), seed, JigsawSource.DEFAULT_MAX_BACKTRACKS)
                     .map(pieces -> pieces.stream().noneMatch(piece -> houses.elements().contains(piece.getElement()))
                             ? UNREACHED
-                            : (int) pieces.stream().filter(piece -> piece.getElement() == houses.replacement()).count())
+                            : (int) pieces.stream().filter(piece -> piece.getElement() == houses.placed()).count())
                     .orElse(FAILED));
         }
         return counts;
     }
 
-    private record Houses(Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> lookup, StructurePoolElement replacement, List<StructurePoolElement> elements) {}
+    /// @param placed   the element pieces hold for `template`, without a counted element around it
+    /// @param elements the elements pieces from the houses pool hold
+    private record Houses(Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> lookup, StructurePoolElement placed, List<StructurePoolElement> elements) {}
 
     // The pools with the houses pool's element for `template` replaced by `replace`.
     private static Houses housesWith(MinecraftServer server, Identifier template, Function<StructurePoolElement, StructurePoolElement> replace) {
@@ -277,7 +308,7 @@ class JigsawSourceTest {
         var replacement = replace.apply(original);
         var elements = weights.entrySet().stream().map(entry -> Pair.of(entry.getKey() == original ? replacement : entry.getKey(), entry.getValue())).toList();
         var lookup = overriding(server, HOUSES, new StructureTemplatePool(houses.getFallback(), elements));
-        return new Houses(lookup, replacement, elements.stream().map(Pair::getFirst).toList());
+        return new Houses(lookup, original, List.copyOf(weights.keySet()));
     }
 
     private static Optional<List<PoolElementStructurePiece>> assemble(MinecraftServer server, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, long seed, int maxBacktracks) {
@@ -289,8 +320,9 @@ class JigsawSourceTest {
         var position = new BlockPos(0, 63, 0);
         var start = new PoolElementStructurePiece(templates, element, position, element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation), LiquidSettings.IGNORE_WATERLOGGING);
         var free = JigsawAssembler.freeSpace(start.getBoundingBox(), 64, new JigsawStructure.MaxDistance(80), context.heightAccessor(), DimensionPadding.ZERO);
-        var assembler = new JigsawAssembler(context, pools, 6, true, PoolAliasLookup.EMPTY, LiquidSettings.IGNORE_WATERLOGGING, maxBacktracks);
-        return assembler.assemble(start, free, Shapes.empty());
+        var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, rotation, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
+        var assembler = new JigsawAssembler(pieceContext, pools, 6, true, PoolAliasLookup.EMPTY, maxBacktracks);
+        return assembler.assemble(start, element, free, Shapes.empty());
     }
 
     private static int indexOf(List<String> names, Predicate<String> matches) {

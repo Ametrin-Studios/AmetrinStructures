@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure.jigsaw;
 
+import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.util.ASLog;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -15,7 +16,6 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
@@ -23,7 +23,6 @@ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.phys.AABB;
@@ -42,6 +41,8 @@ import java.util.function.Predicate;
 /// While an element is below its minimum, jigsaws whose pools can't lead to it wait until the rest of the layout is done, so other pieces don't take its space first.
 /// When the layout still ends with an element below its minimum, it undoes everything back to the latest jigsaw that could still attach that element, attaches it there and grows on from that point.
 /// Every change to the layout is recorded so it can be undone.
+///
+/// Pieces hold the element itself rather than its [CountedPoolElement], and are created with the structure's settings.
 final class JigsawAssembler {
     private static final int UNSET = Integer.MIN_VALUE;
 
@@ -54,7 +55,7 @@ final class JigsawAssembler {
     private final int maxDepth;
     private final boolean expansionHack;
     private final PoolAliasLookup aliases;
-    private final LiquidSettings liquidSettings;
+    private final PieceSource.Context context;
     private final int maxBacktracks;
 
     private final List<Runnable> undo = new ArrayList<>();
@@ -74,18 +75,31 @@ final class JigsawAssembler {
     private final RandomSource listing = RandomSource.create(0);
 
     /// @param pools looks up the pools jigsaws point to, after `aliases`
-    JigsawAssembler(Structure.GenerationContext context, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, int maxDepth, boolean expansionHack, PoolAliasLookup aliases, LiquidSettings liquidSettings, int maxBacktracks) {
+    JigsawAssembler(PieceSource.Context context, Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> pools, int maxDepth, boolean expansionHack, PoolAliasLookup aliases, int maxBacktracks) {
+        var generation = context.generation();
         this.pools = pools;
-        this.templates = context.structureTemplateManager();
-        this.generator = context.chunkGenerator();
-        this.heightAccessor = context.heightAccessor();
-        this.randomState = context.randomState();
-        this.random = context.random();
+        this.templates = generation.structureTemplateManager();
+        this.generator = generation.chunkGenerator();
+        this.heightAccessor = generation.heightAccessor();
+        this.randomState = generation.randomState();
+        this.random = generation.random();
         this.maxDepth = maxDepth;
         this.expansionHack = expansionHack;
         this.aliases = aliases;
-        this.liquidSettings = liquidSettings;
+        this.context = context;
         this.maxBacktracks = maxBacktracks;
+    }
+
+    /// A piece for `element` with the structure's settings. A rigid extended single element without a foundation of its own gets the structure's.
+    static PoolElementStructurePiece createPiece(PieceSource.Context context, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box) {
+        var inner = element instanceof CountedPoolElement counted ? counted.element() : element;
+        var placed = context.foundation()
+                .filter(_ -> inner.getProjection() == StructureTemplatePool.Projection.RIGID)
+                .map(foundation -> ExtendedSinglePoolElement.withDefaultFoundation(inner, foundation))
+                .orElse(inner);
+        var piece = new PoolElementStructurePiece(context.generation().structureTemplateManager(), placed, position, groundLevelDelta, rotation, box, context.liquidSettings());
+        JigsawStructureProcessors.set(piece, context.processors());
+        return piece;
     }
 
     /// The space pieces can take: the box `maxDistance` around the center, within the world's height and `padding`, without the start piece.
@@ -104,12 +118,16 @@ final class JigsawAssembler {
 
     /// Grows the layout from `start`, which is already in place.
     ///
+    /// @param element the pool element `start` was created from
     /// @param blocked taken by pieces outside the layout, which even pieces attached inside another one stay out of
     /// @return every piece in the order it was placed, `start` first, or empty if the counts can't be met
-    Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, VoxelShape free, VoxelShape blocked) {
+    Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, StructurePoolElement element, VoxelShape free, VoxelShape blocked) {
         this.blocked = blocked;
-        var root = new Node(start, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
+        var root = new Node(start, element, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
         placed.add(root);
+        if (element instanceof CountedPoolElement counted) {
+            counts.put(counted, 1);
+        }
         visit(root);
         leadingPools = leadingPools(Objects.requireNonNull(visit).jigsaws);
         deferring = !leadingPools.isEmpty();
@@ -118,7 +136,7 @@ final class JigsawAssembler {
             if (step()) {
                 continue;
             }
-            var missing = required.stream().filter(element -> count(element) < element.minCount()).findFirst();
+            var missing = required.stream().filter(counted -> count(counted) < counted.minCount()).findFirst();
             if (missing.isEmpty()) {
                 break;
             }
@@ -322,9 +340,9 @@ final class JigsawAssembler {
 
         placed.add(node);
         undo.add(placed::removeLast);
-        decision.attached = node.piece.getElement();
+        decision.attached = node.element;
         undo.add(() -> decision.attached = null);
-        if (node.piece.getElement() instanceof CountedPoolElement counted) {
+        if (node.element instanceof CountedPoolElement counted) {
             counts.merge(counted, 1, Integer::sum);
             undo.add(() -> counts.merge(counted, -1, Integer::sum));
         }
@@ -335,11 +353,12 @@ final class JigsawAssembler {
         }
     }
 
-    /// @param free   the space for pieces attached outside this one
-    /// @param inside the space for pieces attached inside this one, created when the first one is tried
-    private record Node(PoolElementStructurePiece piece, MutableObject<VoxelShape> free, MutableObject<VoxelShape> inside, int depth, List<JigsawJunction> junctions) {
-        Node(PoolElementStructurePiece piece, MutableObject<VoxelShape> free, int depth) {
-            this(piece, free, new MutableObject<>(), depth, new ArrayList<>());
+    /// @param element the pool element the piece was created from, which the counts go by
+    /// @param free    the space for pieces attached outside this one
+    /// @param inside  the space for pieces attached inside this one, created when the first one is tried
+    private record Node(PoolElementStructurePiece piece, StructurePoolElement element, MutableObject<VoxelShape> free, MutableObject<VoxelShape> inside, int depth, List<JigsawJunction> junctions) {
+        Node(PoolElementStructurePiece piece, StructurePoolElement element, MutableObject<VoxelShape> free, int depth) {
+            this(piece, element, free, new MutableObject<>(), depth, new ArrayList<>());
         }
     }
 
@@ -471,10 +490,10 @@ final class JigsawAssembler {
 
             int sourceDelta = source.piece.getGroundLevelDelta();
             int targetDelta = targetRigid ? sourceDelta - deltaY : targetElement.getGroundLevelDelta();
-            var piece = new PoolElementStructurePiece(templates, targetElement, position, targetDelta, targetRotation, box, liquidSettings);
+            var piece = createPiece(context, targetElement, position, targetDelta, targetRotation, box);
             int junctionY = sourceRigid ? sourceBoxY + localY : targetRigid ? targetBoxY + targetLocalY : baseHeight() + deltaY / 2;
             var jigsawPos = jigsaw.info().pos();
-            place(this, new Node(piece, free, source.depth + 1),
+            place(this, new Node(piece, targetElement, free, source.depth + 1),
                     new JigsawJunction(target.getX(), junctionY - localY + sourceDelta, target.getZ(), deltaY, targetProjection),
                     new JigsawJunction(jigsawPos.getX(), junctionY - targetLocalY + targetDelta, jigsawPos.getZ(), -deltaY, source.piece.getElement().getProjection()));
             return true;
