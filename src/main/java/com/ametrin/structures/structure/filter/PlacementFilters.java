@@ -11,7 +11,6 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -74,10 +73,21 @@ public final class PlacementFilters {
         public static final int MAX_VARIANCE = 320;
         public static final int MAX_MARGIN = 64;
 
-        public static final MapCodec<Flatness> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        Codec.intRange(0, MAX_VARIANCE).fieldOf("max_variance").forGetter(Flatness::maxVariance),
-                        Codec.intRange(-MAX_MARGIN, MAX_MARGIN).optionalFieldOf("margin", 0).forGetter(Flatness::margin))
-                .apply(instance, Flatness::new));
+        public static final MapCodec<Flatness> CODEC = RecordCodecBuilder.<Flatness>mapCodec(instance -> instance.group(
+                                Codec.INT.fieldOf("max_variance").forGetter(Flatness::maxVariance),
+                                Codec.INT.optionalFieldOf("margin", 0).forGetter(Flatness::margin))
+                        .apply(instance, Flatness::new))
+                .validate(Flatness::validate);
+
+        public DataResult<Flatness> validate() {
+            if (maxVariance < 0 || maxVariance > MAX_VARIANCE) {
+                return DataResult.error(() -> "flatness max_variance " + maxVariance + " is outside 0 to " + MAX_VARIANCE);
+            }
+            if (Math.abs(margin) > MAX_MARGIN) {
+                return DataResult.error(() -> "flatness margin " + margin + " is outside -" + MAX_MARGIN + " to " + MAX_MARGIN);
+            }
+            return DataResult.success(this);
+        }
 
         @Override
         public boolean test(Context context) {
@@ -112,9 +122,16 @@ public final class PlacementFilters {
     /// Requires at least `minDepth` blocks of fluid above the structure, at the footprint's center.
     /// Under the sea floor, only the water above the floor counts.
     public record Submerged(int minDepth) implements PlacementFilter {
-        public static final MapCodec<Submerged> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        ExtraCodecs.NON_NEGATIVE_INT.fieldOf("min_depth").forGetter(Submerged::minDepth))
-                .apply(instance, Submerged::new));
+        public static final MapCodec<Submerged> CODEC = RecordCodecBuilder.<Submerged>mapCodec(instance -> instance.group(
+                                Codec.INT.fieldOf("min_depth").forGetter(Submerged::minDepth))
+                        .apply(instance, Submerged::new))
+                .validate(Submerged::validate);
+
+        public DataResult<Submerged> validate() {
+            return minDepth < 0
+                    ? DataResult.error(() -> "submerged min_depth " + minDepth + " is negative")
+                    : DataResult.success(this);
+        }
 
         @Override
         public boolean test(Context context) {
@@ -138,12 +155,15 @@ public final class PlacementFilters {
     /// Requires the water under the structure to be `min` to `max` blocks deep at the footprint's corners and center. Dry land is depth 0.
     public record WaterDepth(int min, Optional<Integer> max) implements PlacementFilter {
         public static final MapCodec<WaterDepth> CODEC = RecordCodecBuilder.<WaterDepth>mapCodec(instance -> instance.group(
-                                ExtraCodecs.NON_NEGATIVE_INT.optionalFieldOf("min", 0).forGetter(WaterDepth::min),
-                                ExtraCodecs.NON_NEGATIVE_INT.optionalFieldOf("max").forGetter(WaterDepth::max))
+                                Codec.INT.optionalFieldOf("min", 0).forGetter(WaterDepth::min),
+                                Codec.INT.optionalFieldOf("max").forGetter(WaterDepth::max))
                         .apply(instance, WaterDepth::new))
                 .validate(WaterDepth::validate);
 
         public DataResult<WaterDepth> validate() {
+            if (min < 0) {
+                return DataResult.error(() -> "water depth min " + min + " is negative");
+            }
             return max.filter(max -> max < min).isPresent()
                     ? DataResult.error(() -> "water depth min " + min + " is above max " + max.get())
                     : DataResult.success(this);
@@ -185,10 +205,17 @@ public final class PlacementFilters {
     public record WithinBiome(Optional<HolderSet<Biome>> biomes, int margin) implements PlacementFilter {
         public static final int MAX_MARGIN = 64;
 
-        public static final MapCodec<WithinBiome> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(WithinBiome::biomes),
-                        Codec.intRange(0, MAX_MARGIN).optionalFieldOf("margin", 0).forGetter(WithinBiome::margin))
-                .apply(instance, WithinBiome::new));
+        public static final MapCodec<WithinBiome> CODEC = RecordCodecBuilder.<WithinBiome>mapCodec(instance -> instance.group(
+                                Biome.LIST_CODEC.optionalFieldOf("biomes").forGetter(WithinBiome::biomes),
+                                Codec.INT.optionalFieldOf("margin", 0).forGetter(WithinBiome::margin))
+                        .apply(instance, WithinBiome::new))
+                .validate(WithinBiome::validate);
+
+        public DataResult<WithinBiome> validate() {
+            return margin < 0 || margin > MAX_MARGIN
+                    ? DataResult.error(() -> "within biome margin " + margin + " is outside 0 to " + MAX_MARGIN)
+                    : DataResult.success(this);
+        }
 
         @Override
         public boolean test(Context context) {

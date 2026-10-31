@@ -1,5 +1,7 @@
 package com.ametrin.structures.placement;
 
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.StructureTags;
 import net.minecraft.world.level.ChunkPos;
@@ -118,5 +120,13 @@ class EvenSpreadPlacementTest {
         assertThrows(IllegalStateException.class, () -> evenSpread(8).probability(1.5F).build());
         assertThrows(IllegalStateException.class, () -> evenSpread(8).minChunksFromCenter(-1).build());
         assertThrows(IllegalStateException.class, () -> evenSpread(8).exclusionZone(StructureTags.VILLAGE, TagExclusionZone.MAX_CHUNK_COUNT + 1).build());
+    }
+
+    @Test
+    void theCodecRejectsWhatTheBuilderRejects() {
+        var parsed = EvenSpreadPlacement.CODEC.codec().parse(JsonOps.INSTANCE, JsonParser.parseString("{\"min_distance\":8,\"probability\":1.5}"));
+        var built = assertThrows(IllegalStateException.class, () -> evenSpread(8).probability(1.5F).build());
+        assertEquals("probability 1.5 is outside 0 to 1", parsed.error().orElseThrow().message());
+        assertEquals(parsed.error().orElseThrow().message(), built.getMessage());
     }
 }

@@ -127,7 +127,7 @@ The library has two placements:
 - `evenSpreadPlacement(...)` spreads attempts evenly without a visible pattern. They're always at least `min_distance` chunks apart, and about 1.3 times that on average.
 - `scatteredGridPlacement(...)` puts one attempt in each cell of a grid. Sets with the same spacing can be interleaved with a shared `grid_offset`, and explorer maps can search further for it. It's also faster than even spread.
 
-`StructurePlacements.hasStructureChunkInRange(...)` checks if a structure, holder set or tag has a spot nearby. `LakeProof` checks if a position is inside a structure. Both are useful for placements and features that should keep away from structures.
+`StructurePlacements.hasStructureChunkInRange(...)` checks if a structure, holder set or tag has a spot nearby. `StructureLookup` checks if a position or box is inside a structure. Both are useful for placements and features that should keep away from structures.
 
 ### Excluding dimensions
 
@@ -157,7 +157,7 @@ protected void gather(HolderLookup.Provider provider) {
 
 The set's structures don't generate there, and `/locate`, explorer maps and the spread report skip them. Lists from several packs are combined. Changes need a server restart.
 
-Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java), [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java), [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java) and [`LakeProof`](../src/main/java/com/ametrin/structures/placement/LakeProof.java).
+Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java), [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java), [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java) and [`StructureLookup`](../src/main/java/com/ametrin/structures/placement/StructureLookup.java).
 
 ## Processors
 

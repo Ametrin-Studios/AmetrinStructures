@@ -2,6 +2,7 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.filter.PlacementFilters;
+import com.mojang.serialization.DataResult;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
@@ -90,11 +91,7 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
     }
 
     public B filterHeightRange(int min, int max) {
-        var filter = new PlacementFilters.HeightRange(min, max);
-        if (filter.validate().isError()) {
-            throw new IllegalArgumentException("height range " + min + " to " + max + " is not a valid range");
-        }
-        return filter(filter);
+        return filter(new PlacementFilters.HeightRange(min, max).validate());
     }
 
     public B filterGroundCheck(TagKey<Block> blocks) {
@@ -107,21 +104,12 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
 
     /// @param margin negative values allowed
     public B filterFlatness(int maxVariance, int margin) {
-        if (maxVariance < 0 || maxVariance > PlacementFilters.Flatness.MAX_VARIANCE) {
-            throw new IllegalArgumentException("flatness variance " + maxVariance + " is outside 0 to " + PlacementFilters.Flatness.MAX_VARIANCE);
-        }
-        if (Math.abs(margin) > PlacementFilters.Flatness.MAX_MARGIN) {
-            throw new IllegalArgumentException("flatness margin " + margin + " is outside -" + PlacementFilters.Flatness.MAX_MARGIN + " to " + PlacementFilters.Flatness.MAX_MARGIN);
-        }
-        return filter(new PlacementFilters.Flatness(maxVariance, margin));
+        return filter(new PlacementFilters.Flatness(maxVariance, margin).validate());
     }
 
     /// Requires at least `minDepth` blocks of fluid above the structure.
     public B filterSubmerged(int minDepth) {
-        if (minDepth < 0) {
-            throw new IllegalArgumentException("submerged depth " + minDepth + " is negative");
-        }
-        return filter(new PlacementFilters.Submerged(minDepth));
+        return filter(new PlacementFilters.Submerged(minDepth).validate());
     }
 
     /// Keeps the structure out of water deeper than `maxDepth`.
@@ -130,18 +118,11 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
     }
 
     public B filterMinWaterDepth(int minDepth) {
-        if (minDepth < 0) {
-            throw new IllegalArgumentException("water depth " + minDepth + " is not a valid range");
-        }
-        return filter(new PlacementFilters.WaterDepth(minDepth, Optional.empty()));
+        return filter(new PlacementFilters.WaterDepth(minDepth, Optional.empty()).validate());
     }
 
     public B filterWaterDepth(int minDepth, int maxDepth) {
-        var filter = new PlacementFilters.WaterDepth(minDepth, Optional.of(maxDepth));
-        if (minDepth < 0 || filter.validate().isError()) {
-            throw new IllegalArgumentException("water depth " + minDepth + " to " + maxDepth + " is not a valid range");
-        }
-        return filter(filter);
+        return filter(new PlacementFilters.WaterDepth(minDepth, Optional.of(maxDepth)).validate());
     }
 
     public B filterWithinBiome() {
@@ -149,10 +130,11 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
     }
 
     public B filterWithinBiome(int margin) {
-        if (margin < 0 || margin > PlacementFilters.WithinBiome.MAX_MARGIN) {
-            throw new IllegalArgumentException("biome margin " + margin + " is outside 0 to " + PlacementFilters.WithinBiome.MAX_MARGIN);
-        }
-        return filter(new PlacementFilters.WithinBiome(Optional.empty(), margin));
+        return filter(new PlacementFilters.WithinBiome(Optional.empty(), margin).validate());
+    }
+
+    private B filter(DataResult<? extends PlacementFilter> filter) {
+        return filter(filter.getOrThrow(IllegalArgumentException::new));
     }
 
     /// Only generates where its structure set tries it first, not as a fallback after another structure of the set didn't fit.
