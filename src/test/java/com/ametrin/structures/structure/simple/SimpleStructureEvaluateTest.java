@@ -76,6 +76,7 @@ class SimpleStructureEvaluateTest {
 
     @Test
     void timesEveryStepThatRuns(MinecraftServer server) {
+        var filters = List.<PlacementFilter>of(new PlacementFilters.HeightRange(0, 100), new PlacementFilters.HeightRange(200, 300), new PlacementFilters.HeightRange(400, 500));
         var steps = new ArrayList<String>();
         var timer = new SimpleStructure.Timer() {
             @Override
@@ -90,12 +91,11 @@ class SimpleStructureEvaluateTest {
 
             @Override
             public void filter(@NonNull PlacementFilter filter, long nanos) {
-                steps.add("filter " + ((PlacementFilters.HeightRange) filter).min());
+                steps.add("filter " + filters.indexOf(filter));
             }
         };
-        var filters = List.<PlacementFilter>of(new PlacementFilters.HeightRange(0, 100), new PlacementFilters.HeightRange(200, 300), new PlacementFilters.HeightRange(400, 500));
         structure(AT_64, filters).evaluateGenerationPoint(context(server), timer);
-        assertEquals(List.of("pieces", "start_height", "filter 0", "filter 200"), steps);
+        assertEquals(List.of("pieces", "start_height", "filter 0", "filter 1"), steps);
     }
 
     @Test

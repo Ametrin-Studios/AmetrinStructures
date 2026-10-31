@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Holder;
@@ -164,6 +165,9 @@ public final class JigsawPools {
         private int minCount = 0;
         private Optional<Integer> softMinCount = Optional.empty();
         private Optional<Integer> maxCount = Optional.empty();
+        private int minDepth = 0;
+        private Optional<Integer> maxDepth = Optional.empty();
+        private final List<PlacementFilter> filters = new ArrayList<>();
 
         private Element() {
         }
@@ -232,6 +236,24 @@ public final class JigsawPools {
             return this;
         }
 
+        /// Only attaches at least `min` jigsaws deep, see [ConditionalPoolElement].
+        public Element minDepth(int min) {
+            this.minDepth = min;
+            return this;
+        }
+
+        /// Only attaches at most `max` jigsaws deep, see [ConditionalPoolElement].
+        public Element maxDepth(int max) {
+            this.maxDepth = Optional.of(max);
+            return this;
+        }
+
+        /// Only attaches where the piece passes `filter`, see [ConditionalPoolElement].
+        public Element filter(PlacementFilter filter) {
+            this.filters.add(filter);
+            return this;
+        }
+
         private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template) {
             var resolved = processors != null ? processors : ExtendedSinglePoolElement.NO_PROCESSORS;
             var liquid = liquidSettings;
@@ -240,10 +262,13 @@ public final class JigsawPools {
             var min = minCount;
             var softMin = softMinCount.orElse(minCount);
             var max = maxCount;
-            if (softMin == 0 && max.isEmpty()) {
+            var fromDepth = minDepth;
+            var toDepth = maxDepth;
+            var pieceFilters = List.copyOf(filters);
+            if (softMin == 0 && max.isEmpty() && fromDepth == 0 && toDepth.isEmpty() && pieceFilters.isEmpty()) {
                 return projection -> new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base);
             }
-            return projection -> new ConditionalPoolElement(new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base), min, softMin, max);
+            return projection -> new ConditionalPoolElement(new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base), min, softMin, max, fromDepth, toDepth, pieceFilters);
         }
     }
 }

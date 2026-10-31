@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure.jigsaw;
 
+import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.util.ASLog;
 import net.minecraft.core.BlockPos;
@@ -317,6 +318,10 @@ final class JigsawAssembler {
         return counts.getOrDefault(element, 0);
     }
 
+    private static boolean allowsDepth(StructurePoolElement element, int depth) {
+        return !(element instanceof ConditionalPoolElement conditional) || conditional.allowsDepth(depth);
+    }
+
     private boolean isFull(StructurePoolElement element) {
         return element instanceof ConditionalPoolElement counted && counted.maxCount().filter(max -> count(counted) >= max).isPresent();
     }
@@ -445,7 +450,7 @@ final class JigsawAssembler {
                     return false;
                 }
                 element++;
-                if (next != EmptyPoolElement.INSTANCE && wanted.test(next) && !isFull(next)) {
+                if (next != EmptyPoolElement.INSTANCE && wanted.test(next) && !isFull(next) && allowsDepth(next, source.depth + 1)) {
                     rotations = Rotation.getShuffled(random);
                     rotation = 0;
                 }
@@ -479,6 +484,10 @@ final class JigsawAssembler {
                     ? new BoundingBox(moved.minX(), moved.minY(), moved.minZ(), moved.maxX(), Math.max(moved.maxY(), moved.minY() + Math.max(expand + 1, moved.getYSpan() - 1)), moved.maxZ())
                     : moved;
             if (Shapes.joinIsNotEmpty(free.get(), Shapes.create(AABB.of(box).deflate(0.25)), BooleanOp.ONLY_SECOND)) {
+                return false;
+            }
+            // After the free space check, since filters on the terrain cost more.
+            if (targetElement instanceof ConditionalPoolElement conditional && !conditional.passesFilters(new PlacementFilter.Context(context.generation(), position, box, context.terrain()))) {
                 return false;
             }
 

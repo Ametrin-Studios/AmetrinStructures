@@ -4,6 +4,7 @@ import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.filter.PlacementFilters;
 import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
@@ -124,6 +125,43 @@ class JigsawSourceTest {
         assertTrue(counts.stream().noneMatch(count -> count == FAILED), "every spot generates, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count == 0), "the test needs a layout that can't meet it, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count >= 1), "it's met where it fits, got " + counts);
+    }
+
+    @Test
+    void anElementOnlyAttachesWithinItsDepths(MinecraftServer server) {
+        var unlimited = countAcrossSeeds(server, SMALL_HOUSE, element -> element);
+        assertTrue(unlimited.stream().anyMatch(count -> count > 0), "the test needs a house that appears on its own, got " + unlimited);
+        // Every piece but the start is at least one jigsaw deep.
+        var never = countAcrossSeeds(server, SMALL_HOUSE, element -> new ConditionalPoolElement(element, 0, 0, Optional.empty(), 0, Optional.of(0), List.of()));
+        assertTrue(never.stream().allMatch(count -> count <= 0), "never at depth 0, got " + never);
+    }
+
+    @Test
+    void anElementOnlyAttachesWherePiecesPassItsFilters(MinecraftServer server) {
+        // The test layouts stand on terrain at Y 0, so no house is below -32.
+        var below = new PlacementFilters.HeightRange(Optional.empty(), Optional.of(HeightAnchor.absolute(-32)), PlacementFilters.HeightRange.Check.BOX);
+        var never = countAcrossSeeds(server, SMALL_HOUSE, element -> new ConditionalPoolElement(element, 0, 0, Optional.empty(), 0, Optional.empty(), List.of(below)));
+        assertTrue(never.stream().allMatch(count -> count <= 0), "never below -32, got " + never);
+
+        var above = new PlacementFilters.HeightRange(Optional.of(HeightAnchor.absolute(-32)), Optional.empty(), PlacementFilters.HeightRange.Check.BOX);
+        var still = countAcrossSeeds(server, SMALL_HOUSE, element -> new ConditionalPoolElement(element, 0, 0, Optional.empty(), 0, Optional.empty(), List.of(above)));
+        assertTrue(still.stream().anyMatch(count -> count > 0), "still where it passes, got " + still);
+    }
+
+    @Test
+    void readsTheConditionsFromJson(MinecraftServer server) {
+        var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+        var conditional = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_depth": 2, "max_depth": 5,
+                 "filters": [{"type": "ametrin_structures:height_range", "max": {"heightmap": "WORLD_SURFACE_WG"}, "check": "box"}],
+                 "element": {"element_type": "minecraft:empty_pool_element"}}
+                """)).getOrThrow());
+        assertEquals(List.of(2, Optional.of(5)), List.of(conditional.minDepth(), conditional.maxDepth()));
+        assertEquals(List.of(new PlacementFilters.HeightRange(Optional.empty(), Optional.of(HeightAnchor.surface(0)), PlacementFilters.HeightRange.Check.BOX)), conditional.filters());
+
+        assertTrue(StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_depth": 5, "max_depth": 2, "element": {"element_type": "minecraft:empty_pool_element"}}
+                """)).isError());
     }
 
     @Test
