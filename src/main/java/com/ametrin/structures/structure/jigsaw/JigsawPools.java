@@ -34,8 +34,6 @@ import java.util.function.UnaryOperator;
 ///         .element("wall_ruined", element -> element.weight(2).processors(ProcessorLists.MOSSIFY_10_PERCENT)));
 /// ```
 public final class JigsawPools {
-    private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty"));
-
     private final BootstrapContext<StructureTemplatePool> context;
     private final String modId;
     private final String prefix;
@@ -214,7 +212,7 @@ public final class JigsawPools {
         }
 
         private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template) {
-            var resolved = processors != null ? processors : processorLists.getOrThrow(EMPTY_PROCESSORS);
+            var resolved = processors != null ? processors : ExtendedSinglePoolElement.NO_PROCESSORS;
             var liquid = liquidSettings;
             var foam = processFoam;
             var base = foundation;
