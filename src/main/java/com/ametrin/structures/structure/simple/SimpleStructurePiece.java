@@ -13,7 +13,6 @@ import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.neoforged.neoforge.common.world.PieceBeardifierModifier;
 import org.jetbrains.annotations.ApiStatus;
@@ -33,8 +32,7 @@ public class SimpleStructurePiece extends PoolElementStructurePiece implements P
 
     /// @param groundLevelDelta how far above the bottom of the element the ground lies, the negated Y of the entry's offset
     public SimpleStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, Rotation rotation, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation, TerrainBox terrainBox, int groundLevelDelta) {
-        // Relative to the bottom of the terrain box. Only a local box moves it, and its bottom is the ground.
-        super(templates, element, position, terrainBox instanceof TerrainBox.Local ? 0 : groundLevelDelta, rotation, element.getBoundingBox(templates, position, rotation), liquidSettings);
+        super(templates, element, position, terrainBox.groundLevelDelta(groundLevelDelta), rotation, element.getBoundingBox(templates, position, rotation), liquidSettings);
         this.terrainAdaptation = terrainAdaptation;
         this.terrainBox = element instanceof SinglePoolElement single
                 ? terrainBox.resolve(single.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
@@ -54,12 +52,7 @@ public class SimpleStructurePiece extends PoolElementStructurePiece implements P
 
     @Override
     public BoundingBox getBeardifierBox() {
-        // Placed like the element itself, so it follows the rotation and any later move.
-        var settings = new StructurePlaceSettings().setRotation(getRotation());
-        return terrainBox.map(local -> BoundingBox.fromCorners(
-                        StructureTemplate.calculateRelativePosition(settings, new BlockPos(local.minX(), local.minY(), local.minZ())).offset(getPosition()),
-                        StructureTemplate.calculateRelativePosition(settings, new BlockPos(local.maxX(), local.maxY(), local.maxZ())).offset(getPosition())))
-                .orElse(boundingBox);
+        return terrainBox.map(local -> TerrainBox.place(local, new StructurePlaceSettings().setRotation(getRotation()), getPosition())).orElse(boundingBox);
     }
 
     @Override
