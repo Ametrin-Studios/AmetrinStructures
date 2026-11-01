@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class ExtendedSinglePoolElement extends SinglePoolElement implements StructureSettingsElement {
-    static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
+    public static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
     private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty"));
 
     public static final MapCodec<ExtendedSinglePoolElement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -95,6 +95,15 @@ public class ExtendedSinglePoolElement extends SinglePoolElement implements Stru
 
     public Optional<Foundation> foundation() {
         return foundation;
+    }
+
+    public boolean processFoam() {
+        return processFoam;
+    }
+
+    /// Empty when it has none and takes the structure's instead
+    public Optional<Holder<StructureProcessorList>> ownProcessors() {
+        return hasNone(processors) ? Optional.empty() : Optional.of(processors);
     }
 
     /// Its own foundation replaces the structure's, and only rigid elements take the structure's.

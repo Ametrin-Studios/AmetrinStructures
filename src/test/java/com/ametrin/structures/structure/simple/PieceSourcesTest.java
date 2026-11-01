@@ -72,7 +72,8 @@ class PieceSourcesTest {
         var top = json.getAsJsonArray("sources").get(0).getAsJsonObject();
         assertFalse(top.has("type"));
         assertEquals("minecraft:igloo/top", top.get("template").getAsString());
-        assertEquals(source, PieceSource.CODEC.parse(ops(server), json).getOrThrow());
+        // Pool elements have no equality, so the source is compared by its JSON.
+        assertEquals(json, PieceSource.CODEC.encodeStart(ops(server), PieceSource.CODEC.parse(ops(server), json).getOrThrow()).getOrThrow());
     }
 
     @Test

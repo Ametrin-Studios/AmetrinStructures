@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.registry.ASPieceSources;
+import com.ametrin.structures.structure.jigsaw.StructureElements;
 import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -19,7 +20,7 @@ public final class PieceSources {
     private PieceSources() {
     }
 
-    /// One template. Anywhere a source is expected it can also be written as the bare template entry.
+    /// One template or pool element. Anywhere a source is expected it can also be written as the bare template entry.
     public record SingleSource(TemplateEntry template) implements PieceSource {
         public static final MapCodec<SingleSource> CODEC = TemplateEntry.MAP_CODEC.xmap(SingleSource::new, SingleSource::template);
 
@@ -89,20 +90,11 @@ public final class PieceSources {
         }
     }
 
+    /// A piece for `entry` with the structure's settings, see [StructureElements].
     public static StructurePiece createPiece(TemplateEntry entry, PieceSource.Context context) {
-        var piece = new SimpleStructurePiece(
-                context.generation().structureTemplateManager(),
-                entry.template(),
-                context.origin().offset(entry.offset().rotate(context.rotation())),
-                context.rotation(),
-                entry.processors(),
-                context.terrainAdaptation(),
-                entry.terrainBox(),
-                -entry.offset().getY());
-        piece.setLiquidSettings(context.liquidSettings());
-        piece.setFoundation(context.foundation());
-        piece.setStructureProcessors(context.processors());
-        return piece;
+        var element = StructureElements.withStructureSettings(entry.element(), context.processors(), context.foundation());
+        return new SimpleStructurePiece(context.generation().structureTemplateManager(), element, context.origin().offset(entry.offset().rotate(context.rotation())), context.rotation(),
+                context.liquidSettings(), context.terrainAdaptation(), entry.terrainBox(), -entry.offset().getY());
     }
 
     public abstract static class NestingBuilder {

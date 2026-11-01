@@ -2,7 +2,6 @@ package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
-import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.filter.PlacementFilter;
@@ -37,6 +36,7 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
@@ -203,8 +203,8 @@ class SimpleStructureEvaluateTest {
         var processors = Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE)))));
         var structure = structure(AT_64, new ExtendedStructureSettings(List.of(), Optional.of(processors)));
         var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
-        var piece = assertInstanceOf(ExtendedTemplateStructurePiece.class, stub.getPiecesBuilder().build().pieces().getFirst());
-        assertEquals(Optional.of(processors), piece.structureProcessors());
+        var piece = assertInstanceOf(SimpleStructurePiece.class, stub.getPiecesBuilder().build().pieces().getFirst());
+        assertSame(processors, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
     }
 
     @Test

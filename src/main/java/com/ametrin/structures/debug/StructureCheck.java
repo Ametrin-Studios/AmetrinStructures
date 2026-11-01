@@ -136,7 +136,7 @@ public final class StructureCheck {
     private boolean check(Identifier id, Structure structure) {
         switch (structure) {
             case SimpleStructure simple -> {
-                simple.pieces().templates().forEach(entry -> template(id, entry.template()));
+                simple.pieces().templates().forEach(entry -> templatesExist(id, entry.element()));
                 jigsawSources(simple.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases()));
             }
             // Vanilla's start jigsaw name has no getter.

@@ -78,7 +78,7 @@ Run datagen and start the game. `/locate structure examplemod:ruined_tower` shou
 
 The builders can do a lot more than this example. Your IDE's completion lists everything. Some highlights:
 
-**Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several together. Each template can have its own offset and processors.
+**Several templates.** `weighted(...)` picks one of several templates at random. `compound(...)` places several together. Each template can have its own offset, processors, foundation and liquid settings, like an element in a template pool. `element(...)` places any pool element instead of a template, like a feature or list element. In JSON, a template is `template` with optional `processors`, or `element` with a pool element.
 
 **Height.** `surface()` places the structure on the ground, or on top of water. `oceanFloor()` places it on the ground under water. `between(HeightAnchor.aboveBottom(8), HeightAnchor.surface(-24))` picks a random height in a range, e.g. for something buried. A `HeightMode` on a heightmap anchor, e.g. `surface(0, HeightMode.LOWEST_CORNER)`, sets where the terrain height is measured: at the origin, as the average of the corners, or at the lowest corner.
 

@@ -293,7 +293,7 @@ public class SimpleStructure extends ExtendedStructure {
             return foundation(Foundation.of(state, maxDepth));
         }
 
-        /// Jigsaw pieces only get it on rigid `ametrin_structures:single_pool_element`s without a foundation of their own.
+        /// Pieces only get it on rigid `ametrin_structures:single_pool_element`s without a foundation of their own. Templates are those unless they set one.
         public Builder foundation(Foundation foundation) {
             this.foundation = Optional.of(foundation);
             return this;

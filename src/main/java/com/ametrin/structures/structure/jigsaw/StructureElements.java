@@ -7,15 +7,17 @@ import net.minecraft.world.level.levelgen.structure.pools.ListPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Optional;
 
 /// Gives a piece a copy of its element with the structure's settings, see [StructureSettingsElement].
-final class StructureElements {
+@ApiStatus.Internal
+public final class StructureElements {
     private StructureElements() {}
 
     /// Elements that implement [StructureSettingsElement] decide themselves. Vanilla's single, legacy and list elements take the structure's processors. Other elements stay as they are.
-    static StructurePoolElement withStructureSettings(StructurePoolElement element, Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
+    public static StructurePoolElement withStructureSettings(StructurePoolElement element, Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
         if (processors.isEmpty() && foundation.isEmpty()) {
             return element;
         }
