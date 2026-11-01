@@ -149,6 +149,15 @@ class StructureCheckTest {
     }
 
     @Test
+    void aConditionalElementInAVanillaJigsawStructureIsReported(MinecraftServer server) {
+        var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
+        var element = new ConditionalPoolElement(single(Identifier.withDefaultNamespace("igloo/top")), 0, 0, Optional.of(1));
+        var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(Pools.EMPTY), List.of(Pair.of(element, 1))));
+        var structure = new JigsawStructure(new Structure.StructureSettings(HolderSet.empty()), start, 2, ConstantHeight.of(VerticalAnchor.absolute(0)), false);
+        assertEquals(List.of("STRUCTURE test:structure ignored_conditions"), describe(check(server, structure)));
+    }
+
+    @Test
     void sidewaysJigsawsMeetAnySidewaysOneAndVerticalOnesOnlyTheirOpposite() {
         assertTrue(StructureCheck.canFace(jigsaw(FrontAndTop.WEST_UP), jigsaw(FrontAndTop.NORTH_UP)));
         assertFalse(StructureCheck.canFace(jigsaw(FrontAndTop.WEST_UP), jigsaw(FrontAndTop.DOWN_NORTH)));

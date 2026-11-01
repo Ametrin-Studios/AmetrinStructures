@@ -60,6 +60,7 @@ Checks every structure, or the ones in a namespace, for mistakes that would othe
 - templates that don't exist
 - jigsaws that name a pool that doesn't exist or is empty, or that no jigsaw in their pool can connect to, because none has the target name or all of them face the wrong way
 - a start jigsaw name that no template in the start pool has
+- conditional elements in vanilla jigsaw structures, which ignore their conditions
 - loot tables that containers in templates use but that don't exist
 - fixtures in templates, and the presets they use, that can't be read or that use something that doesn't exist, like  a loot table, preset, spawner profile or entity
 - fixtures in templates with an offset of more than 16 blocks along an axis

@@ -9,6 +9,7 @@ import com.ametrin.structures.structure.simple.PieceSource;
 import com.ametrin.structures.structure.simple.PieceSources;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import com.ametrin.structures.util.RegistryConditionContext;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -66,6 +67,7 @@ public final class StructureCheck {
         public static final String EMPTY_POOL = "commands.ametrin_structures.check.empty_pool";
         public static final String UNMATCHED_JIGSAW = "commands.ametrin_structures.check.unmatched_jigsaw";
         public static final String MISFACING_JIGSAW = "commands.ametrin_structures.check.misfacing_jigsaw";
+        public static final String IGNORED_CONDITIONS = "commands.ametrin_structures.check.ignored_conditions";
 
         private Keys() {}
     }
@@ -137,11 +139,11 @@ public final class StructureCheck {
         switch (structure) {
             case SimpleStructure simple -> {
                 simple.pieces().templates().forEach(entry -> templatesExist(id, entry.element()));
-                jigsawSources(simple.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases()));
+                jigsawSources(simple.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases(), true));
             }
             // Vanilla's start jigsaw name has no getter.
             case JigsawStructure jigsaw ->
-                    checkJigsaw(id, jigsaw.getStartPool(), Optional.empty(), jigsaw.getPoolAliases());
+                    checkJigsaw(id, jigsaw.getStartPool(), Optional.empty(), jigsaw.getPoolAliases(), false);
             default -> {
                 return false;
             }
@@ -238,7 +240,8 @@ public final class StructureCheck {
 
     private record Link(Connector source, Holder<StructureTemplatePool> target) {}
 
-    private void checkJigsaw(Identifier structure, Holder<StructureTemplatePool> startPool, Optional<Identifier> startJigsawName, List<PoolAliasBinding> poolAliases) {
+    /// @param followsConditions false for vanilla's layout, which places [ConditionalPoolElement]s like the element inside them
+    private void checkJigsaw(Identifier structure, Holder<StructureTemplatePool> startPool, Optional<Identifier> startJigsawName, List<PoolAliasBinding> poolAliases, boolean followsConditions) {
         // Follows every jigsaw from the start pool, as generation could, and checks that each can connect.
         var aliases = new HashMap<ResourceKey<StructureTemplatePool>, Set<ResourceKey<StructureTemplatePool>>>();
         poolAliases.forEach(binding -> collectAliases(binding, aliases));
@@ -257,6 +260,12 @@ public final class StructureCheck {
             var pool = queue.poll();
             if (!visited.add(pool)) {
                 continue;
+            }
+            if (!followsConditions) {
+                pool.value().getTemplates().stream()
+                        .map(Pair::getFirst)
+                        .filter(StructureCheck::isConditional)
+                        .forEach(element -> problem(Problem.Subject.STRUCTURE, structure, Keys.IGNORED_CONDITIONS, poolName(pool), elementName(element)));
             }
             var fallback = pool.value().getFallback();
             if (isEmpty(fallback)) {
@@ -367,6 +376,10 @@ public final class StructureCheck {
             case ListPoolElement list when !list.getElements().isEmpty() -> elementName(list.getElements().getFirst());
             default -> element.toString();
         };
+    }
+
+    private static boolean isConditional(StructurePoolElement element) {
+        return element instanceof ConditionalPoolElement || element instanceof ListPoolElement list && list.getElements().stream().anyMatch(StructureCheck::isConditional);
     }
 
     // minecraft:empty is meant to be empty.
