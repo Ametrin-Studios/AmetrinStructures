@@ -158,6 +158,14 @@ class JigsawSourceTest {
     }
 
     @Test
+    void piecesInTheWayOfASoftMinimumAreUndone(MinecraftServer server) {
+        // Without undoing earlier pieces, the library fits in fewer than half of the layouts.
+        var counts = countAcrossSeeds(server, Identifier.withDefaultNamespace("village/plains/houses/plains_library_1"), element -> new ConditionalPoolElement(element, 0, 1, Optional.empty()));
+        var reached = counts.stream().filter(count -> count != UNREACHED).toList();
+        assertTrue(reached.stream().filter(count -> count >= 1).count() >= reached.size() * 3 / 4, "met in most layouts, got " + counts);
+    }
+
+    @Test
     void anElementOnlyAttachesWithinItsDepths(MinecraftServer server) {
         var unlimited = countAcrossSeeds(server, SMALL_HOUSE, element -> element);
         assertTrue(unlimited.stream().anyMatch(count -> count > 0), "the test needs a house that appears on its own, got " + unlimited);
