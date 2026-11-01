@@ -1,23 +1,16 @@
 package com.ametrin.structures.structure.jigsaw;
 
-import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.filter.PlacementFilter;
-import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.Pools;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -155,13 +148,8 @@ public final class JigsawPools {
         }
     }
 
-    public final class Element {
+    public final class Element extends TemplateElementBuilder<Element> {
         private int weight = 1;
-        @Nullable
-        private Holder<StructureProcessorList> processors;
-        private Optional<LiquidSettings> liquidSettings = Optional.empty();
-        private boolean processFoam = true;
-        private Optional<Foundation> foundation = Optional.empty();
         private int minCount = 0;
         private Optional<Integer> softMinCount = Optional.empty();
         private Optional<Integer> maxCount = Optional.empty();
@@ -170,51 +158,11 @@ public final class JigsawPools {
         private final List<PlacementFilter> filters = new ArrayList<>();
 
         private Element() {
+            super(processorLists);
         }
 
         public Element weight(int weight) {
             this.weight = weight;
-            return this;
-        }
-
-        public Element processors(ResourceKey<StructureProcessorList> processors) {
-            return processors(processorLists.getOrThrow(processors));
-        }
-
-        public Element processors(Holder<StructureProcessorList> processors) {
-            this.processors = processors;
-            return this;
-        }
-
-        /// Stored inline in the pool.
-        public Element processors(List<StructureProcessor> processors) {
-            return processors(Holder.direct(new StructureProcessorList(processors)));
-        }
-
-        /// Defaults to the structure's liquid settings.
-        public Element liquidSettings(LiquidSettings liquidSettings) {
-            this.liquidSettings = Optional.of(liquidSettings);
-            return this;
-        }
-
-        /// Leaves foam in place and places the air the template saved, like a vanilla element.
-        public Element noFoamProcessing() {
-            this.processFoam = false;
-            return this;
-        }
-
-        /// Extends the bottom of the piece down to the ground, repeating each bottom block.
-        public Element foundation() {
-            return foundation(Foundation.repeating());
-        }
-
-        /// Extends the bottom of the piece down to the ground with `state`, at most `maxDepth` blocks.
-        public Element foundation(BlockState state, int maxDepth) {
-            return foundation(Foundation.of(state, maxDepth));
-        }
-
-        public Element foundation(Foundation foundation) {
-            this.foundation = Optional.of(foundation);
             return this;
         }
 
@@ -255,10 +203,7 @@ public final class JigsawPools {
         }
 
         private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template) {
-            var resolved = processors != null ? processors : ExtendedSinglePoolElement.NO_PROCESSORS;
-            var liquid = liquidSettings;
-            var foam = processFoam;
-            var base = foundation;
+            var element = element(template);
             var min = minCount;
             var softMin = softMinCount.orElse(minCount);
             var max = maxCount;
@@ -266,9 +211,9 @@ public final class JigsawPools {
             var toDepth = maxDepth;
             var pieceFilters = List.copyOf(filters);
             if (softMin == 0 && max.isEmpty() && fromDepth == 0 && toDepth.isEmpty() && pieceFilters.isEmpty()) {
-                return projection -> new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base);
+                return element;
             }
-            return projection -> new ConditionalPoolElement(new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base), min, softMin, max, fromDepth, toDepth, pieceFilters);
+            return projection -> new ConditionalPoolElement(element.apply(projection), min, softMin, max, fromDepth, toDepth, pieceFilters);
         }
     }
 }

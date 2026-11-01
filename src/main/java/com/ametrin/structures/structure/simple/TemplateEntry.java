@@ -1,7 +1,7 @@
 package com.ametrin.structures.structure.simple;
 
-import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
+import com.ametrin.structures.structure.jigsaw.TemplateElementBuilder;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -10,17 +10,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import org.jspecify.annotations.Nullable;
 
-import java.util.List;
 import java.util.Optional;
 
 /// A pool element placed at `offset` from the structure origin and turned with the structure.
@@ -65,24 +60,18 @@ public record TemplateEntry(StructurePoolElement element, BlockPos offset, Terra
         }
     }
 
-    public static class Builder {
+    public static class Builder extends TemplateElementBuilder<Builder> {
         private final String defaultNamespace;
-        private final HolderGetter<StructureProcessorList> processorsGetter;
         @Nullable
         private Identifier template;
         @Nullable
         private StructurePoolElement element;
         private BlockPos offset = BlockPos.ZERO;
-        @Nullable
-        private Holder<StructureProcessorList> processors;
-        private Optional<LiquidSettings> liquidSettings = Optional.empty();
-        private boolean processFoam = true;
-        private Optional<Foundation> foundation = Optional.empty();
         private TerrainBox terrainBox = TerrainBox.template();
 
         public Builder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter) {
+            super(processorsGetter);
             this.defaultNamespace = defaultNamespace;
-            this.processorsGetter = processorsGetter;
         }
 
         public Builder template(String template) {
@@ -113,50 +102,6 @@ public record TemplateEntry(StructurePoolElement element, BlockPos offset, Terra
             return offset(0, offset, 0);
         }
 
-        /// Replaces the structure's processors. Add [InlineFromStructureProcessor#INSTANCE] to keep them.
-        /// Stored inline.
-        public Builder processors(List<StructureProcessor> processors) {
-            return processors(Holder.direct(new StructureProcessorList(processors)));
-        }
-
-        /// Replaces the structure's processors. Add [InlineFromStructureProcessor#INSTANCE] to keep them.
-        public Builder processors(ResourceKey<StructureProcessorList> processors) {
-            return processors(processorsGetter.getOrThrow(processors));
-        }
-
-        /// Replaces the structure's processors. Add [InlineFromStructureProcessor#INSTANCE] to keep them.
-        public Builder processors(Holder<StructureProcessorList> processors) {
-            this.processors = processors;
-            return this;
-        }
-
-        /// Defaults to the structure's liquid settings.
-        public Builder liquidSettings(LiquidSettings liquidSettings) {
-            this.liquidSettings = Optional.of(liquidSettings);
-            return this;
-        }
-
-        /// places the air the template like a vanilla element.
-        public Builder noFoamProcessing() {
-            this.processFoam = false;
-            return this;
-        }
-
-        /// Extends the bottom of the piece down to the ground, repeating each bottom block. Replaces the structure's foundation.
-        public Builder foundation() {
-            return foundation(Foundation.repeating());
-        }
-
-        /// Extends the bottom of the piece down to the ground with `state`, at most `maxDepth` blocks. Replaces the structure's foundation.
-        public Builder foundation(BlockState state, int maxDepth) {
-            return foundation(Foundation.of(state, maxDepth));
-        }
-
-        public Builder foundation(Foundation foundation) {
-            this.foundation = Optional.of(foundation);
-            return this;
-        }
-
         /// Defaults to [TerrainBox#template()].
         public Builder terrainBox(TerrainBox terrainBox) {
             this.terrainBox = terrainBox;
@@ -173,8 +118,7 @@ public record TemplateEntry(StructurePoolElement element, BlockPos offset, Terra
             if (template == null) {
                 throw new IllegalStateException("template has not been set");
             }
-            var processors = this.processors != null ? this.processors : ExtendedSinglePoolElement.NO_PROCESSORS;
-            return new TemplateEntry(new ExtendedSinglePoolElement(Either.left(template), processors, StructureTemplatePool.Projection.RIGID, liquidSettings, processFoam, foundation), offset, terrainBox);
+            return new TemplateEntry(element(template).apply(StructureTemplatePool.Projection.RIGID), offset, terrainBox);
         }
     }
 }
