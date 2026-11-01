@@ -23,8 +23,6 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.shapes.Shapes;
 
 import java.util.List;
 import java.util.Optional;
@@ -111,7 +109,7 @@ public record JigsawSource(
                 return false;
             }
             var free = JigsawAssembler.freeSpace(box, placedOrigin.getY(), maxDistanceFromCenter, generation.heightAccessor(), dimensionPadding);
-            var others = pieces.build().pieces().stream().filter(piece -> piece != start).map(piece -> Shapes.create(AABB.of(piece.getBoundingBox()))).reduce(Shapes.empty(), Shapes::or);
+            var others = pieces.build().pieces().stream().filter(piece -> piece != start).map(piece -> piece.getBoundingBox()).toList();
             var assembler = new JigsawAssembler(context, pools::get, depth, useExpansionHack, aliases, maxBacktracks);
             var assembled = assembler.assemble(start, element, free, others);
             assembled.ifPresent(all -> all.subList(1, all.size()).forEach(pieces::addPiece));

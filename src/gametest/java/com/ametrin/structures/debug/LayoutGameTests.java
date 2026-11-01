@@ -15,7 +15,9 @@ import java.util.function.Consumer;
 
 /// Game tests rather than unit tests, since laying out a structure needs a server level.
 public final class LayoutGameTests {
-    public static final Map<String, Consumer<GameTestHelper>> TESTS = Map.of("layout_describes_a_village", LayoutGameTests::describesAVillage);
+    public static final Map<String, Consumer<GameTestHelper>> TESTS = Map.of(
+            "layout_describes_a_village", LayoutGameTests::describesAVillage,
+            "layout_depths_tell_stacked_pieces_apart", LayoutGameTests::depthsTellStackedPiecesApart);
 
     private LayoutGameTests() {}
 
@@ -49,6 +51,22 @@ public final class LayoutGameTests {
                 .count();
         int open = layout.openJigsaws().values().stream().mapToInt(Integer::intValue).sum();
         helper.assertTrue(intoPools - open >= pieces.pieces().size() - 1, "attached jigsaws aren't open, got " + open + " open of " + intoPools + " for " + pieces.pieces().size() + " pieces");
+        helper.succeed();
+    }
+
+    // Bastions and ancient cities are rigid and have pieces stacked on top of each other, with sideways jigsaws in the same columns.
+    private static void depthsTellStackedPiecesApart(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var chunk = ChunkPos.containing(helper.absolutePos(BlockPos.ZERO));
+        for (var key : List.of(BuiltinStructures.BASTION_REMNANT, BuiltinStructures.ANCIENT_CITY)) {
+            var structure = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
+            for (long seed = 0; seed < 5; seed++) {
+                var pieces = StructureLayouts.layOut(level, structure, chunk, seed).orElseThrow();
+                var depths = PiecesCommand.describe(level.getStructureManager(), pieces).depths();
+                long starts = depths.values().stream().flatMap(List::stream).filter(depth -> depth == 0).count();
+                helper.assertValueEqual(starts, 1L, "pieces at depth 0 in " + key.identifier() + " at seed " + seed + ", got " + depths);
+            }
+        }
         helper.succeed();
     }
 }

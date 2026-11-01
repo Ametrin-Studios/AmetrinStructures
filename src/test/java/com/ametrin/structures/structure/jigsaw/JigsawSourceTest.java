@@ -56,7 +56,6 @@ import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import net.minecraft.world.phys.shapes.Shapes;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,6 +74,7 @@ class JigsawSourceTest {
     private static final int UNREACHED = -2;
     private static final ResourceKey<StructureTemplatePool> TOWN_CENTERS = pool("village/plains/town_centers");
     private static final ResourceKey<StructureTemplatePool> HOUSES = pool("village/plains/houses");
+    private static final ResourceKey<StructureTemplatePool> STREETS = pool("village/plains/streets");
     private static final Identifier SMALL_HOUSE = Identifier.withDefaultNamespace("village/plains/houses/plains_small_house_1");
     private static final Identifier TEMPLE = Identifier.withDefaultNamespace("village/plains/houses/plains_temple_3");
 
@@ -125,6 +125,36 @@ class JigsawSourceTest {
         assertTrue(counts.stream().noneMatch(count -> count == FAILED), "every spot generates, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count == 0), "the test needs a layout that can't meet it, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count >= 1), "it's met where it fits, got " + counts);
+    }
+
+    @Test
+    void aFailedBacktrackLeavesNoJigsawEmpty(MinecraftServer server) {
+        var templates = server.getStructureManager();
+        // A street with a single jigsaw into the houses pool, and no streets attach to it, so the layout decides one house.
+        var street = holder(server, STREETS).value().getShuffledTemplates(RandomSource.create(0)).stream()
+                .filter(element -> element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, RandomSource.create(0)).stream().filter(jigsaw -> jigsaw.pool().equals(HOUSES)).count() == 1)
+                .findFirst().orElseThrow();
+        var house = holder(server, HOUSES).value().getShuffledTemplates(RandomSource.create(0)).stream()
+                .filter(element -> element instanceof SinglePoolElement single && single.getTemplateLocation().equals(SMALL_HOUSE))
+                .findFirst().orElseThrow();
+        // Below -32, the copy never fits, so every backtrack for it fails.
+        var below = new PlacementFilters.HeightRange(Optional.empty(), Optional.of(HeightAnchor.absolute(-32)), PlacementFilters.HeightRange.Check.BOX);
+        var never = new ConditionalPoolElement(house, 0, 1, Optional.empty(), 0, Optional.empty(), List.of(below));
+        var registered = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
+        var houses = Holder.direct(new StructureTemplatePool(registered.getOrThrow(pool("empty")), List.of(Pair.of(house, 1), Pair.of(never, 1))));
+        Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> lookup = key -> key.equals(HOUSES) ? Optional.of(houses) : key.equals(STREETS) ? registered.get(pool("empty")) : registered.get(key);
+        // The test layouts stand on terrain at Y 0, where houses attached to a street that follows the terrain go.
+        var position = BlockPos.ZERO;
+        var box = street.getBoundingBox(templates, position, Rotation.NONE);
+        for (int seed = 0; seed < SEEDS; seed++) {
+            var context = context(server, seed);
+            // Taller, like the expansion hack makes the streets that attach, so the house fits inside.
+            var start = new PoolElementStructurePiece(templates, street, position, street.getGroundLevelDelta(), Rotation.NONE, new BoundingBox(box.minX(), box.minY() - 8, box.minZ(), box.maxX(), box.minY() + 32, box.maxZ()), LiquidSettings.IGNORE_WATERLOGGING);
+            var free = JigsawAssembler.freeSpace(start.getBoundingBox(), 0, new JigsawStructure.MaxDistance(80), context.heightAccessor(), DimensionPadding.ZERO);
+            var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
+            var pieces = new JigsawAssembler(pieceContext, lookup, 1, false, PoolAliasLookup.EMPTY, JigsawSource.DEFAULT_MAX_BACKTRACKS).assemble(start, street, free, List.of()).orElseThrow();
+            assertTrue(pieces.stream().anyMatch(piece -> piece.getElement() instanceof SinglePoolElement single && single.getTemplateLocation().equals(SMALL_HOUSE)), "seed " + seed);
+        }
     }
 
     @Test
@@ -424,7 +454,7 @@ class JigsawSourceTest {
         var free = JigsawAssembler.freeSpace(start.getBoundingBox(), 64, new JigsawStructure.MaxDistance(80), context.heightAccessor(), DimensionPadding.ZERO);
         var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, rotation, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
         var assembler = new JigsawAssembler(pieceContext, pools, 6, true, PoolAliasLookup.EMPTY, maxBacktracks);
-        return assembler.assemble(start, element, free, Shapes.empty());
+        return assembler.assemble(start, element, free, List.of());
     }
 
     private static int indexOf(List<String> names, Predicate<String> matches) {

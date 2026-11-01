@@ -23,7 +23,9 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -77,22 +79,22 @@ public final class PiecesCommand {
                 jigsaws.put(pooled, pooled.getElement().getShuffledJigsawBlocks(templates, pooled.getPosition(), pooled.getRotation(), RandomSource.create(0)));
             }
         }
-        var owners = new HashMap<Face, PoolElementStructurePiece>();
-        jigsaws.forEach((piece, own) -> own.forEach(jigsaw -> owners.put(Face.of(jigsaw.info().pos(), facing(jigsaw)), piece)));
+        var owners = new HashMap<Face, List<Owner>>();
+        jigsaws.forEach((piece, own) -> own.forEach(jigsaw -> owners.computeIfAbsent(Face.of(jigsaw.info().pos(), facing(jigsaw)), _ -> new ArrayList<>()).add(new Owner(piece, jigsaw.info().pos().getY()))));
         var open = new HashMap<String, Integer>();
-        for (var own : jigsaws.values()) {
+        jigsaws.forEach((piece, own) -> {
             for (var jigsaw : own) {
-                if (!jigsaw.pool().equals(Pools.EMPTY) && !owners.containsKey(facedBy(jigsaw))) {
+                if (!jigsaw.pool().equals(Pools.EMPTY) && attached(piece, jigsaw, owners) == null) {
                     open.merge(jigsaw.pool().identifier().toString(), 1, Integer::sum);
                 }
             }
-        }
+        });
         return new Layout(names, depths(jigsaws, owners), open, pieces.calculateBoundingBox());
     }
 
     // How many attached jigsaws lie between each piece and the first piece of its layout. A structure with several jigsaw
     // layouts, like a compound of jigsaw sources, starts again at each piece no earlier layout reaches.
-    private static Map<String, List<Integer>> depths(Map<PoolElementStructurePiece, List<StructureTemplate.JigsawBlockInfo>> jigsaws, Map<Face, PoolElementStructurePiece> owners) {
+    private static Map<String, List<Integer>> depths(Map<PoolElementStructurePiece, List<StructureTemplate.JigsawBlockInfo>> jigsaws, Map<Face, List<Owner>> owners) {
         var depths = new HashMap<PoolElementStructurePiece, Integer>();
         for (var root : jigsaws.keySet()) {
             if (depths.containsKey(root)) {
@@ -103,7 +105,7 @@ public final class PiecesCommand {
             while (!queue.isEmpty()) {
                 var piece = queue.poll();
                 for (var jigsaw : jigsaws.get(piece)) {
-                    var neighbor = owners.get(facedBy(jigsaw));
+                    var neighbor = attached(piece, jigsaw, owners);
                     if (neighbor != null && !depths.containsKey(neighbor)) {
                         depths.put(neighbor, depths.get(piece) + 1);
                         queue.add(neighbor);
@@ -116,23 +118,48 @@ public final class PiecesCommand {
         return byName;
     }
 
-    // Where the jigsaw that this one attaches to would be.
-    private static Face facedBy(StructureTemplate.JigsawBlockInfo jigsaw) {
+    // The piece this jigsaw is attached to: one with a jigsaw facing it from the neighboring block, where both pieces have a junction for the
+    // attachment, so jigsaws that only happen to face each other don't count. Terrain matching pieces move up or down after they're attached, so
+    // when one is involved, the closest sideways jigsaw in the column counts.
+    private static @Nullable PoolElementStructurePiece attached(PoolElementStructurePiece piece, StructureTemplate.JigsawBlockInfo jigsaw, Map<Face, List<Owner>> owners) {
         var facing = facing(jigsaw);
-        return Face.of(jigsaw.info().pos().relative(facing), facing.getOpposite());
+        var pos = jigsaw.info().pos();
+        var target = pos.relative(facing);
+        if (!hasJunction(piece, target)) {
+            return null;
+        }
+        PoolElementStructurePiece closest = null;
+        int closestDistance = Integer.MAX_VALUE;
+        for (var owner : owners.getOrDefault(Face.of(target, facing.getOpposite()), List.of())) {
+            int distance = Math.abs(owner.y() - target.getY());
+            if (distance < closestDistance && (distance == 0 || !rigid(piece) || !rigid(owner.piece())) && hasJunction(owner.piece(), pos)) {
+                closest = owner.piece();
+                closestDistance = distance;
+            }
+        }
+        return closest;
+    }
+
+    private static boolean hasJunction(PoolElementStructurePiece piece, BlockPos pos) {
+        return piece.getJunctions().stream().anyMatch(junction -> junction.getSourceX() == pos.getX() && junction.getSourceZ() == pos.getZ());
+    }
+
+    private static boolean rigid(PoolElementStructurePiece piece) {
+        return piece.getElement().getProjection() == StructureTemplatePool.Projection.RIGID;
     }
 
     private static Direction facing(StructureTemplate.JigsawBlockInfo jigsaw) {
         return JigsawBlock.getFrontFacing(jigsaw.info().state());
     }
 
-    // Attached jigsaws face each other from neighboring blocks. Terrain matching pieces move up or down after they're
-    // attached, so sideways jigsaws only need to line up horizontally.
+    // Sideways jigsaws are grouped by column, see #attached.
     private record Face(int x, int y, int z, Direction facing) {
         static Face of(BlockPos pos, Direction facing) {
             return new Face(pos.getX(), facing.getAxis().isHorizontal() ? 0 : pos.getY(), pos.getZ(), facing);
         }
     }
+
+    private record Owner(PoolElementStructurePiece piece, int y) {}
 
     private static int pieces(CommandContext<CommandSourceStack> command, int count) throws CommandSyntaxException {
         var source = command.getSource();

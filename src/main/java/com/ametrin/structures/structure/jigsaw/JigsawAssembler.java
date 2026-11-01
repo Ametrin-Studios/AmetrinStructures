@@ -24,10 +24,6 @@ import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.shapes.BooleanOp;
-import net.minecraft.world.phys.shapes.Shapes;
-import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.jspecify.annotations.Nullable;
 
@@ -63,7 +59,7 @@ final class JigsawAssembler {
     // Elements with a soft minimum that the layout reached. Only grows, so a soft minimum stays once reached, even if that part is undone.
     private final Set<ConditionalPoolElement> softMinimums = new LinkedHashSet<>();
     private @Nullable Visit visit;
-    private VoxelShape blocked = Shapes.empty();
+    private List<BoundingBox> blocked = List.of();
     private Map<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools = Map.of();
     private final ArrayDeque<Deferred> deferred = new ArrayDeque<>();
     private boolean deferring;
@@ -91,17 +87,14 @@ final class JigsawAssembler {
     }
 
     /// The space pieces can take: the box `maxDistance` around the center, within the world's height and `padding`, without the start piece.
-    static VoxelShape freeSpace(BoundingBox start, int centerY, JigsawStructure.MaxDistance maxDistance, LevelHeightAccessor heightAccessor, DimensionPadding padding) {
+    static Space freeSpace(BoundingBox start, int centerY, JigsawStructure.MaxDistance maxDistance, LevelHeightAccessor heightAccessor, DimensionPadding padding) {
         int centerX = (start.maxX() + start.minX()) / 2;
         int centerZ = (start.maxZ() + start.minZ()) / 2;
-        var space = new AABB(
-                centerX - maxDistance.horizontal(),
-                Math.max(centerY - maxDistance.vertical(), heightAccessor.getMinY() + padding.bottom()),
-                centerZ - maxDistance.horizontal(),
-                centerX + maxDistance.horizontal() + 1,
-                Math.min(centerY + maxDistance.vertical() + 1, heightAccessor.getMaxY() + 1 - padding.top()),
-                centerZ + maxDistance.horizontal() + 1);
-        return Shapes.join(Shapes.create(space), Shapes.create(AABB.of(start)), BooleanOp.ONLY_FIRST);
+        int horizontal = maxDistance.horizontal();
+        int minY = Math.max(centerY - maxDistance.vertical(), heightAccessor.getMinY() + padding.bottom());
+        int maxY = Math.min(centerY + maxDistance.vertical(), heightAccessor.getMaxY() - padding.top());
+        var bounds = minY <= maxY ? new BoundingBox(centerX - horizontal, minY, centerZ - horizontal, centerX + horizontal, maxY, centerZ + horizontal) : null;
+        return new Space(bounds, List.of(start));
     }
 
     /// Grows the layout from `start`, which is already in place.
@@ -109,9 +102,10 @@ final class JigsawAssembler {
     /// @param element the pool element `start` was created from
     /// @param blocked taken by pieces outside the layout, which even pieces attached inside another one stay out of
     /// @return every piece in the order it was placed, `start` first, or empty if a minimum can't be met
-    Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, StructurePoolElement element, VoxelShape free, VoxelShape blocked) {
+    Optional<List<PoolElementStructurePiece>> assemble(PoolElementStructurePiece start, StructurePoolElement element, Space free, List<BoundingBox> blocked) {
         this.blocked = blocked;
-        var root = new Node(start, element, new MutableObject<>(Shapes.join(free, blocked, BooleanOp.ONLY_FIRST)), 0);
+        free.taken.addAll(blocked);
+        var root = new Node(start, element, free, 0);
         placed.add(root);
         if (element instanceof ConditionalPoolElement counted) {
             counts.put(counted, 1);
@@ -263,11 +257,12 @@ final class JigsawAssembler {
 
         var direction = JigsawBlock.getFrontFacing(jigsaw.info().state());
         var target = jigsaw.info().pos().relative(direction);
-        MutableObject<VoxelShape> free;
+        Space free;
         if (source.piece.getBoundingBox().isInside(target)) {
-            free = source.inside;
-            if (free.get() == null) {
-                free.setValue(Shapes.join(Shapes.create(AABB.of(source.piece.getBoundingBox())), blocked, BooleanOp.ONLY_FIRST));
+            free = source.inside.get();
+            if (free == null) {
+                free = new Space(source.piece.getBoundingBox(), blocked);
+                source.inside.setValue(free);
                 undo.add(() -> source.inside.setValue(null));
             }
         } else {
@@ -293,6 +288,7 @@ final class JigsawAssembler {
     }
 
     private boolean backtrack(ConditionalPoolElement missing) {
+        Decision earliest = null;
         for (int i = decisions.size() - 1; i >= 0; i--) {
             var decision = decisions.get(i);
             // Undoing the element's own placement to place it again elsewhere doesn't add one.
@@ -304,6 +300,12 @@ final class JigsawAssembler {
             if (decision.placeNext(element -> element == missing, true)) {
                 return true;
             }
+            earliest = decision;
+        }
+        // The later decisions it tried were undone and get decided again, but this one stays decided, so it starts over with all of its candidates.
+        if (earliest != null) {
+            earliest.restart();
+            earliest.placeNext(_ -> true, false);
         }
         return false;
     }
@@ -327,10 +329,9 @@ final class JigsawAssembler {
     }
 
     private void place(Decision decision, Node node, JigsawJunction sourceJunction, JigsawJunction targetJunction) {
-        var free = decision.free;
-        var previousFree = free.get();
-        free.setValue(Shapes.joinUnoptimized(previousFree, Shapes.create(AABB.of(node.piece.getBoundingBox())), BooleanOp.ONLY_FIRST));
-        undo.add(() -> free.setValue(previousFree));
+        var taken = decision.free.taken;
+        taken.add(node.piece.getBoundingBox());
+        undo.add(taken::removeLast);
 
         var sourceJunctions = decision.source.junctions;
         sourceJunctions.add(sourceJunction);
@@ -355,9 +356,32 @@ final class JigsawAssembler {
     /// @param element the pool element the piece was created from, which the counts go by
     /// @param free    the space for pieces attached outside this one
     /// @param inside  the space for pieces attached inside this one, created when the first one is tried
-    private record Node(PoolElementStructurePiece piece, StructurePoolElement element, MutableObject<VoxelShape> free, MutableObject<VoxelShape> inside, int depth, List<JigsawJunction> junctions) {
-        Node(PoolElementStructurePiece piece, StructurePoolElement element, MutableObject<VoxelShape> free, int depth) {
+    private record Node(PoolElementStructurePiece piece, StructurePoolElement element, Space free, MutableObject<@Nullable Space> inside, int depth, List<JigsawJunction> junctions) {
+        Node(PoolElementStructurePiece piece, StructurePoolElement element, Space free, int depth) {
             this(piece, element, free, new MutableObject<>(), depth, new ArrayList<>());
+        }
+    }
+
+    /// Where pieces can go: inside the bounds, if there are any, and clear of the taken boxes.
+    static final class Space {
+        private final @Nullable BoundingBox bounds;
+        private final List<BoundingBox> taken;
+
+        Space(@Nullable BoundingBox bounds, List<BoundingBox> taken) {
+            this.bounds = bounds;
+            this.taken = new ArrayList<>(taken);
+        }
+
+        private boolean fits(BoundingBox box) {
+            if (bounds == null || box.minX() < bounds.minX() || box.minY() < bounds.minY() || box.minZ() < bounds.minZ() || box.maxX() > bounds.maxX() || box.maxY() > bounds.maxY() || box.maxZ() > bounds.maxZ()) {
+                return false;
+            }
+            for (var other : taken) {
+                if (other.intersects(box)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
@@ -381,7 +405,7 @@ final class JigsawAssembler {
         private final StructureTemplate.JigsawBlockInfo jigsaw;
         private final Direction direction;
         private final BlockPos target;
-        private final MutableObject<VoxelShape> free;
+        private final Space free;
         private final List<StructurePoolElement> elements;
         private final boolean sourceRigid;
         private final int sourceBoxY;
@@ -397,7 +421,7 @@ final class JigsawAssembler {
         private int targetIndex;
         private int expandTo = UNSET;
 
-        private Decision(Node source, StructureTemplate.JigsawBlockInfo jigsaw, Direction direction, BlockPos target, MutableObject<VoxelShape> free, List<StructurePoolElement> elements) {
+        private Decision(Node source, StructureTemplate.JigsawBlockInfo jigsaw, Direction direction, BlockPos target, Space free, List<StructurePoolElement> elements) {
             this.source = source;
             this.jigsaw = jigsaw;
             this.direction = direction;
@@ -416,6 +440,12 @@ final class JigsawAssembler {
                 }
             }
             return false;
+        }
+
+        void restart() {
+            element = -1;
+            rotations = null;
+            targets = null;
         }
 
         /// Places the next candidate that fits, skipping elements `wanted` rejects and those at their maximum.
@@ -483,7 +513,7 @@ final class JigsawAssembler {
             var box = expand > 0
                     ? new BoundingBox(moved.minX(), moved.minY(), moved.minZ(), moved.maxX(), Math.max(moved.maxY(), moved.minY() + Math.max(expand + 1, moved.getYSpan() - 1)), moved.maxZ())
                     : moved;
-            if (Shapes.joinIsNotEmpty(free.get(), Shapes.create(AABB.of(box).deflate(0.25)), BooleanOp.ONLY_SECOND)) {
+            if (!free.fits(box)) {
                 return false;
             }
             // After the free space check, since filters on the terrain cost more.
