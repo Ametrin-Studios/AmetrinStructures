@@ -91,7 +91,7 @@ public record JigsawSource(
         var position = origin;
         if (startJigsawName.isPresent()) {
             var name = startJigsawName.get();
-            var anchor = element.getShuffledJigsawBlocks(templates, origin, rotation, random).stream().filter(jigsaw -> name.equals(jigsaw.name())).findFirst();
+            var anchor = Jigsaws.shuffled(element, templates, origin, rotation, random).stream().filter(jigsaw -> name.equals(jigsaw.name())).findFirst();
             if (anchor.isEmpty()) {
                 ASLog.error("No starting jigsaw {} found in start pool {}", name, startPool.unwrapKey().map(key -> key.identifier().toString()).orElse("<unregistered>"));
                 return;

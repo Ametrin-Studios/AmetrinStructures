@@ -211,8 +211,7 @@ final class JigsawAssembler {
                 if (element instanceof ConditionalPoolElement counted && counted.softMinCount() > 0) {
                     containing.computeIfAbsent(counted, _ -> new HashSet<>()).add(pool);
                 }
-                element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, listing)
-                        .forEach(jigsaw -> pools.apply(aliases.lookup(jigsaw.pool())).ifPresent(children::add));
+                Jigsaws.pools(element, templates, listing).forEach(key -> pools.apply(aliases.lookup(key)).ifPresent(children::add));
             }
             for (var child : children) {
                 parents.computeIfAbsent(child, _ -> new HashSet<>()).add(pool);
@@ -238,7 +237,7 @@ final class JigsawAssembler {
 
     private void visit(Node node) {
         var previous = visit;
-        visit = new Visit(node, node.piece.getElement().getShuffledJigsawBlocks(templates, node.piece.getPosition(), node.piece.getRotation(), random));
+        visit = new Visit(node, Jigsaws.shuffled(node.piece.getElement(), templates, node.piece.getPosition(), node.piece.getRotation(), random));
         undo.add(() -> visit = previous);
     }
 
@@ -466,7 +465,7 @@ final class JigsawAssembler {
                     targets = null;
                 }
                 if (rotations != null && rotation < rotations.size()) {
-                    targets = current().getShuffledJigsawBlocks(templates, BlockPos.ZERO, rotations.get(rotation++), random);
+                    targets = Jigsaws.shuffled(current(), templates, BlockPos.ZERO, rotations.get(rotation++), random);
                     targetIndex = 0;
                     expandTo = UNSET;
                     continue;
