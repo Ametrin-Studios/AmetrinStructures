@@ -14,8 +14,8 @@ public interface PlacementFilter {
 
     PlacementFilterType type();
 
-    /// @param origin    the structure's start position
-    /// @param footprint the box around every piece at `origin`
+    /// @param origin    the structure's start position, or for a [com.ametrin.structures.structure.jigsaw.ConditionalPoolElement]'s filters, the piece's position
+    /// @param footprint the box around every piece at `origin`, or the piece's box
     /// @param terrain   cached terrain lookups
     record Context(Structure.GenerationContext generation, BlockPos origin, BoundingBox footprint,
                    TerrainSampler terrain) {}

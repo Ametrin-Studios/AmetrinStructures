@@ -90,6 +90,7 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
         return self();
     }
 
+    /// The start Y between the absolute Ys `min` and `max`. For heights relative to the terrain, add a [PlacementFilters.HeightRange] with [#filter].
     public B filterHeightRange(int min, int max) {
         return filter(new PlacementFilters.HeightRange(min, max).validate());
     }

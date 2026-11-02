@@ -2,7 +2,6 @@ package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
-import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.filter.PlacementFilter;
@@ -34,8 +33,10 @@ import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.heightproviders.ConstantHeight;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
@@ -47,6 +48,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -74,6 +76,7 @@ class SimpleStructureEvaluateTest {
 
     @Test
     void timesEveryStepThatRuns(MinecraftServer server) {
+        var filters = List.<PlacementFilter>of(new PlacementFilters.HeightRange(0, 100), new PlacementFilters.HeightRange(200, 300), new PlacementFilters.HeightRange(400, 500));
         var steps = new ArrayList<String>();
         var timer = new SimpleStructure.Timer() {
             @Override
@@ -88,12 +91,11 @@ class SimpleStructureEvaluateTest {
 
             @Override
             public void filter(@NonNull PlacementFilter filter, long nanos) {
-                steps.add("filter " + ((PlacementFilters.HeightRange) filter).min());
+                steps.add("filter " + filters.indexOf(filter));
             }
         };
-        var filters = List.<PlacementFilter>of(new PlacementFilters.HeightRange(0, 100), new PlacementFilters.HeightRange(200, 300), new PlacementFilters.HeightRange(400, 500));
         structure(AT_64, filters).evaluateGenerationPoint(context(server), timer);
-        assertEquals(List.of("pieces", "start_height", "filter 0", "filter 200"), steps);
+        assertEquals(List.of("pieces", "start_height", "filter 0", "filter 1"), steps);
     }
 
     @Test
@@ -201,8 +203,55 @@ class SimpleStructureEvaluateTest {
         var processors = Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE)))));
         var structure = structure(AT_64, new ExtendedStructureSettings(List.of(), Optional.of(processors)));
         var stub = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server))).stub();
-        var piece = assertInstanceOf(ExtendedTemplateStructurePiece.class, stub.getPiecesBuilder().build().pieces().getFirst());
-        assertEquals(Optional.of(processors), piece.structureProcessors());
+        var piece = assertInstanceOf(SimpleStructurePiece.class, stub.getPiecesBuilder().build().pieces().getFirst());
+        assertSame(processors, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
+    }
+
+    @Test
+    void placementStepsRunInOrderOnceThePiecesAreAtTheStartHeight(MinecraftServer server) {
+        var ran = new ArrayList<String>();
+        var source = withSteps(context -> {
+            context.afterPlacement((builder, origin) -> {
+                ran.add("first at " + origin.getY());
+                context.afterPlacement((_, _) -> ran.add("registered by the first"));
+                return true;
+            });
+            context.afterPlacement((builder, _) -> ran.add("second with " + builder.build().pieces().getFirst().getBoundingBox().minY()));
+        });
+        assertInstanceOf(SimpleStructure.Evaluation.Generated.class, structure(source).evaluateGenerationPoint(context(server)));
+        assertEquals(List.of("first at 64", "second with 64", "registered by the first"), ran);
+    }
+
+    @Test
+    void aPlacementStepCanRejectTheSpot(MinecraftServer server) {
+        var source = withSteps(context -> context.afterPlacement((_, _) -> false));
+        assertInstanceOf(SimpleStructure.Evaluation.NoPieces.class, structure(source).evaluateGenerationPoint(context(server)));
+    }
+
+    // An igloo top, plus whatever `register` adds to the context.
+    private static PieceSource withSteps(Consumer<PieceSource.Context> register) {
+        var igloo = new PieceSources.SingleSource(TemplateEntry.of(Identifier.withDefaultNamespace("igloo/top")));
+        return new PieceSource() {
+            @Override
+            public void appendPieces(StructurePiecesBuilder builder, Context context) {
+                igloo.appendPieces(builder, context);
+                register.accept(context);
+            }
+
+            @Override
+            public PieceSourceType type() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Stream<TemplateEntry> templates() {
+                return igloo.templates();
+            }
+        };
+    }
+
+    private static SimpleStructure structure(PieceSource pieces) {
+        return new SimpleStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, pieces, AT_64, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
     }
 
     private static SimpleStructure structure(StartHeight startHeight, List<PlacementFilter> filters) {

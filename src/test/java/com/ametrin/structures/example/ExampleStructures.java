@@ -5,7 +5,6 @@ import com.ametrin.structures.processor.ReplaceBlockProcessor;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.StructureBootstrap;
 import com.ametrin.structures.structure.StructureSetKeys;
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.jigsaw.JigsawPools;
 import com.ametrin.structures.structure.simple.HeightAnchor;
 import com.ametrin.structures.structure.simple.HeightMode;
@@ -105,8 +104,8 @@ final class ExampleStructures {
     // A jigsaw castle, sometimes replaced by a simple ruin.
     static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
-            .jigsaw("", 4, CastlePools.START, castle -> castle
-                    .size(8)
+            .simple("", 4, castle -> castle
+                    .jigsaw(CastlePools.START, jigsaw -> jigsaw.size(8))
                     .biomes(BiomeTags.IS_TAIGA)
                     .terrainAdaptation(TerrainAdjustment.BEARD_THIN))
             .simple("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));

@@ -10,5 +10,5 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ASPieceTypes {
     public static final DeferredRegister<StructurePieceType> REGISTER = DeferredRegister.create(Registries.STRUCTURE_PIECE, AmetrinStructures.MOD_ID);
 
-    public static final DeferredHolder<StructurePieceType, StructurePieceType> SIMPLE = REGISTER.register("simple", () -> SimpleStructurePiece::new);
+    public static final DeferredHolder<StructurePieceType, StructurePieceType> SIMPLE = REGISTER.register("simple_element", () -> SimpleStructurePiece::new);
 }

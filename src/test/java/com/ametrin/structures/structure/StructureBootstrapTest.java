@@ -44,7 +44,7 @@ class StructureBootstrapTest {
     void aStructureWithoutASetCanJoinOneLater() {
         var structures = new StructureBootstrap("test");
         var tower = structures.registerSimple("tower", builder -> builder.single("tower"));
-        var shrine = structures.registerJigsaw("shrine", Pools.EMPTY, jigsaw -> jigsaw.size(1));
+        var shrine = structures.registerSimple("shrine", builder -> builder.jigsaw(Pools.EMPTY, jigsaw -> jigsaw.size(1)));
         var keys = structures.registerSet("towers", set -> set.existing(tower).existing(shrine, 2));
 
         var registries = build(structures);

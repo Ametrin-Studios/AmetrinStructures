@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.simple;
 
 import com.ametrin.structures.registry.ASPieceSources;
+import com.ametrin.structures.structure.jigsaw.StructureElements;
 import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -8,6 +9,7 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import java.util.List;
@@ -18,13 +20,13 @@ public final class PieceSources {
     private PieceSources() {
     }
 
-    /// One template. Anywhere a source is expected it can also be written as the bare template entry.
+    /// One template or pool element. Anywhere a source is expected it can also be written as the bare template entry.
     public record SingleSource(TemplateEntry template) implements PieceSource {
         public static final MapCodec<SingleSource> CODEC = TemplateEntry.MAP_CODEC.xmap(SingleSource::new, SingleSource::template);
 
         @Override
-        public void appendPieces(List<StructurePiece> builder, Context context) {
-            builder.add(createPiece(template, context));
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
+            builder.addPiece(createPiece(template, context));
         }
 
         @Override
@@ -45,7 +47,7 @@ public final class PieceSources {
                 .apply(instance, WeightedSource::new));
 
         @Override
-        public void appendPieces(List<StructurePiece> builder, Context context) {
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
             sources.getRandom(context.generation().random()).ifPresent(source -> source.appendPieces(builder, context));
         }
 
@@ -71,7 +73,7 @@ public final class PieceSources {
         }
 
         @Override
-        public void appendPieces(List<StructurePiece> builder, Context context) {
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
             for (var source : sources) {
                 source.appendPieces(builder, context);
             }
@@ -88,16 +90,11 @@ public final class PieceSources {
         }
     }
 
+    /// A piece for `entry` with the structure's settings, see [StructureElements].
     public static StructurePiece createPiece(TemplateEntry entry, PieceSource.Context context) {
-        return new SimpleStructurePiece(
-                context.generation().structureTemplateManager(),
-                entry.template(),
-                context.origin().offset(entry.offset().rotate(context.rotation())),
-                context.rotation(),
-                entry.processors(),
-                context.terrainAdaptation(),
-                entry.terrainBox(),
-                -entry.offset().getY());
+        var element = StructureElements.withStructureSettings(entry.element(), context.processors(), context.foundation());
+        return new SimpleStructurePiece(context.generation().structureTemplateManager(), element, context.origin().offset(entry.offset().rotate(context.rotation())), context.rotation(),
+                context.liquidSettings(), context.terrainAdaptation(), entry.terrainBox(), -entry.offset().getY());
     }
 
     public abstract static class NestingBuilder {

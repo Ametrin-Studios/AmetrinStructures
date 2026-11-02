@@ -6,6 +6,7 @@ import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASSpawnerProfiles;
 import com.ametrin.structures.spawner.SpawnerAccess;
 import com.ametrin.structures.structure.simple.SimpleStructurePiece;
+import com.ametrin.structures.structure.simple.TemplateEntry;
 import com.ametrin.structures.structure.simple.TerrainBox;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -33,6 +34,7 @@ import net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig;
 import net.minecraft.world.level.block.entity.vault.VaultBlockEntity;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.phys.Vec3;
 
@@ -164,7 +166,7 @@ final class FixtureLayout {
             helper.setBlock(entry.pos(), Blocks.AIR);
         }
 
-        var piece = new SimpleStructurePiece(templates, TEMPLATE, origin, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE, TerrainBox.template(), 0);
+        var piece = new SimpleStructurePiece(templates, TemplateEntry.of(TEMPLATE).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
         piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), level.getRandom(), BoundingBox.infinite(), ChunkPos.containing(origin), origin);
     }
 }

@@ -128,6 +128,7 @@ public class ASLanguageProvider extends LanguageProvider {
         add(PiecesCommand.Keys.SIZE, " %s × %s × %s blocks on average, up to %s × %s × %s");
         add(PiecesCommand.Keys.OPEN_JIGSAWS, " %s open jigsaws per layout");
         add(PiecesCommand.Keys.RANGE, "%s to %s per layout");
+        add(PiecesCommand.Keys.DEPTH, "%s to %s jigsaws deep, %s on average");
 
         add(GalleryCommand.Keys.STARTED, "Laying out %2$s at %1$s random seeds…");
         add(GalleryCommand.Keys.FAILED, "The gallery failed: %s");
@@ -207,6 +208,7 @@ public class ASLanguageProvider extends LanguageProvider {
         add(StructureCheck.Keys.UNMATCHED_JIGSAW, "jigsaw %s in %s targets %s, but no jigsaw in pool %s or its fallback has that name");
         add(StructureCheck.Keys.MISFACING_JIGSAW, "jigsaw %s in %s targets %s, but every jigsaw of that name in pool %s faces the wrong way");
         add(StructureCheck.Keys.START_JIGSAW, "no template in the start pool %s has a jigsaw named %s");
+        add(StructureCheck.Keys.IGNORED_CONDITIONS, "pool %s has a conditional element for %s, vanilla jigsaw structures will ignore these conditions");
         add(StructureCheck.Keys.MISSING_LOOT_TABLE, "container %s names loot table %s, which doesn't exist");
         add(StructureCheck.Keys.UNREADABLE_FIXTURE, "fixture %s doesn't read: %s");
         add(StructureCheck.Keys.MISSING_REFERENCE, "fixture %s names %s %s, which doesn't exist");

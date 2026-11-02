@@ -4,7 +4,7 @@ An open source library mod for Minecraft structure mod developers.
 
 - **Foam** - marker blocks for space that should stay air. Plain air in a template is treated as structure void. Foam can spread on its own to fill a region.
 - **Simple structures** - a built-in structure type that covers most structure use-cases. Everything is data driven, so pack authors can modify structures.
-- **Extended jigsaw** - vanilla's jigsaw structure with a builder and helpers for declaring pools with less boilerplate.
+- **Jigsaw layouts** - simple structures can grow vanilla style jigsaw layouts, with limits on how often a piece appears and helpers for declaring pools with less boilerplate.
 - **Even Spread placement** - spreads structures evenly with a minimum distance and no visible pattern. Has an optional structure tag based exclusion zone.
 - **Scattered Grid placement** - one structure per grid cell, at a random spot in the cell. Has an optional structure tag based exclusion zone.
 - **Fixtures** - blocks that turn into something else when the structure generates, like a loot chest, an entity or a spawner.

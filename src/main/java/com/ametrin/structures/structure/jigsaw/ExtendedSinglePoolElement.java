@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
@@ -27,8 +28,8 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.*;
 import java.util.List;
 import java.util.Optional;
 
-public class ExtendedSinglePoolElement extends SinglePoolElement {
-    static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
+public class ExtendedSinglePoolElement extends SinglePoolElement implements StructureSettingsElement {
+    public static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
     private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty"));
 
     public static final MapCodec<ExtendedSinglePoolElement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -90,6 +91,30 @@ public class ExtendedSinglePoolElement extends SinglePoolElement {
         // Added here instead of in the constructor, so the element is saved to JSON unchanged and doesn't touch its processor holder before the registry is bound.
         var settings = super.getSettings(rotation, chunkBB, liquidSettings, keepJigsaws);
         return processFoam ? RemoveFoamProcessor.addDefaultIfAbsent(settings) : settings;
+    }
+
+    public Optional<Foundation> foundation() {
+        return foundation;
+    }
+
+    public boolean processFoam() {
+        return processFoam;
+    }
+
+    /// Empty when it has none and takes the structure's instead
+    public Optional<Holder<StructureProcessorList>> ownProcessors() {
+        return hasNone(processors) ? Optional.empty() : Optional.of(processors);
+    }
+
+    /// Its own foundation replaces the structure's, and only rigid elements take the structure's.
+    @Override
+    public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
+        var withProcessors = StructureSettingsElement.processors(this.processors, processors);
+        var withFoundation = this.foundation.isEmpty() && getProjection() == StructureTemplatePool.Projection.RIGID ? foundation : this.foundation;
+        if (withProcessors == this.processors && withFoundation.equals(this.foundation)) {
+            return this;
+        }
+        return new ExtendedSinglePoolElement(template, withProcessors, getProjection(), overrideLiquidSettings, processFoam, withFoundation);
     }
 
     @Override

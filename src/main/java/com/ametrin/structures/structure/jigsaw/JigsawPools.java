@@ -1,22 +1,16 @@
 package com.ametrin.structures.structure.jigsaw;
 
-import com.ametrin.structures.structure.Foundation;
-import com.mojang.datafixers.util.Either;
+import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.Pools;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -154,15 +148,17 @@ public final class JigsawPools {
         }
     }
 
-    public final class Element {
+    public final class Element extends TemplateElementBuilder<Element> {
         private int weight = 1;
-        @Nullable
-        private Holder<StructureProcessorList> processors;
-        private Optional<LiquidSettings> liquidSettings = Optional.empty();
-        private boolean processFoam = true;
-        private Optional<Foundation> foundation = Optional.empty();
+        private int minCount = 0;
+        private Optional<Integer> softMinCount = Optional.empty();
+        private Optional<Integer> maxCount = Optional.empty();
+        private int minDepth = 0;
+        private Optional<Integer> maxDepth = Optional.empty();
+        private final List<PlacementFilter> filters = new ArrayList<>();
 
         private Element() {
+            super(processorLists);
         }
 
         public Element weight(int weight) {
@@ -170,53 +166,54 @@ public final class JigsawPools {
             return this;
         }
 
-        public Element processors(ResourceKey<StructureProcessorList> processors) {
-            return processors(processorLists.getOrThrow(processors));
-        }
-
-        public Element processors(Holder<StructureProcessorList> processors) {
-            this.processors = processors;
+        /// At most `max` of this element per structure, see [ConditionalPoolElement].
+        public Element maxCount(int max) {
+            this.maxCount = Optional.of(max);
             return this;
         }
 
-        /// Stored inline in the pool.
-        public Element processors(List<StructureProcessor> processors) {
-            return processors(Holder.direct(new StructureProcessorList(processors)));
-        }
-
-        /// Defaults to the structure's liquid settings.
-        public Element liquidSettings(LiquidSettings liquidSettings) {
-            this.liquidSettings = Optional.of(liquidSettings);
+        /// At least `min` of this element per structure. A spot where the layout can't fit them gets no structure, so the structure generates less often. See [ConditionalPoolElement].
+        public Element minCount(int min) {
+            this.minCount = min;
             return this;
         }
 
-        /// Leaves foam in place and places the air the template saved, like a vanilla element.
-        public Element noFoamProcessing() {
-            this.processFoam = false;
+        /// At least `min` of this element per structure where the layout can fit them, fewer where it can't. Defaults to [#minCount(int)]. See [ConditionalPoolElement].
+        public Element softMinCount(int min) {
+            this.softMinCount = Optional.of(min);
             return this;
         }
 
-        /// Extends the bottom of the piece down to the ground, repeating each bottom block.
-        public Element foundation() {
-            return foundation(Foundation.repeating());
+        /// Only attaches at least `min` jigsaws deep, see [ConditionalPoolElement].
+        public Element minDepth(int min) {
+            this.minDepth = min;
+            return this;
         }
 
-        /// Extends the bottom of the piece down to the ground with `state`, at most `maxDepth` blocks.
-        public Element foundation(BlockState state, int maxDepth) {
-            return foundation(Foundation.of(state, maxDepth));
+        /// Only attaches at most `max` jigsaws deep, see [ConditionalPoolElement].
+        public Element maxDepth(int max) {
+            this.maxDepth = Optional.of(max);
+            return this;
         }
 
-        public Element foundation(Foundation foundation) {
-            this.foundation = Optional.of(foundation);
+        /// Only attaches where the piece passes `filter`, see [ConditionalPoolElement].
+        public Element filter(PlacementFilter filter) {
+            this.filters.add(filter);
             return this;
         }
 
         private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template) {
-            var resolved = processors != null ? processors : ExtendedSinglePoolElement.NO_PROCESSORS;
-            var liquid = liquidSettings;
-            var foam = processFoam;
-            var base = foundation;
-            return projection -> new ExtendedSinglePoolElement(Either.left(template), resolved, projection, liquid, foam, base);
+            var element = element(template);
+            var min = minCount;
+            var softMin = softMinCount.orElse(minCount);
+            var max = maxCount;
+            var fromDepth = minDepth;
+            var toDepth = maxDepth;
+            var pieceFilters = List.copyOf(filters);
+            if (softMin == 0 && max.isEmpty() && fromDepth == 0 && toDepth.isEmpty() && pieceFilters.isEmpty()) {
+                return element;
+            }
+            return projection -> new ConditionalPoolElement(element.apply(projection), min, softMin, max, fromDepth, toDepth, pieceFilters);
         }
     }
 }

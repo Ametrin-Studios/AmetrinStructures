@@ -15,7 +15,7 @@ Reports where a structure would generate around you and why it doesn't generate 
 - `radius` is in chunks, defaults to 128 and goes up to 16384. The report stops after the nearest 1000 structures, so a large radius is only slow when the structure is rare.
 - The report shows how many candidate chunks the placement picked and how many of them generate, the most common reasons for the rest, the start heights, the average and smallest distance between spots, and the nearest spot.
 - It also times the slowest structures: the total time and the time per candidate chunk to find spots and build pieces. For this library's structures, the time is split into the biome pre-check, creating the pieces, finding the start height and each filter. The first report after starting the game also loads templates and warms up the JVM, so run it twice before you trust the numbers. Placing blocks isn't timed, because the report doesn't place anything.
-- This library's simple and jigsaw structures give specific reasons: wrong biome, empty start height range, which filter failed, another structure in the same set taking the spot, or another structure being picked first for one with `onlyWhenPickedFirst()`. Other structures can only say they found no spot.
+- This library's simple structures, and other `ExtendedStructure`s, give specific reasons: wrong biome, empty start height range, which filter failed, another structure in the same set taking the spot, or another structure being picked first for one with `onlyWhenPickedFirst()`. Other structures can only say they found no spot.
 
 To tune filters, change a value, run datagen, reopen the world and run the report again. The report doesn't depend on which chunks exist, so you can keep using the same world.
 
@@ -60,6 +60,7 @@ Checks every structure, or the ones in a namespace, for mistakes that would othe
 - templates that don't exist
 - jigsaws that name a pool that doesn't exist or is empty, or that no jigsaw in their pool can connect to, because none has the target name or all of them face the wrong way
 - a start jigsaw name that no template in the start pool has
+- conditional elements in vanilla jigsaw structures, which ignore their conditions
 - loot tables that containers in templates use but that don't exist
 - fixtures in templates, and the presets they use, that can't be read or that use something that doesn't exist, like  a loot table, preset, spawner profile or entity
 - fixtures in templates with an offset of more than 16 blocks along an axis
@@ -76,7 +77,7 @@ These lay out a structure at random seeds where you stand. They ignore the biome
 /ametrin structures pieces <structure> [layouts]
 ```
 
-Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything. It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first. Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
+Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything. It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first. Hover over a template to see how many of it a layout has and how many jigsaws deep it sits, counted from the start piece. Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
 
 ```
 /ametrin structures gallery <structure> [count]

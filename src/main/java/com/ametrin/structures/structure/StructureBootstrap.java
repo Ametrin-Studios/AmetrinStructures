@@ -1,6 +1,5 @@
 package com.ametrin.structures.structure;
 
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.simple.SimpleStructure;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
@@ -50,10 +49,6 @@ public final class StructureBootstrap {
 
     public ResourceKey<Structure> registerSimple(String name, Consumer<SimpleStructure.Builder> configure) {
         return register(name, StructureBuilder.configured(new SimpleStructure.Builder(namespace, name), configure));
-    }
-
-    public ResourceKey<Structure> registerJigsaw(String name, ResourceKey<StructureTemplatePool> startPool, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        return register(name, StructureBuilder.configured(new ExtendedJigsawStructure.Builder(name, startPool), configure));
     }
 
     public ResourceKey<Structure> registerStructure(String name, CustomStructureBuilder.Factory factory, Consumer<CustomStructureBuilder> configure) {

@@ -6,7 +6,7 @@ Most parts of the library are registry based. Implement the interface, give it a
 
 ## Placement filters
 
-A filter decides if a simple or jigsaw structure can generate at a spot.
+A filter decides if a simple structure, or any other `ExtendedStructure`, can generate at a spot.
 
 ```java
 public record MinHeight(int y) implements PlacementFilter {
@@ -27,7 +27,7 @@ static final DeferredRegister<PlacementFilterType> FILTERS = DeferredRegister.cr
 static final DeferredHolder<PlacementFilterType, PlacementFilterType> MIN_HEIGHT = FILTERS.register("min_height", () -> new PlacementFilterType(MinHeight.CODEC));
 ```
 
-Add it with `.filter(new MinHeight(40))` on any structure builder. The context has the start position, the bounding box of all pieces and a `TerrainSampler`. Use the sampler instead of the chunk generator for terrain heights. It caches the lookups and shares them with the other filters. A jigsaw structure with filters has to assemble its pieces before the filters run, to know the box.
+Add it with `.filter(new MinHeight(40))` on any structure builder. The context has the start position, the bounding box of all pieces and a `TerrainSampler`. Use the sampler instead of the chunk generator for terrain heights. It caches the lookups and shares them with the other filters.
 
 The spread report names a failed filter by its type id, so your filters show up there without extra work.
 
@@ -37,9 +37,9 @@ Reference: [`PlacementFilters`](../src/main/java/com/ametrin/structures/structur
 
 A piece source decides which pieces a simple structure places. Register a `PieceSourceType` in `ASRegistries.PIECE_SOURCE_TYPE` and pass your source to `.pieces(...)`.
 
-`PieceSources.createPiece(template, context)` creates the same piece the built-in sources use. Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards.
+`PieceSources.createPiece(entry, context)` creates the same piece the built-in sources use. The context holds the structure's settings: terrain adaptation, liquid settings, foundation and processors. `createPiece` applies them, and pieces you create yourself need to take them from the context, since the structure doesn't hand them over afterwards. Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards. Pieces that depend on the terrain or on the other pieces, like a jigsaw layout's, can be added in a step registered with `context.afterPlacement(...)`. It runs once every source appended its pieces and they're at their start height, and returns false to reject the spot.
 
-`templates()` lists every template the source can place. `/ametrin structures check` uses it.
+`templates()` lists every template entry the source can place. `/ametrin structures check` uses it.
 
 Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/simple/PieceSources.java) and [`ASPieceSources`](../src/main/java/com/ametrin/structures/registry/ASPieceSources.java).
 
@@ -93,15 +93,15 @@ Pass the extended settings on, and filters, processors and `onlyWhenPickedFirst(
         castle -> castle.biomes(BiomeTags.IS_TAIGA).filterFlatness(4))
 ```
 
-`SimpleStructure` and `ExtendedJigsawStructure` can be subclassed too. They have getters for all their settings, so a subclass can write its own codec. To create them outside a set, e.g. in your own bootstrap, use `SimpleStructure.builder(id)...build(context)` or `ExtendedJigsawStructure.builder(id, pool)...build(context)`.
+`SimpleStructure` can be subclassed too. It has getters for all its settings, so a subclass can write its own codec. To create one outside a set, e.g. in your own bootstrap, use `SimpleStructure.builder(id)...build(context)`.
 
 For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
 
-Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java), [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java), [`ExtendedJigsawStructure`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedJigsawStructure.java) and [`SimpleStructurePiece`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructurePiece.java).
+Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java) and [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java).
 
 ## Structures without a set
 
-`registerSimple(...)`, `registerJigsaw(...)` and `registerStructure(...)` on the `StructureBootstrap` declare a structure on its own and return its key. 
+`registerSimple(...)` and `registerStructure(...)` on the `StructureBootstrap` declare a structure on its own and return its key. 
 
 `existing(...)` adds a structure registered elsewhere to a set, with an optional weight. It can be one of yours or one from vanilla or another mod:
 
@@ -163,7 +163,7 @@ Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/place
 
 `ReplaceBlockProcessor` replaces random blocks, e.g. to make a build look weathered.
 
-A structure's `processors(...)` run on every template piece that has no processors of its own: `ExtendedTemplateStructurePiece`s, including the pieces of your own structures, and the single, legacy and list elements of jigsaw structures. A piece's own processors replace the structure's. Add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point.
+A structure's `processors(...)` run on every template piece that has no processors of its own: `ExtendedTemplateStructurePiece`s, including the pieces of your own structures, and the single, legacy and list elements of simple structures, in template entries and jigsaw layouts. A piece's own processors replace the structure's. Add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point. A pool element type of your own can implement `StructureSettingsElement` to take the structure's processors and foundation in simple structures.
 
 `RetainExistingProcessor.ALL` only places blocks where the world has something replaceable, like air, plants or water. Ruins blend into the terrain instead of cutting through it. `RetainExistingProcessor.REPLACEABLE_ONLY` (`"replaceable_only": true`) always places solid blocks and only holds back the template's air, plants and water. A building keeps its walls, but its air doesn't dig into the terrain around it. Water in the world counts as replaceable, so template air still removes it.
 

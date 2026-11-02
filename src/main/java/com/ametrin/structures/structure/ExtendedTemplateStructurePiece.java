@@ -29,7 +29,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /// A template piece that runs fixtures, removes foam, extends down to a [Foundation], fits the terrain to its [TerrainBox],
-/// and runs its structure's processors, see [InlineFromStructureProcessor].
+/// and runs its structure's processors, see [InlineFromStructureProcessor]. Like a pool element, it leaves out structure blocks and sets up mobs with their equipment and variants.
 ///
 /// The terrain adapts to the piece's settings instead of the structure's, so pass it the structure's [net.minecraft.world.level.levelgen.structure.Structure#terrainAdaptation()].
 /// An [ExtendedStructure] hands over its processors itself.
@@ -67,9 +67,8 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         this.ownProcessors = ownProcessors;
         this.terrainAdaptation = terrainAdaptation;
         this.terrainBox = terrainBox.resolve(this.template, groundLevelDelta);
-        // Relative to the bottom of the terrain box. Only a local box moves it, and its bottom is the ground.
-        this.groundLevelDelta = terrainBox instanceof TerrainBox.Local ? 0 : groundLevelDelta;
-        applyProcessors();
+        this.groundLevelDelta = terrainBox.groundLevelDelta(groundLevelDelta);
+        applySettings();
     }
 
     protected ExtendedTemplateStructurePiece(
@@ -84,7 +83,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         this.terrainAdaptation = tag.read(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE);
         this.terrainBox = tag.read(TERRAIN_BOX_KEY, BoundingBox.CODEC);
         this.groundLevelDelta = tag.getIntOr(GROUND_LEVEL_DELTA_KEY, 0);
-        applyProcessors();
+        applySettings();
     }
 
     private static StructurePlaceSettings readLiquidSettings(CompoundTag tag, StructurePlaceSettings settings) {
@@ -98,10 +97,12 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
     }
 
     // Runs for both the fresh and the reloaded piece, so a partially generated structure finishes the same way it started.
-    private void applyProcessors() {
+    private void applySettings() {
         placeSettings.clearProcessors();
+        placeSettings.addProcessor(BlockIgnoreProcessor.STRUCTURE_BLOCK);
         InlineFromStructureProcessor.resolve(ownProcessors, structureProcessors).forEach(placeSettings::addProcessor);
         RemoveFoamProcessor.addDefaultIfAbsent(placeSettings);
+        placeSettings.setFinalizeEntities(true);
     }
 
     /// The structure's processors, if the piece runs them.
@@ -112,7 +113,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
     /// Ignored if the piece has processors of its own without an [InlineFromStructureProcessor] marker.
     public void setStructureProcessors(Optional<Holder<StructureProcessorList>> structureProcessors) {
         this.structureProcessors = InlineFromStructureProcessor.usesStructures(ownProcessors) ? structureProcessors : Optional.empty();
-        applyProcessors();
+        applySettings();
     }
 
     public Identifier templateId() {
@@ -139,15 +140,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
 
     @Override
     public BoundingBox getBeardifierBox() {
-        // Placed like the template itself, so it follows the rotation and any later move.
-        return terrainBox.map(local -> BoundingBox.fromCorners(
-                        place(new BlockPos(local.minX(), local.minY(), local.minZ())),
-                        place(new BlockPos(local.maxX(), local.maxY(), local.maxZ()))))
-                .orElse(boundingBox);
-    }
-
-    private BlockPos place(BlockPos local) {
-        return StructureTemplate.calculateRelativePosition(placeSettings, local).offset(templatePosition);
+        return terrainBox.map(local -> TerrainBox.place(local, placeSettings, templatePosition)).orElse(boundingBox);
     }
 
     @Override
