@@ -199,20 +199,22 @@ public class SimpleStructure extends ExtendedStructure {
 
         /// A source drawn by weight.
         public Builder weighted(Consumer<PieceSources.WeightedBuilder> configure) {
-            return pieces(g -> {
-                var weighted = new PieceSources.WeightedBuilder(namespace, g);
+            this.pieces = context -> {
+                var weighted = new PieceSources.WeightedBuilder(namespace, context.lookup(Registries.PROCESSOR_LIST), context.lookup(Registries.TEMPLATE_POOL));
                 configure.accept(weighted);
                 return weighted.build();
-            });
+            };
+            return this;
         }
 
         /// Several pieces placed together.
         public Builder compound(Consumer<PieceSources.CompoundBuilder> configure) {
-            return pieces(g -> {
-                var builder = new PieceSources.CompoundBuilder(namespace, g);
+            this.pieces = context -> {
+                var builder = new PieceSources.CompoundBuilder(namespace, context.lookup(Registries.PROCESSOR_LIST), context.lookup(Registries.TEMPLATE_POOL));
                 configure.accept(builder);
                 return builder.build();
-            });
+            };
+            return this;
         }
 
         /// A jigsaw layout grown from `startPool`, see [JigsawSource].

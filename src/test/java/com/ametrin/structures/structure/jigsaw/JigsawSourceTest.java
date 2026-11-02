@@ -261,6 +261,47 @@ class JigsawSourceTest {
     }
 
     @Test
+    void anOffsetMovesTheWholeLayoutAndTurnsWithTheStructure(MinecraftServer server) {
+        var builder = new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(2).useExpansionHack(true);
+        var offset = new BlockPos(20, 0, 8);
+        var plain = grow(server, builder.build(), 0);
+        var moved = grow(server, builder.offset(offset).build(), 0);
+        var shift = moved.getFirst().getBoundingBox().getCenter().subtract(plain.getFirst().getBoundingBox().getCenter());
+        assertTrue(Arrays.stream(Rotation.values()).anyMatch(rotation -> shift.equals(offset.rotate(rotation))), shift::toString);
+        assertEquals(plain.size(), moved.size());
+        for (int i = 0; i < plain.size(); i++) {
+            assertEquals(plain.get(i).getBoundingBox().moved(shift.getX(), shift.getY(), shift.getZ()), moved.get(i).getBoundingBox());
+        }
+
+        var raised = (PoolElementStructurePiece) grow(server, builder.offset(0, 3, 0).build(), 0).getFirst();
+        assertEquals(3, raised.getBoundingBox().minY() + raised.getGroundLevelDelta());
+    }
+
+    @Test
+    void weightedAndCompoundSourcesTakeJigsawLayouts(MinecraftServer server) {
+        var weighted = SimpleStructure.builder(Identifier.fromNamespaceAndPath("test", "weighted"))
+                .weighted(sources -> sources.jigsaw(1, TOWN_CENTERS, jigsaw -> jigsaw.size(2)))
+                .build(bootstrap(server));
+        var compound = SimpleStructure.builder(Identifier.fromNamespaceAndPath("test", "compound"))
+                .compound(sources -> sources
+                        .single(template -> template.template(TEMPLE))
+                        .jigsaw(TOWN_CENTERS, jigsaw -> jigsaw.size(2).offset(40, 0, 0)))
+                .build(bootstrap(server));
+        var drawn = assertInstanceOf(PieceSources.WeightedSource.class, weighted.pieces()).sources().unwrap().getFirst().value();
+        assertEquals(Optional.of(TOWN_CENTERS), assertInstanceOf(JigsawSource.class, drawn).startPool().unwrapKey());
+        var parts = assertInstanceOf(PieceSources.CompoundSource.class, compound.pieces()).sources();
+        assertEquals(new BlockPos(40, 0, 0), assertInstanceOf(JigsawSource.class, parts.get(1)).offset());
+    }
+
+    @Test
+    void anOffsetCountsTowardTheStructureRange(MinecraftServer server) {
+        var json = JsonParser.parseString("""
+                {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "max_distance_from_center": 100, "offset": [0, 0, -20]}
+                """);
+        assertTrue(PieceSource.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), json).isError());
+    }
+
+    @Test
     void theStructuresFoundationReachesExtendedElements(MinecraftServer server) {
         var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
                 StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());

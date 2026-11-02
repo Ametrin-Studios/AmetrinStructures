@@ -99,14 +99,14 @@ A simple structure places one or more templates:
 - `jigsaw(...)` grows a [jigsaw layout](jigsaw.md).
 - `pieces(...)` takes any piece source, including [your own](extending.md#piece-sources).
 
-Weighted and compound sources can hold each other:
+Weighted and compound sources can hold each other and jigsaw layouts:
 
 ```java
 crypt.weighted(weighted -> weighted
         .single(3, "crypt/small")
         .compound(1, compound -> compound
                 .single("crypt/large")
-                .single(template -> template.template("crypt/large_cellar").offset(4, -6, 4))))
+                .jigsaw(CryptPools.CATACOMBS, jigsaw -> jigsaw.offset(4, -6, 4).size(5))))
 ```
 
 Each template can be configured like an element in a template pool:
@@ -252,7 +252,7 @@ A template entry places a template, with optional `processors`, or any pool elem
         "type": "ametrin_structures:compound",
         "sources": [
           { "template": "examplemod:crypt/large" },
-          { "template": "examplemod:crypt/large_cellar", "offset": [4, -6, 4] }
+          { "type": "ametrin_structures:jigsaw", "start_pool": "examplemod:crypt/catacombs", "offset": [4, -6, 4], "size": 5 }
         ]
     } }
   ]

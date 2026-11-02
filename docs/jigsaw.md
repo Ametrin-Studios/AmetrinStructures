@@ -15,7 +15,7 @@ The layout grows like vanilla's, with a few differences:
 
 - The start height is measured under the start piece, like for other simple structures, and the start piece's ground level is at that height. With `startJigsawName(...)`, that jigsaw is at the origin instead, one block lower.
 - The structure's [processors](structures.md#processors), [foundation](structures.md#foundations) and liquid settings apply to its pieces.
-- It can be part of a compound structure, and grows around the other pieces.
+- It can be [part of a weighted or compound structure](structures.md#pieces). In a compound structure it grows around the other pieces.
 - Pool elements can be [limited](#limiting-elements) in how often, how deep and where they appear.
 
 The other settings work like on vanilla's jigsaw structures:
@@ -118,6 +118,7 @@ The structure's `pieces` are an `ametrin_structures:jigsaw` source:
 |---|---|---|
 | `start_pool` | `jigsaw(startPool, ...)` | a template pool |
 | `start_jigsaw_name` | `startJigsawName` | a jigsaw name |
+| `offset` | `offset` | `[x, y, z]` from the structure's origin |
 | `size` | `size` | 0 to 128, or an int provider. Defaults to 7 |
 | `max_distance_from_center` | `maxDistanceFromCenter` | like vanilla's. Defaults to 80 |
 | `use_expansion_hack` | `useExpansionHack` | `true` or `false` (default) |
