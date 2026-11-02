@@ -109,14 +109,17 @@ public class ASLanguageProvider extends LanguageProvider {
         add(LootStatsCommand.Keys.SUMMARY, "%s opened %s times with luck %s, %s%% empty");
         add(LootStatsCommand.Keys.RANGE_CHEST, "%s to %s per chest");
         add(LootStatsCommand.Keys.RANGE_STRUCTURE, "%s to %s per structure");
+        add(LootStatsCommand.Keys.RANGE_TEMPLATE, "%s to %s per template");
+        add(LootStatsCommand.Keys.TEMPLATE_SUMMARY, "%s placed %s times with luck %s, %s%% without loot");
+        add(LootStatsCommand.Keys.UNKNOWN_TEMPLATE, "Template %s doesn't exist");
         add(LootStatsCommand.Keys.FAILED, "The loot stats report failed: %s");
         add(LootStatsCommand.Keys.STRUCTURE_STARTED, "Looking for %s layouts of %s within %s chunks…");
         add(LootStatsCommand.Keys.NO_LAYOUTS, "%s doesn't generate within %s chunks");
         add(LootStatsCommand.Keys.STRUCTURE_SUMMARY, "%s: %s layouts within %s chunks with luck %s, %s%% without loot");
         add(LootStatsCommand.Keys.STRUCTURE_MIX, " Layouts per structure: %s");
         add(LootStatsCommand.Keys.SOURCES, " %s loot sources, hover to list them");
-        add(LootStatsCommand.Keys.CODE_PIECES, " Not counted: %s pieces per structure that place their contents in code");
-        add(LootStatsCommand.Keys.DATA_MARKERS, " Not counted: %s data markers per structure, which the pieces turn into containers or entities in code");
+        add(LootStatsCommand.Keys.CODE_PIECES, " Not counted: %s pieces per %s that place their contents in code");
+        add(LootStatsCommand.Keys.DATA_MARKERS, " Not counted: %s data markers per %s, which the pieces turn into containers or entities in code");
     }
 
     private void pieces() {

@@ -131,6 +131,12 @@ public final class LootStatsGameTests {
         helper.assertValueEqual(contents.dataMarkers(), 1, "data markers");
         helper.assertValueEqual(contents.codePieces(), 0, "pieces built in code");
 
+        // The template on its own holds the same, with its fixture drawn on every draw.
+        var collected = StructureLoot.template(level, template, origin);
+        for (int draw = 0; draw < 2; draw++) {
+            helper.assertValueEqual(Set.copyOf(collected.draw(RandomSource.create(draw)).containers()), Set.copyOf(contents.containers()), "containers of the template");
+        }
+
         // A list element places each of its templates, so it has the chests of both.
         var list = StructurePoolElement.list(List.of(StructurePoolElement.single(id.toString()), StructurePoolElement.single(id.toString()))).apply(StructureTemplatePool.Projection.RIGID);
         var listPiece = new PoolElementStructurePiece(level.getStructureManager(), list, origin, 0, Rotation.NONE, piece.getBoundingBox(), LiquidSettings.APPLY_WATERLOGGING);

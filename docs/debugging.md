@@ -115,6 +115,12 @@ Does the same for all chests of a structure. It lays out the structure at the ne
 
 The structure isn't placed, so processors that would remove or replace a chest don't, and fixture conditions are checked at the marker. Only template pieces are read. Pieces that place their contents in code, like most vanilla structures from before jigsaws, and data markers, which the piece turns into a chest in code, like a shipwreck's, can't be read, so the report says how many there are.
 
+```
+/ametrin loot_stats template <template> [samples]
+```
+
+Does the same for a single template, placed where you stand without rotation. Its fixtures are drawn anew for each of the 1,000 samples, or `samples`, so the report shows the items per template. What it counts and leaves out is the same as for a structure.
+
 ## Debug logging
 
 Some details are only logged at debug level, like loot that didn't fit into a container or why a fixture value wasn't accepted. The run configurations from NeoForge's mod template log at that level.
