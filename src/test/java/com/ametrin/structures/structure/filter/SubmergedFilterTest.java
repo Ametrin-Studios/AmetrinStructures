@@ -12,21 +12,9 @@ class SubmergedFilterTest {
     void countsTheWaterBetweenTheRoofAndTheSurface() {
         // Roof at 50, so water fills 51..62.
         assertEquals(12, PlacementFilters.Submerged.waterAbove(SEA_LEVEL_SURFACE, 40, 50));
-    }
-
-    @Test
-    void aStructureUnderTheSeaFloorOnlyCountsTheWaterAboveTheFloor() {
-        assertEquals(23, PlacementFilters.Submerged.waterAbove(SEA_LEVEL_SURFACE, 40, 30));
-    }
-
-    @Test
-    void onLandThereIsNoWater() {
+        assertEquals(23, PlacementFilters.Submerged.waterAbove(SEA_LEVEL_SURFACE, 40, 30), "under the sea floor only the water above the floor counts");
         // Both heightmaps agree where the surface is dry ground.
-        assertEquals(0, PlacementFilters.Submerged.waterAbove(80, 80, 60));
-    }
-
-    @Test
-    void aStructureReachingOutOfTheWaterHasNone() {
-        assertEquals(0, PlacementFilters.Submerged.waterAbove(SEA_LEVEL_SURFACE, 40, 70));
+        assertEquals(0, PlacementFilters.Submerged.waterAbove(80, 80, 60), "on land");
+        assertEquals(0, PlacementFilters.Submerged.waterAbove(SEA_LEVEL_SURFACE, 40, 70), "reaching out of the water");
     }
 }

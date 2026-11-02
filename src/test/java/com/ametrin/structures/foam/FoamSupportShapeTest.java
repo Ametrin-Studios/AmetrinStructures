@@ -15,14 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 @ExtendWith(EphemeralTestServerProvider.class)
 class FoamSupportShapeTest {
     @Test
-    void foamSupportsNothing() {
+    void foamSupportsNothingAndFencesDontConnectToIt() {
         for (var block : new FoamBlock[]{ASBlocks.FOAM.get(), ASBlocks.FOAM_SPREADER.get()}) {
             assertFalse(block.defaultBlockState().isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, Direction.NORTH));
         }
-    }
-
-    @Test
-    void fencesDoNotConnectToFoam() {
         var fence = (FenceBlock) Blocks.OAK_FENCE;
         var foam = ASBlocks.FOAM.get().defaultBlockState();
         assertFalse(fence.connectsTo(foam, foam.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, Direction.SOUTH), Direction.SOUTH));

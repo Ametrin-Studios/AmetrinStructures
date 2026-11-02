@@ -41,29 +41,19 @@ class FixtureDataTest {
     }
 
     @Test
-    void theAlternativesAreDecodedForUse(MinecraftServer server) throws Exception {
-        var marker = marker();
-        marker.setFixtureData(List.of(TagParser.parseCompoundFully("{type: \"ametrin_structures:vault\", weight: 3}")), server.registryAccess());
-        var alternative = marker.fixtures().getFirst();
-        assertEquals(3, alternative.weight());
-        assertEquals(new VaultFixture(false), assertInstanceOf(VaultFixture.class, alternative.fixture()));
-    }
-
-    @Test
-    void aLootContainerNeedsItsLootTable(MinecraftServer server) throws Exception {
-        var marker = marker();
-        marker.setFixtureData(List.of(TagParser.parseCompoundFully("{type: \"ametrin_structures:loot_container\"}")), server.registryAccess());
-        assertInstanceOf(Fixture.Unreadable.class, marker.fixtures().getFirst().fixture());
-    }
-
-    @Test
-    void archaeologyNeedsABrushableBlock(MinecraftServer server) throws Exception {
+    void theAlternativesAreDecodedAndInvalidOnesKeptUnreadable(MinecraftServer server) throws Exception {
         var marker = marker();
         marker.setFixtureData(List.of(
+                TagParser.parseCompoundFully("{type: \"ametrin_structures:vault\", weight: 3}"),
+                TagParser.parseCompoundFully("{type: \"ametrin_structures:loot_container\"}"),
                 TagParser.parseCompoundFully("{type: \"ametrin_structures:archaeology\", block: {Name: \"minecraft:suspicious_gravel\"}}"),
                 TagParser.parseCompoundFully("{type: \"ametrin_structures:archaeology\", block: {Name: \"minecraft:sand\"}}")), server.registryAccess());
-        assertInstanceOf(ArchaeologyFixture.class, marker.fixtures().get(0).fixture());
-        assertInstanceOf(Fixture.Unreadable.class, marker.fixtures().get(1).fixture());
+        var fixtures = marker.fixtures();
+        assertEquals(3, fixtures.get(0).weight());
+        assertEquals(new VaultFixture(false), fixtures.get(0).fixture());
+        assertInstanceOf(Fixture.Unreadable.class, fixtures.get(1).fixture(), "a loot container needs its loot table");
+        assertInstanceOf(ArchaeologyFixture.class, fixtures.get(2).fixture());
+        assertInstanceOf(Fixture.Unreadable.class, fixtures.get(3).fixture(), "archaeology needs a brushable block");
     }
 
     @Test

@@ -22,24 +22,16 @@ class VaultFixtureTest {
     }
 
     @Test
-    void aNormalVaultTakesTheTrialChambersReward() {
-        var config = new VaultFixture(false).config();
-        assertEquals(BuiltInLootTables.TRIAL_CHAMBERS_REWARD, config.lootTable());
-        assertTrue(config.keyItem().is(Items.TRIAL_KEY));
-        assertEquals(Optional.empty(), config.overrideLootTableToDisplay());
-    }
-
-    @Test
-    void anOminousVaultTakesTheOminousRewardAndKey() {
-        var config = new VaultFixture(true).config();
-        assertEquals(BuiltInLootTables.TRIAL_CHAMBERS_REWARD_OMINOUS, config.lootTable());
-        assertTrue(config.keyItem().is(Items.OMINOUS_TRIAL_KEY));
-    }
-
-    @Test
-    void anExplicitLootTableWins() {
-        var config = new VaultFixture(true, BuiltInLootTables.SIMPLE_DUNGEON).config();
-        assertEquals(BuiltInLootTables.SIMPLE_DUNGEON, config.lootTable());
-        assertTrue(config.keyItem().is(Items.OMINOUS_TRIAL_KEY));
+    void theRewardAndKeyFollowOminousUnlessALootTableIsGiven() {
+        var normal = new VaultFixture(false).config();
+        assertEquals(BuiltInLootTables.TRIAL_CHAMBERS_REWARD, normal.lootTable());
+        assertTrue(normal.keyItem().is(Items.TRIAL_KEY));
+        assertEquals(Optional.empty(), normal.overrideLootTableToDisplay());
+        var ominous = new VaultFixture(true).config();
+        assertEquals(BuiltInLootTables.TRIAL_CHAMBERS_REWARD_OMINOUS, ominous.lootTable());
+        assertTrue(ominous.keyItem().is(Items.OMINOUS_TRIAL_KEY));
+        var explicit = new VaultFixture(true, BuiltInLootTables.SIMPLE_DUNGEON).config();
+        assertEquals(BuiltInLootTables.SIMPLE_DUNGEON, explicit.lootTable());
+        assertTrue(explicit.keyItem().is(Items.OMINOUS_TRIAL_KEY));
     }
 }

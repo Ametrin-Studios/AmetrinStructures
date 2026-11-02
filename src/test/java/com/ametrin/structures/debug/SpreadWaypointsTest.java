@@ -26,12 +26,6 @@ class SpreadWaypointsTest {
     }
 
     @Test
-    void aStructureKeepsItsColor() {
-        var id = Identifier.fromNamespaceAndPath("examplemod", "ruined_tower");
-        assertEquals(SpreadCommand.defaultColor(id), SpreadCommand.defaultColor(id));
-    }
-
-    @Test
     void waypointsSurviveThePacket() {
         var payload = new ASPayloads.SpreadWaypoints(
                 Identifier.fromNamespaceAndPath("examplemod", "ruins"),

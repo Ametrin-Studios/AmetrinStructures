@@ -114,11 +114,7 @@ class ModularStructureEvaluateTest {
     @Test
     void aChunkWithoutAValidBiomeIsRejectedBeforeMeasuringTheTerrain(MinecraftServer server) {
         assertEquals(List.of("biome_precheck"), stepsInAWrongBiome(server, ModularStructure.ON_SURFACE_START_HEIGHT));
-    }
-
-    @Test
-    void aStartHeightWithoutTerrainSkipsThePrecheck(MinecraftServer server) {
-        assertEquals(List.of("pieces", "start_height"), stepsInAWrongBiome(server, AT_64));
+        assertEquals(List.of("pieces", "start_height"), stepsInAWrongBiome(server, AT_64), "a start height without terrain skips the precheck");
     }
 
     private static List<String> stepsInAWrongBiome(MinecraftServer server, StartHeight startHeight) {
@@ -167,13 +163,9 @@ class ModularStructureEvaluateTest {
     }
 
     @Test
-    void findValidGenerationPointNeedsTheBiome(MinecraftServer server) {
+    void vanillasEntryPointsAgreeWithEvaluate(MinecraftServer server) {
         assertTrue(structure(AT_64, List.of()).findValidGenerationPoint(context(server)).isPresent());
         assertTrue(structure(AT_64, List.of()).findValidGenerationPoint(context(server, biome -> false)).isEmpty());
-    }
-
-    @Test
-    void findGenerationPointAgreesWithEvaluate(MinecraftServer server) {
         assertTrue(structure(AT_64, List.of()).findGenerationPoint(context(server)).isPresent());
         assertTrue(structure(AT_64, List.of(new PlacementFilters.HeightRange(200, 300))).findGenerationPoint(context(server)).isEmpty());
     }
@@ -191,11 +183,7 @@ class ModularStructureEvaluateTest {
         var other = firstIsPicked ? second : first;
         assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, picked.evaluateGenerationPoint(context));
         assertInstanceOf(ExtendedStructure.Evaluation.NotPickedFirst.class, other.evaluateGenerationPoint(context));
-    }
-
-    @Test
-    void onlyWhenPickedFirstOutsideASetGenerates(MinecraftServer server) {
-        assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure(AT_64, ONLY_WHEN_PICKED_FIRST).evaluateGenerationPoint(context(server)));
+        assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, first.evaluateGenerationPoint(context(server)), "outside a set it generates");
     }
 
     @Test
@@ -220,12 +208,9 @@ class ModularStructureEvaluateTest {
         });
         assertInstanceOf(ModularStructure.Evaluation.Generated.class, structure(source).evaluateGenerationPoint(context(server)));
         assertEquals(List.of("first at 64", "second with 64", "registered by the first"), ran);
-    }
 
-    @Test
-    void aPlacementStepCanRejectTheSpot(MinecraftServer server) {
-        var source = withSteps(context -> context.afterPlacement((_, _) -> false));
-        assertInstanceOf(ModularStructure.Evaluation.NoPieces.class, structure(source).evaluateGenerationPoint(context(server)));
+        var rejecting = withSteps(context -> context.afterPlacement((_, _) -> false));
+        assertInstanceOf(ModularStructure.Evaluation.NoPieces.class, structure(rejecting).evaluateGenerationPoint(context(server)), "a step can reject the spot");
     }
 
     // An igloo top, plus whatever `register` adds to the context.

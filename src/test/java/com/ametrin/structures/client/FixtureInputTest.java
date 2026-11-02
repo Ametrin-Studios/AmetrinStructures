@@ -24,13 +24,9 @@ class FixtureInputTest {
     }
 
     @Test
-    void offsetsStayWithinTheLimit() {
+    void offsetsStayWithinTheLimitAndShowWithoutNeedlessDecimals() {
         assertEquals(Optional.of(-2.5), FixtureInput.parseOffset("-2.5"));
         assertEquals(Optional.empty(), FixtureInput.parseOffset(String.valueOf(FixtureBlockEntity.MAX_OFFSET + 1)));
-    }
-
-    @Test
-    void wholeOffsetsShowWithoutDecimals() {
         assertEquals("2", FixtureInput.formatOffset(2.0));
         assertEquals("0.5", FixtureInput.formatOffset(0.5));
     }

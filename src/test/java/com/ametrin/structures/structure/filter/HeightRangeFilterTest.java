@@ -58,10 +58,7 @@ class HeightRangeFilterTest {
         assertEquals(JsonParser.parseString("""
                 {"type": "ametrin_structures:height_range", "min": 0, "max": 100}
                 """), PlacementFilter.CODEC.encodeStart(JsonOps.INSTANCE, new PlacementFilters.HeightRange(0, 100)).getOrThrow());
-    }
-
-    @Test
-    void aMinOrAMaxIsNeededAndTheyMustBeInOrder() {
+        // A min or a max is needed, and they must be in order.
         assertTrue(new PlacementFilters.HeightRange(Optional.empty(), Optional.empty(), PlacementFilters.HeightRange.Check.ORIGIN).validate().isError());
         assertTrue(new PlacementFilters.HeightRange(5, 4).validate().isError());
     }

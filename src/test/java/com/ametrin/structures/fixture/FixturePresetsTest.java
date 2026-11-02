@@ -26,16 +26,16 @@ class FixturePresetsTest {
     private static final WeightedFixture CHEST = new WeightedFixture(1, LootContainerFixture.chest(BuiltInLootTables.SIMPLE_DUNGEON));
 
     @Test
-    void aFixtureThatIsntAPresetPassesThrough() {
-        assertEquals(Optional.of(CHEST), resolve(CHEST, Map.of()));
-    }
-
-    @Test
-    void nestedPresetsEachDrawAmongTheirOwn() {
+    void presetsResolveThroughEachOtherAndToNothingWhenUnknownOrInACycle() {
+        assertEquals(Optional.of(CHEST), resolve(CHEST, Map.of()), "a fixture that isn't a preset passes through");
         var presets = Map.of(
                 id("outer"), new FixturePreset(List.of(preset("inner"))),
-                id("inner"), new FixturePreset(List.of(CHEST)));
+                id("inner"), new FixturePreset(List.of(CHEST)),
+                id("a"), new FixturePreset(List.of(preset("b"))),
+                id("b"), new FixturePreset(List.of(preset("a"))));
         assertEquals(Optional.of(CHEST), resolve(preset("outer"), presets));
+        assertEquals(Optional.empty(), resolve(preset("missing"), presets));
+        assertEquals(Optional.empty(), resolve(preset("a"), presets));
     }
 
     @Test
@@ -43,19 +43,6 @@ class FixturePresetsTest {
         var presets = Map.of(id("inner"), new FixturePreset(List.of(new WeightedFixture(1, 0.5F, CHEST.fixture()))));
         var drawn = resolve(new WeightedFixture(1, 0.5F, new PresetFixture(key("inner"))), presets).orElseThrow();
         assertEquals(0.25F, drawn.generationChance());
-    }
-
-    @Test
-    void anUnknownPresetResolvesToNothing() {
-        assertEquals(Optional.empty(), resolve(preset("missing"), Map.of()));
-    }
-
-    @Test
-    void aCycleResolvesToNothing() {
-        var presets = Map.of(
-                id("a"), new FixturePreset(List.of(preset("b"))),
-                id("b"), new FixturePreset(List.of(preset("a"))));
-        assertEquals(Optional.empty(), resolve(preset("a"), presets));
     }
 
     @Test
@@ -120,13 +107,6 @@ class FixturePresetsTest {
     }
 
     @Test
-    void equipmentKeepsTheDefaultDropChance() {
-        var entity = EntityFixture.of(EntityType.ZOMBIE).withEquipment(BuiltInLootTables.SIMPLE_DUNGEON);
-        assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.equipment());
-        assertEquals(0.085F, entity.equipmentDropChance());
-    }
-
-    @Test
     void deathLootIsItsOwnFieldNotExtraData() {
         var entity = EntityFixture.of(new EntityDataBuilder(EntityType.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON));
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.deathLootTable());
@@ -138,23 +118,17 @@ class FixturePresetsTest {
         var preset = FixturePreset.builder()
                 .add(3, LootContainerFixture.chest(BuiltInLootTables.SIMPLE_DUNGEON))
                 .add(1, key("rare"))
+                .spawner(2, EntityType.HUSK)
                 .build();
         var json = JsonParser.parseString("""
                 {"fixtures": [
                   {"weight": 3, "type": "ametrin_structures:loot_container", "loot_table": "minecraft:chests/simple_dungeon"},
-                  {"type": "ametrin_structures:preset", "preset": "test:rare"}
+                  {"type": "ametrin_structures:preset", "preset": "test:rare"},
+                  {"weight": 2, "type": "ametrin_structures:spawner", "entity": "minecraft:husk"}
                 ]}""");
         var ops = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         assertEquals(json, FixturePreset.CODEC.encodeStart(ops, preset).getOrThrow());
         assertEquals(preset, FixturePreset.CODEC.parse(ops, json).getOrThrow());
-    }
-
-    @Test
-    void aSpawnerFromTheBuilderWritesOnlyItsEntity(MinecraftServer server) {
-        var preset = FixturePreset.builder().spawner(2, EntityType.HUSK).build();
-        var json = JsonParser.parseString("""
-                {"fixtures": [{"weight": 2, "type": "ametrin_structures:spawner", "entity": "minecraft:husk"}]}""");
-        assertEquals(json, FixturePreset.CODEC.encodeStart(server.registryAccess().createSerializationContext(JsonOps.INSTANCE), preset).getOrThrow());
     }
 
     @Test

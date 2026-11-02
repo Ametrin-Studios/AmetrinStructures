@@ -39,10 +39,13 @@ class FixtureConditionsTest {
     }
 
     @Test
-    void aHeightRangeIncludesItsEnds() {
+    void aHeightRangeIncludesItsEndsAndMustBeInOrder() {
         assertTrue(new FixtureConditions.HeightRange(Optional.of(64), Optional.of(64)).test(AT_64));
         assertFalse(new FixtureConditions.HeightRange(Optional.of(65), Optional.empty()).test(AT_64));
         assertTrue(new FixtureConditions.HeightRange(Optional.empty(), Optional.of(64)).test(AT_64));
+        var upsideDown = JsonParser.parseString("""
+                {"type": "ametrin_structures:height_range", "min": 10, "max": 0}""");
+        assertTrue(FixtureCondition.CODEC.parse(JsonOps.INSTANCE, upsideDown).isError());
     }
 
     @Test
@@ -68,12 +71,5 @@ class FixtureConditionsTest {
         for (int seed = 0; seed < 20; seed++) {
             assertEquals(Optional.of(chest), WeightedFixture.draw(List.of(unreadable, chest), alternative -> alternative.conditionsPass(AT_64), RandomSource.create(seed)));
         }
-    }
-
-    @Test
-    void anUpsideDownHeightRangeDoesntRead() {
-        var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:height_range", "min": 10, "max": 0}""");
-        assertTrue(FixtureCondition.CODEC.parse(JsonOps.INSTANCE, json).isError());
     }
 }

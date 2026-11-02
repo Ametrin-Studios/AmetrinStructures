@@ -21,16 +21,8 @@ class FixtureSupportShapeTest {
     @Test
     void neighborsSeeTheBecomesState() {
         assertTrue(sturdy(Optional.of(Blocks.STONE.defaultBlockState())));
-    }
-
-    @Test
-    void aMarkerBecomingAirSupportsNothing() {
-        assertFalse(sturdy(Optional.empty()));
-    }
-
-    @Test
-    void aMarkerBecomingAMarkerSupportsNothing() {
-        assertFalse(sturdy(Optional.of(ASBlocks.FIXTURE.get().defaultBlockState())));
+        assertFalse(sturdy(Optional.empty()), "becoming air supports nothing");
+        assertFalse(sturdy(Optional.of(ASBlocks.FIXTURE.get().defaultBlockState())), "becoming a marker supports nothing");
     }
 
     private static boolean sturdy(Optional<BlockState> becomes) {

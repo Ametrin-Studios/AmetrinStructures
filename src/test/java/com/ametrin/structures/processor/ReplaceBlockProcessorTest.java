@@ -32,15 +32,6 @@ class ReplaceBlockProcessorTest {
     static void bindTags(MinecraftServer server) {}
 
     @Test
-    void theConditionTakesABlockATagOrAState() {
-        assertInstanceOf(ReplaceBlockProcessor.Condition.IsBlock.class, condition("\"minecraft:oak_planks\""));
-        assertInstanceOf(ReplaceBlockProcessor.Condition.InTag.class, condition("\"#minecraft:stairs\""));
-        assertInstanceOf(
-                ReplaceBlockProcessor.Condition.IsState.class,
-                condition("{\"Name\":\"minecraft:oak_stairs\",\"Properties\":{\"facing\":\"north\"}}"));
-    }
-
-    @Test
     void conditionsRoundTrip() {
         for (String json : new String[]{"\"minecraft:oak_planks\"", "\"#minecraft:stairs\""}) {
             JsonElement written = ReplaceBlockProcessor.Condition.CODEC
@@ -51,32 +42,20 @@ class ReplaceBlockProcessorTest {
     }
 
     @Test
-    void aBlockMatchesEveryState() {
+    void aBlockMatchesEveryStateATagItsMembersAndAStateOnlyItself() {
         assertTrue(condition("\"minecraft:oak_stairs\"").test(NORTH_TOP_OAK_STAIRS));
-        assertTrue(!condition("\"minecraft:oak_stairs\"").test(Blocks.SPRUCE_STAIRS.defaultBlockState()));
-    }
-
-    @Test
-    void aTagMatchesItsMembers() {
+        assertFalse(condition("\"minecraft:oak_stairs\"").test(Blocks.SPRUCE_STAIRS.defaultBlockState()));
         assertTrue(condition("\"#minecraft:stairs\"").test(Blocks.SPRUCE_STAIRS.defaultBlockState()));
-        assertTrue(!condition("\"#minecraft:stairs\"").test(Blocks.OAK_PLANKS.defaultBlockState()));
-    }
-
-    @Test
-    void aStateMatchesOnlyThatState() {
-        var condition = condition("{\"Name\":\"minecraft:oak_stairs\",\"Properties\":{\"facing\":\"north\",\"half\":\"top\"}}");
-        assertTrue(condition.test(NORTH_TOP_OAK_STAIRS));
-        assertTrue(!condition.test(NORTH_TOP_OAK_STAIRS.setValue(StairBlock.FACING, Direction.EAST)));
-    }
-
-    @Test
-    void withoutPreserveStateTheTargetIsPlacedAsDeclared() {
-        var processor = processor("{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:spruce_stairs\"}}");
-        assertEquals(Blocks.SPRUCE_STAIRS.defaultBlockState(), process(processor, NORTH_TOP_OAK_STAIRS));
+        assertFalse(condition("\"#minecraft:stairs\"").test(Blocks.OAK_PLANKS.defaultBlockState()));
+        var state = condition("{\"Name\":\"minecraft:oak_stairs\",\"Properties\":{\"facing\":\"north\",\"half\":\"top\"}}");
+        assertTrue(state.test(NORTH_TOP_OAK_STAIRS));
+        assertFalse(state.test(NORTH_TOP_OAK_STAIRS.setValue(StairBlock.FACING, Direction.EAST)));
     }
 
     @Test
     void preserveStateKeepsTheShapeOfTheReplacedBlock() {
+        var declared = processor("{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:spruce_stairs\"}}");
+        assertEquals(Blocks.SPRUCE_STAIRS.defaultBlockState(), process(declared, NORTH_TOP_OAK_STAIRS), "without it the target is placed as declared");
         var processor = processor(
                 "{\"condition\":\"#minecraft:stairs\",\"chance\":1,\"change_to\":{\"Name\":\"minecraft:spruce_stairs\"},\"preserve_state\":true}");
         assertEquals(

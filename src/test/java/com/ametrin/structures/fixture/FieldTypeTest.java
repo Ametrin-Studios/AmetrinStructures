@@ -16,13 +16,16 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(EphemeralTestServerProvider.class)
 class FieldTypeTest {
     @Test
-    void itemsTakeComponentsAndAnOptionalCount(MinecraftServer server) {
+    void itemsTakeComponentsAndAnOptionalPositiveCount(MinecraftServer server) {
         var registries = server.registryAccess();
         var item = FieldType.item().parser().parse("minecraft:leather_helmet[dyed_color=255] 2", registries).getOrThrow();
         assertEquals(Items.LEATHER_HELMET, item.item().value());
         assertEquals(2, item.count());
         assertEquals(new DyedItemColor(255), item.get(DataComponents.DYED_COLOR));
         assertEquals(1, FieldType.item().parser().parse("minecraft:diamond", registries).getOrThrow().count());
+        assertTrue(FieldType.item().parser().parse("minecraft:not_an_item", registries).isError());
+        assertTrue(FieldType.item().parser().parse("minecraft:diamond 0", registries).isError());
+        assertTrue(FieldType.item().parser().parse("minecraft:diamond many", registries).isError());
     }
 
     @Test
@@ -33,15 +36,6 @@ class FieldTypeTest {
             var tag = type.textToTag(text, registries).getOrThrow();
             assertEquals(text, type.tagToText(tag, registries).getOrThrow());
         }
-    }
-
-    @Test
-    void unknownItemsAndEmptyCountsAreRejected(MinecraftServer server) {
-        var registries = server.registryAccess();
-        var parser = FieldType.item().parser();
-        assertTrue(parser.parse("minecraft:not_an_item", registries).isError());
-        assertTrue(parser.parse("minecraft:diamond 0", registries).isError());
-        assertTrue(parser.parse("minecraft:diamond many", registries).isError());
     }
 
     @Test

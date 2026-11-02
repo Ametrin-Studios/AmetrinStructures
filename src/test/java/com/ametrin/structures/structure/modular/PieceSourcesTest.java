@@ -74,12 +74,8 @@ class PieceSourcesTest {
         assertEquals("minecraft:igloo/top", top.get("template").getAsString());
         // Pool elements have no equality, so the source is compared by its JSON.
         assertEquals(json, PieceSource.CODEC.encodeStart(ops(server), PieceSource.CODEC.parse(ops(server), json).getOrThrow()).getOrThrow());
-    }
-
-    @Test
-    void theTypedFormOfASingleSourceStillParses(MinecraftServer server) {
-        var source = parse(server, "{\"type\": \"ametrin_structures:single\", \"template\": \"minecraft:igloo/top\"}").getOrThrow();
-        assertInstanceOf(PieceSources.SingleSource.class, source);
+        var typed = parse(server, "{\"type\": \"ametrin_structures:single\", \"template\": \"minecraft:igloo/top\"}").getOrThrow();
+        assertInstanceOf(PieceSources.SingleSource.class, typed, "the typed form still parses");
     }
 
     @Test

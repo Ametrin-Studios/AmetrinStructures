@@ -25,7 +25,7 @@ class DimensionExclusionsTest {
     private static final ResourceKey<Level> VOID = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("ametrin_structures", "test_void"));
 
     @Test
-    void excludedSetsAreLeftOut(MinecraftServer server) {
+    void excludedSetsAreLeftOutOnlyInTheirDimension(MinecraftServer server) {
         var state = state(server);
         DimensionExclusions.apply(state, VOID);
 
@@ -33,14 +33,11 @@ class DimensionExclusionsTest {
         assertFalse(state.possibleStructureSets().contains(sets.getOrThrow(BuiltinStructureSets.IGLOOS)));
         assertTrue(state.possibleStructureSets().contains(sets.getOrThrow(BuiltinStructureSets.VILLAGES)));
         assertTrue(state.getPlacementsForStructure(server.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(BuiltinStructures.IGLOO)).isEmpty());
-    }
 
-    @Test
-    void otherDimensionsKeepEverySet(MinecraftServer server) {
-        var state = state(server);
-        var before = state.possibleStructureSets();
-        DimensionExclusions.apply(state, Level.NETHER);
-        assertEquals(before, state.possibleStructureSets());
+        var other = state(server);
+        var before = other.possibleStructureSets();
+        DimensionExclusions.apply(other, Level.NETHER);
+        assertEquals(before, other.possibleStructureSets());
     }
 
     private static ChunkGeneratorStructureState state(MinecraftServer server) {

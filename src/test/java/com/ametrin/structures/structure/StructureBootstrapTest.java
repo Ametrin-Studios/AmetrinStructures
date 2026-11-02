@@ -32,12 +32,8 @@ class StructureBootstrapTest {
         assertEquals(List.of(BuiltinStructures.IGLOO), keys.existing());
         assertEquals(List.of(keys.structure(""), BuiltinStructures.IGLOO), keys.structures());
         assertThrows(IllegalStateException.class, keys::structure);
-    }
-
-    @Test
-    void theOnlyStructureCanBeAnExistingOne() {
-        var keys = new StructureBootstrap("test").registerSet("igloos", set -> set.existing(BuiltinStructures.IGLOO));
-        assertEquals(BuiltinStructures.IGLOO, keys.structure());
+        var igloos = structures.registerSet("igloos", set -> set.existing(BuiltinStructures.IGLOO));
+        assertEquals(BuiltinStructures.IGLOO, igloos.structure(), "the only structure can be an existing one");
     }
 
     @Test
@@ -55,16 +51,12 @@ class StructureBootstrapTest {
     }
 
     @Test
-    void aNameIsTakenOnceAcrossSetsAndStructures() {
+    void invalidRegistrationsFailRightAway() {
         var structures = new StructureBootstrap("test");
         structures.registerModular("tower", builder -> builder.single("tower"));
-        assertThrows(IllegalStateException.class, () -> structures.registerSet("tower", set -> set.modular(tower -> tower.single("tower"))));
+        assertThrows(IllegalStateException.class, () -> structures.registerSet("tower", set -> set.modular(tower -> tower.single("tower"))), "a name is taken once");
         assertThrows(IllegalStateException.class, () -> structures.registerModular("tower", builder -> builder.single("tower")));
-    }
-
-    @Test
-    void existingStructuresAreChecked() {
-        var structures = new StructureBootstrap("test");
+        assertThrows(IllegalStateException.class, () -> structures.registerModular("hut", builder -> builder.surface()), "no pieces");
         assertThrows(IllegalStateException.class, () -> structures.registerSet("zero", set -> set.existing(BuiltinStructures.IGLOO, 0)));
         assertThrows(IllegalStateException.class, () -> structures.registerSet("twice", set -> set
                 .existing(BuiltinStructures.IGLOO)
@@ -72,11 +64,6 @@ class StructureBootstrapTest {
         assertThrows(IllegalStateException.class, () -> structures.registerSet("own", set -> set
                 .modular(tower -> tower.single("tower"))
                 .existing(ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath("test", "own")))));
-    }
-
-    @Test
-    void aStructureWithoutASetIsCheckedRightAway() {
-        assertThrows(IllegalStateException.class, () -> new StructureBootstrap("test").registerModular("tower", builder -> builder.surface()));
     }
 
     @Test

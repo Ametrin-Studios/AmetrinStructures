@@ -62,13 +62,8 @@ class StructureCheckTest {
     }
 
     @Test
-    void aMissingTemplateIsReported(MinecraftServer server) {
-        var report = check(server, modular(Identifier.fromNamespaceAndPath("test", "missing")));
-        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(report));
-    }
-
-    @Test
-    void aMissingTemplateSomethingAskedForIsStillReported(MinecraftServer server) {
+    void aMissingTemplateIsReportedEvenOnceSomethingAskedForIt(MinecraftServer server) {
+        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(Identifier.fromNamespaceAndPath("test", "missing")))));
         var missing = Identifier.fromNamespaceAndPath("test", "asked_for");
         server.getStructureManager().getOrCreate(missing);
         assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(missing))));
