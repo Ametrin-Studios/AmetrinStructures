@@ -35,7 +35,7 @@ import java.util.function.Predicate;
 ///
 /// While an element is below its soft minimum, jigsaws that can't lead to it wait until the rest of the layout is done, so other pieces don't take its space first.
 /// If the layout still ends with too few, it undoes part of the layout to make room for the element and grows the rest back around it.
-/// It never undoes pieces that another element needs for its soft minimum.
+/// It never undoes pieces that another element needs for its soft minimum, except to reach a minimum, which may take others down to theirs.
 ///
 /// Pieces hold the element itself rather than its [ConditionalPoolElement], and are created with the structure's settings.
 final class JigsawAssembler {
@@ -122,7 +122,8 @@ final class JigsawAssembler {
             if (step()) {
                 continue;
             }
-            var missing = softMinimums.stream().filter(counted -> count(counted) < counted.softMinCount() && !givenUp.contains(counted)).findFirst();
+            // Elements below their minimum first, since without them the structure doesn't generate.
+            var missing = softMinimums.stream().filter(counted -> count(counted) < counted.softMinCount() && !givenUp.contains(counted)).min(Comparator.comparing(counted -> count(counted) >= counted.minCount()));
             if (missing.isEmpty()) {
                 break;
             }
@@ -311,7 +312,7 @@ final class JigsawAssembler {
     // Only undoes once it found a jigsaw where the element fits afterwards, so when there's none the layout stays as it is.
     private boolean makeRoom(ConditionalPoolElement missing) {
         // Undoing one of the element's own pieces to place it elsewhere doesn't add one.
-        int keep = keptBefore(null);
+        int keep = keptBefore(missing, false);
         Decision best = null;
         int bestMark = Integer.MAX_VALUE;
         for (var decision : decisions) {
@@ -343,8 +344,7 @@ final class JigsawAssembler {
     }
 
     private boolean retryEarlierDecisions(ConditionalPoolElement missing) {
-        // The element's own pieces may move.
-        int keep = keptBefore(missing);
+        int keep = keptBefore(missing, true);
         Decision earliest = null;
         for (int i = decisions.size() - 1; i >= 0 && decisions.get(i).mark > keep; i--) {
             var decision = decisions.get(i);
@@ -366,15 +366,19 @@ final class JigsawAssembler {
         return false;
     }
 
-    /// The latest mark a backtrack must not undo to, so every element with a soft minimum keeps as many pieces as that needs, except `movable`, which may lose all of its own.
-    /// An element below its soft minimum keeps every piece.
-    private int keptBefore(@Nullable ConditionalPoolElement movable) {
+    /// The latest mark a backtrack for `missing` must not undo to, so every other element with a soft minimum keeps as many pieces as that needs.
+    /// While `missing` is below its minimum, the others only keep as many as their minimum needs. An element below what it keeps keeps every piece.
+    ///
+    /// @param movesOwn whether `missing` may lose its own pieces, otherwise it keeps all of them
+    private int keptBefore(ConditionalPoolElement missing, boolean movesOwn) {
+        boolean belowMinimum = count(missing) < missing.minCount();
         int keep = -1;
         for (var element : softMinimums) {
-            if (element == movable) {
+            if (element == missing && movesOwn) {
                 continue;
             }
-            int spare = Math.max(count(element) - element.softMinCount(), 0);
+            int needed = element == missing ? Integer.MAX_VALUE : belowMinimum ? element.minCount() : element.softMinCount();
+            int spare = Math.max(count(element) - needed, 0);
             var marks = placed.stream().filter(node -> node.element == element).mapToInt(Node::placedAt).boxed().sorted(Comparator.reverseOrder()).toList();
             // Undoing to a mark removes the pieces placed at or after it, latest first.
             if (spare < marks.size()) {
