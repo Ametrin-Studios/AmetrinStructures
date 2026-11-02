@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-/// The settings of a template placed as an [ExtendedSinglePoolElement], for elements of [JigsawPools] and templates of simple structures alike.
+/// The settings of a template placed as an [ExtendedSinglePoolElement], for elements of [JigsawPools] and templates of modular structures alike.
 public abstract class TemplateElementBuilder<B extends TemplateElementBuilder<B>> {
     private final HolderGetter<StructureProcessorList> processorsGetter;
     @Nullable

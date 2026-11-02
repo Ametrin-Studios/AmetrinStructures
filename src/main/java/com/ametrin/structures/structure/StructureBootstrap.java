@@ -1,6 +1,6 @@
 package com.ametrin.structures.structure;
 
-import com.ametrin.structures.structure.simple.SimpleStructure;
+import com.ametrin.structures.structure.modular.ModularStructure;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 ///
 /// public static final StructureSetKeys TOWER = STRUCTURES.registerSet("tower", set -> set
 ///         .evenSpreadPlacement(18, 0.6F)
-///         .simple(tower -> tower.single("tower").surface()));
+///         .modular(tower -> tower.single("tower").surface()));
 /// ```
 public final class StructureBootstrap {
     private final String namespace;
@@ -47,8 +47,8 @@ public final class StructureBootstrap {
         return declared.keys();
     }
 
-    public ResourceKey<Structure> registerSimple(String name, Consumer<SimpleStructure.Builder> configure) {
-        return register(name, StructureBuilder.configured(new SimpleStructure.Builder(namespace, name), configure));
+    public ResourceKey<Structure> registerModular(String name, Consumer<ModularStructure.Builder> configure) {
+        return register(name, StructureBuilder.configured(new ModularStructure.Builder(namespace, name), configure));
     }
 
     public ResourceKey<Structure> registerStructure(String name, CustomStructureBuilder.Factory factory, Consumer<CustomStructureBuilder> configure) {

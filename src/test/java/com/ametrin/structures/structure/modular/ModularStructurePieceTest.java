@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /// Terrain adaptation keeps the ground at the structure's start height, whatever a template's offset.
 @ExtendWith(EphemeralTestServerProvider.class)
-class SimpleStructurePieceTest {
+class ModularStructurePieceTest {
     private static final BlockPos ORIGIN = new BlockPos(0, 64, 0);
     private static final Identifier TEMPLATE = Identifier.withDefaultNamespace("igloo/top");
 
@@ -65,7 +65,7 @@ class SimpleStructurePieceTest {
     void groundLevelAndTerrainAdaptationAreSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0));
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
-        var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
+        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
         assertEquals(4, reloaded.getGroundLevelDelta());
         assertEquals(TerrainAdjustment.BEARD_THIN, reloaded.getTerrainAdjustment());
     }
@@ -102,7 +102,7 @@ class SimpleStructurePieceTest {
     void theTerrainBoxIsSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0), Rotation.CLOCKWISE_180, TerrainBox.of(1, 2, 1, 2, 3, 2));
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
-        var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
+        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
         assertEquals(piece.getBeardifierBox(), reloaded.getBeardifierBox());
         assertEquals(piece.getGroundLevelDelta(), reloaded.getGroundLevelDelta());
     }
@@ -114,7 +114,7 @@ class SimpleStructurePieceTest {
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
         var tag = piece.createTag(context);
         assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT.identifier().toString()), tag.getCompoundOrEmpty("pool_element").getString("processors"));
-        var reloaded = new SimpleStructurePiece(context, tag);
+        var reloaded = new ModularStructurePiece(context, tag);
         assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
     }
 
@@ -155,20 +155,20 @@ class SimpleStructurePieceTest {
         return TerrainBox.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow();
     }
 
-    private static SimpleStructurePiece createPiece(MinecraftServer server, BlockPos offset) {
+    private static ModularStructurePiece createPiece(MinecraftServer server, BlockPos offset) {
         return createPiece(server, offset, Rotation.NONE, TerrainBox.template());
     }
 
-    private static SimpleStructurePiece createPiece(
+    private static ModularStructurePiece createPiece(
             MinecraftServer server, Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
         return createPiece(server, BlockPos.ZERO, Rotation.NONE, TerrainBox.template(), processors, structureProcessors);
     }
 
-    private static SimpleStructurePiece createPiece(MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox) {
+    private static ModularStructurePiece createPiece(MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox) {
         return createPiece(server, offset, rotation, terrainBox, Optional.empty(), Optional.empty());
     }
 
-    private static SimpleStructurePiece createPiece(
+    private static ModularStructurePiece createPiece(
             MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox,
             Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
         var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
@@ -185,7 +185,7 @@ class SimpleStructurePieceTest {
                 HolderSet.direct(plains)::contains);
         var element = new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors.orElse(ExtendedSinglePoolElement.NO_PROCESSORS), StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
         var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), structureProcessors);
-        return (SimpleStructurePiece) PieceSources.createPiece(new TemplateEntry(element, offset, terrainBox), context);
+        return (ModularStructurePiece) PieceSources.createPiece(new TemplateEntry(element, offset, terrainBox), context);
     }
 
     private static Optional<Holder<StructureProcessorList>> processors(StructureProcessor... processors) {

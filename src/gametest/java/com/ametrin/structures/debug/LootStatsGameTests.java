@@ -5,9 +5,9 @@ import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
-import com.ametrin.structures.structure.simple.SimpleStructurePiece;
-import com.ametrin.structures.structure.simple.TemplateEntry;
-import com.ametrin.structures.structure.simple.TerrainBox;
+import com.ametrin.structures.structure.modular.ModularStructurePiece;
+import com.ametrin.structures.structure.modular.TemplateEntry;
+import com.ametrin.structures.structure.modular.TerrainBox;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -116,7 +116,7 @@ public final class LootStatsGameTests {
                 "{id: \"minecraft:glow_item_frame\"}")) {
             template.entityInfoList.add(new StructureTemplate.StructureEntityInfo(new Vec3(1.5, 1, 1.5), new BlockPos(1, 1, 1), nbt(entity)));
         }
-        var piece = new SimpleStructurePiece(level.getStructureManager(), TemplateEntry.of(id).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
+        var piece = new ModularStructurePiece(level.getStructureManager(), TemplateEntry.of(id).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
         var contents = StructureLoot.contents(level, new PiecesContainer(List.of(piece)), RandomSource.create(0));
 
         helper.assertValueEqual(Set.copyOf(contents.containers()), Set.of(

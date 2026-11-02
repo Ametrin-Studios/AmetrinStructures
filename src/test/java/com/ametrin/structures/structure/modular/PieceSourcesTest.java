@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;

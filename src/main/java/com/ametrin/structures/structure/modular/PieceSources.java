@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASPieceSources;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
@@ -96,7 +96,7 @@ public final class PieceSources {
     /// A piece for `entry` with the structure's settings, see [StructureElements].
     public static StructurePiece createPiece(TemplateEntry entry, PieceSource.Context context) {
         var element = StructureElements.withStructureSettings(entry.element(), context.processors(), context.foundation());
-        return new SimpleStructurePiece(context.generation().structureTemplateManager(), element, context.origin().offset(entry.offset().rotate(context.rotation())), context.rotation(),
+        return new ModularStructurePiece(context.generation().structureTemplateManager(), element, context.origin().offset(entry.offset().rotate(context.rotation())), context.rotation(),
                 context.liquidSettings(), context.terrainAdaptation(), entry.terrainBox(), -entry.offset().getY());
     }
 

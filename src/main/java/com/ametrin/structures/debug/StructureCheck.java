@@ -5,9 +5,9 @@ import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
-import com.ametrin.structures.structure.simple.PieceSource;
-import com.ametrin.structures.structure.simple.PieceSources;
-import com.ametrin.structures.structure.simple.SimpleStructure;
+import com.ametrin.structures.structure.modular.PieceSource;
+import com.ametrin.structures.structure.modular.PieceSources;
+import com.ametrin.structures.structure.modular.ModularStructure;
 import com.ametrin.structures.util.RegistryConditionContext;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
@@ -49,7 +49,7 @@ import java.util.stream.Stream;
 
 /// Finds problems that would otherwise silently break structures: missing templates, jigsaws that
 /// can't connect, and loot tables, fixture presets and other entries that templates use but that
-/// don't exist. Checks simple and jigsaw structures and skips other types.
+/// don't exist. Checks modular and jigsaw structures and skips other types.
 ///
 /// Only loads templates and doesn't place anything, so it's safe to run off the server thread.
 public final class StructureCheck {
@@ -137,9 +137,9 @@ public final class StructureCheck {
     /// @return false for a type it can't look into
     private boolean check(Identifier id, Structure structure) {
         switch (structure) {
-            case SimpleStructure simple -> {
-                simple.pieces().templates().forEach(entry -> templatesExist(id, entry.element()));
-                jigsawSources(simple.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases(), true));
+            case ModularStructure modular -> {
+                modular.pieces().templates().forEach(entry -> templatesExist(id, entry.element()));
+                jigsawSources(modular.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases(), true));
             }
             // Vanilla's start jigsaw name has no getter.
             case JigsawStructure jigsaw ->

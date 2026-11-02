@@ -2,7 +2,7 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.fixture.FixtureGeneration;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
-import com.ametrin.structures.structure.simple.TerrainBox;
+import com.ametrin.structures.structure.modular.TerrainBox;
 import com.mojang.serialization.DynamicOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;

@@ -5,12 +5,12 @@ import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.filter.PlacementFilters;
-import com.ametrin.structures.structure.simple.HeightAnchor;
-import com.ametrin.structures.structure.simple.PieceSource;
-import com.ametrin.structures.structure.simple.PieceSources;
-import com.ametrin.structures.structure.simple.SimpleStructure;
-import com.ametrin.structures.structure.simple.StartHeight;
-import com.ametrin.structures.structure.simple.TemplateEntry;
+import com.ametrin.structures.structure.modular.HeightAnchor;
+import com.ametrin.structures.structure.modular.PieceSource;
+import com.ametrin.structures.structure.modular.PieceSources;
+import com.ametrin.structures.structure.modular.ModularStructure;
+import com.ametrin.structures.structure.modular.StartHeight;
+import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
@@ -234,7 +234,7 @@ class JigsawSourceTest {
 
     @Test
     void theStartPieceStandsOnTheStartHeight(MinecraftServer server) {
-        var structure = SimpleStructure.builder(Identifier.fromNamespaceAndPath("test", "village"))
+        var structure = ModularStructure.builder(Identifier.fromNamespaceAndPath("test", "village"))
                 .jigsaw(TOWN_CENTERS, jigsaw -> jigsaw.size(2).useExpansionHack(true))
                 .verticalPlacement(StartHeight.at(HeightAnchor.absolute(70)))
                 .build(bootstrap(server));
@@ -279,10 +279,10 @@ class JigsawSourceTest {
 
     @Test
     void weightedAndCompoundSourcesTakeJigsawLayouts(MinecraftServer server) {
-        var weighted = SimpleStructure.builder(Identifier.fromNamespaceAndPath("test", "weighted"))
+        var weighted = ModularStructure.builder(Identifier.fromNamespaceAndPath("test", "weighted"))
                 .weighted(sources -> sources.jigsaw(1, TOWN_CENTERS, jigsaw -> jigsaw.size(2)))
                 .build(bootstrap(server));
-        var compound = SimpleStructure.builder(Identifier.fromNamespaceAndPath("test", "compound"))
+        var compound = ModularStructure.builder(Identifier.fromNamespaceAndPath("test", "compound"))
                 .compound(sources -> sources
                         .single(template -> template.template(TEMPLE))
                         .jigsaw(TOWN_CENTERS, jigsaw -> jigsaw.size(2).offset(40, 0, 0)))
@@ -307,7 +307,7 @@ class JigsawSourceTest {
                 StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
         var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(element, 1))));
-        var structure = new SimpleStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
+        var structure = new ModularStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
                 StartHeight.at(HeightAnchor.absolute(64)), LiquidSettings.IGNORE_WATERLOGGING, Optional.of(Foundation.repeating()), Optional.empty());
         var generated = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server, 0)));
         var placed = (PoolElementStructurePiece) generated.stub().getPiecesBuilder().build().pieces().getFirst();

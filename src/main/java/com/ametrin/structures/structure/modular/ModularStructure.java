@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.*;
@@ -34,25 +34,25 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/// A structure made of one or more templates, at a start height measured from the terrain. It's a built-in type, so you don't need your own structure type, piece type or codec:
+/// A structure built from piece sources, like templates and jigsaw layouts, at a start height measured from the terrain. It's a built-in type, so you don't need your own structure type, piece type or codec:
 ///
 /// ```
 /// STRUCTURES.registerSet("tower", set -> set
 ///     .evenSpreadPlacement(18, 0.6F)
-///     .simple(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST)));
+///     .modular(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST)));
 /// ```
-public class SimpleStructure extends ExtendedStructure {
+public class ModularStructure extends ExtendedStructure {
     public static final StartHeight ON_SURFACE_START_HEIGHT = StartHeight.at(HeightAnchor.surface(0));
 
-    public static final MapCodec<SimpleStructure> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+    public static final MapCodec<ModularStructure> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     settingsCodec(instance),
                     extendedSettingsCodec(instance),
-                    PieceSource.CODEC.fieldOf("pieces").forGetter(SimpleStructure::pieces),
-                    StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(SimpleStructure::startHeight),
-                    LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(SimpleStructure::liquidSettings),
-                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(SimpleStructure::foundation),
-                    Rotation.CODEC.optionalFieldOf("rotation").forGetter(SimpleStructure::rotation))
-            .apply(instance, SimpleStructure::new));
+                    PieceSource.CODEC.fieldOf("pieces").forGetter(ModularStructure::pieces),
+                    StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(ModularStructure::startHeight),
+                    LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(ModularStructure::liquidSettings),
+                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(ModularStructure::foundation),
+                    Rotation.CODEC.optionalFieldOf("rotation").forGetter(ModularStructure::rotation))
+            .apply(instance, ModularStructure::new));
 
     private final PieceSource pieces;
     private final StartHeight startHeight;
@@ -60,7 +60,7 @@ public class SimpleStructure extends ExtendedStructure {
     private final Optional<Foundation> foundation;
     private final Optional<Rotation> rotation;
 
-    public SimpleStructure(
+    public ModularStructure(
             StructureSettings settings,
             ExtendedStructureSettings extendedSettings,
             PieceSource pieces,
@@ -155,7 +155,7 @@ public class SimpleStructure extends ExtendedStructure {
 
     @Override
     public StructureType<?> type() {
-        return ASStructureTypes.SIMPLE.get();
+        return ASStructureTypes.MODULAR.get();
     }
 
     /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap]. Templates default to `id`'s namespace.
@@ -316,19 +316,19 @@ public class SimpleStructure extends ExtendedStructure {
         }
 
         @Override
-        public SimpleStructure build(BootstrapContext<Structure> context) {
-            return (SimpleStructure) super.build(context);
+        public ModularStructure build(BootstrapContext<Structure> context) {
+            return (ModularStructure) super.build(context);
         }
 
         @Override
-        protected SimpleStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
+        protected ModularStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
             PieceSource builtPieces;
             try {
                 builtPieces = Objects.requireNonNull(pieces).apply(context);
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);
             }
-            return new SimpleStructure(settings, extendedSettings, builtPieces, startHeight, liquidSettings, foundation, Optional.ofNullable(rotation));
+            return new ModularStructure(settings, extendedSettings, builtPieces, startHeight, liquidSettings, foundation, Optional.ofNullable(rotation));
         }
     }
 }

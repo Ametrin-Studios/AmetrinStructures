@@ -1,11 +1,11 @@
 # Jigsaw layouts
 
-A simple structure can grow a jigsaw layout from a template pool, from the same pools and jigsaw blocks as vanilla's jigsaw structures:
+A modular structure can grow a jigsaw layout from a template pool, from the same pools and jigsaw blocks as vanilla's jigsaw structures:
 
 ```java
 STRUCTURES.registerSet("castle", set -> set
         .scatteredGridPlacement(40, 0.5F)
-        .simple(castle -> castle
+        .modular(castle -> castle
                 .jigsaw(CastlePools.START, jigsaw -> jigsaw.size(8))
                 .biomes(BiomeTags.IS_TAIGA)
                 .terrainAdaptation(TerrainAdjustment.BEARD_THIN)));
@@ -13,7 +13,7 @@ STRUCTURES.registerSet("castle", set -> set
 
 The layout grows like vanilla's, with a few differences:
 
-- The start height is measured under the start piece, like for other simple structures, and the start piece's ground level is at that height. With `startJigsawName(...)`, that jigsaw is at the origin instead, one block lower.
+- The start height is measured under the start piece, like for other modular structures, and the start piece's ground level is at that height. With `startJigsawName(...)`, that jigsaw is at the origin instead, one block lower.
 - The structure's [processors](structures.md#processors), [foundation](structures.md#foundations) and liquid settings apply to its pieces.
 - It can be [part of a weighted or compound structure](structures.md#pieces). In a compound structure it grows around the other pieces.
 - Pool elements can be [limited](#limiting-elements) in how often, how deep and where they appear.
@@ -68,9 +68,9 @@ registries.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
 - `empty(weight)` adds an empty element, and `add(...)` any other element, like a feature or list element.
 - `defaultElementSettings(...)` sets what every element starts with, on a pool for its elements or on `JigsawPools` for the pools declared after it.
 
-An element takes a `weight(...)` and the same template settings as a simple structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)` and `noFoamProcessing()`.
+An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)` and `noFoamProcessing()`.
 
-The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like simple structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
+The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like modular structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
 
 ## Limiting elements
 
@@ -103,7 +103,7 @@ The structure's `pieces` are an `ametrin_structures:jigsaw` source:
 
 ```json
 {
-  "type": "ametrin_structures:simple",
+  "type": "ametrin_structures:modular",
   "biomes": "#minecraft:is_taiga",
   "spawn_overrides": {},
   "pieces": {

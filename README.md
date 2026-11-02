@@ -3,8 +3,8 @@
 An open source library mod for Minecraft structure mod developers.
 
 - **Foam** - marker blocks for space that should stay air. Plain air in a template is treated as structure void. Foam can spread on its own to fill a region.
-- **Simple structures** - a built-in structure type that covers most structure use cases. Everything is data driven, so pack authors can modify structures.
-- **Jigsaw layouts** - simple structures can grow vanilla style jigsaw layouts. Pool elements can be limited in how often, how deep and where they appear and helpers declare pools with less boilerplate.
+- **Modular structures** - a built-in structure type that combines templates, jigsaw layouts and piece sources of your own. Everything is data driven, so pack authors can modify structures.
+- **Jigsaw layouts** - modular structures can grow vanilla style jigsaw layouts. Pool elements can be limited in how often, how deep and where they appear and helpers declare pools with less boilerplate.
 - **Even Spread placement** - spreads structures evenly with a minimum distance and no visible pattern. Has an optional structure tag based exclusion zone.
 - **Scattered Grid placement** - one structure per grid cell, at a random spot in the cell. Has an optional structure tag based exclusion zone.
 - **Fixtures** - blocks that turn into something else when the structure generates, like a loot chest, an entity or a spawner.
@@ -14,7 +14,7 @@ An open source library mod for Minecraft structure mod developers.
 ## Documentation
 
 - [Getting started](docs/getting-started.md): from an empty mod to a structure in the world
-- [Structures](docs/structures.md): structure sets, placements and simple structures
+- [Structures](docs/structures.md): structure sets, placements and modular structures
 - [Jigsaw layouts](docs/jigsaw.md): jigsaw layouts and template pools
 - [Fixtures](docs/fixtures.md): fixtures, presets, conditions and spawner profiles
 - [Extending](docs/extending.md): your own filters, piece sources, structures, fixtures and foam

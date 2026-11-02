@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
 import com.ametrin.structures.structure.jigsaw.TemplateElementBuilder;

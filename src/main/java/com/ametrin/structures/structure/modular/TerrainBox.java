@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;

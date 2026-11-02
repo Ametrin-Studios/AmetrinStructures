@@ -2,8 +2,8 @@ package com.ametrin.structures.registry;
 
 import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
-import com.ametrin.structures.structure.simple.PieceSourceType;
-import com.ametrin.structures.structure.simple.PieceSources;
+import com.ametrin.structures.structure.modular.PieceSourceType;
+import com.ametrin.structures.structure.modular.PieceSources;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 

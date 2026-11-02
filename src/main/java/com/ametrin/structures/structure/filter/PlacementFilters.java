@@ -1,7 +1,7 @@
 package com.ametrin.structures.structure.filter;
 
 import com.ametrin.structures.registry.ASPlacementFilters;
-import com.ametrin.structures.structure.simple.HeightAnchor;
+import com.ametrin.structures.structure.modular.HeightAnchor;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

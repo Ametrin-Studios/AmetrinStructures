@@ -4,7 +4,7 @@ Most parts of the library are registry based. Implement the interface, give it a
 
 ## Placement filters
 
-A filter decides if a simple structure, or any other `ExtendedStructure`, can generate at a spot.
+A filter decides if a modular structure, or any other `ExtendedStructure`, can generate at a spot.
 
 ```java
 public record MinHeight(int y) implements PlacementFilter {
@@ -33,7 +33,7 @@ Reference: [`PlacementFilters`](../src/main/java/com/ametrin/structures/structur
 
 ## Piece sources
 
-A piece source decides which pieces a simple structure places. Register a `PieceSourceType` in `ASRegistries.PIECE_SOURCE_TYPE` and pass your source to `.pieces(...)`.
+A piece source decides which pieces a modular structure places. Register a `PieceSourceType` in `ASRegistries.PIECE_SOURCE_TYPE` and pass your source to `.pieces(...)`.
 
 Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards, measured under them.
 
@@ -43,11 +43,11 @@ Pieces that depend on the terrain or on the other pieces, like a jigsaw layout's
 
 `templates()` lists every template entry the source can place, so `/ametrin structures check` can check them.
 
-Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/simple/PieceSources.java) and [`ASPieceSources`](../src/main/java/com/ametrin/structures/registry/ASPieceSources.java).
+Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/modular/PieceSources.java) and [`ASPieceSources`](../src/main/java/com/ametrin/structures/registry/ASPieceSources.java).
 
 ## Structures of your own
 
-A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual. It takes the same suffix and weight arguments as `simple(...)`, and both can be mixed in one set:
+A set can hold any structure, not just modular ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual. It takes the same suffix and weight arguments as `modular(...)`, and both can be mixed in one set:
 
 ```java
 STRUCTURES.registerSet("castle", set -> set
@@ -86,28 +86,28 @@ public class CastleStructure extends ExtendedStructure {
 }
 ```
 
-The biome is checked at the origin once `layOut` returns. If laying out is slow and you know the origin's X and Z before its Y, return `Evaluation.WrongBiome` early when `hasValidBiome(context, x, z, minY, maxY)` is false for the Ys the origin can have. Simple structures do this before measuring the terrain.
+The biome is checked at the origin once `layOut` returns. If laying out is slow and you know the origin's X and Z before its Y, return `Evaluation.WrongBiome` early when `hasValidBiome(context, x, z, minY, maxY)` is false for the Ys the origin can have. Modular structures do this before measuring the terrain.
 
-Pass the extended settings on, and filters, processors and `onlyWhenPickedFirst()` work like on a simple structure. On a structure that isn't an `ExtendedStructure` they fail in datagen:
+Pass the extended settings on, and filters, processors and `onlyWhenPickedFirst()` work like on a modular structure. On a structure that isn't an `ExtendedStructure` they fail in datagen:
 
 ```java
 .structure((settings, extendedSettings, context) -> new CastleStructure(settings, extendedSettings),
         castle -> castle.biomes(BiomeTags.IS_TAIGA).filterFlatness(4))
 ```
 
-`SimpleStructure` can be subclassed too. It has getters for all its settings, so a subclass can write its own codec.
+`ModularStructure` can be subclassed too. It has getters for all its settings, so a subclass can write its own codec.
 
 Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java).
 
 ### Template pieces
 
-For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations, leaves out structure blocks, sets up mobs and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
+For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the modular structure's pieces, it runs fixtures, removes foam, places foundations, leaves out structure blocks, sets up mobs and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
 
 Reference: [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java).
 
 ### Pool elements
 
-A pool element type of your own can implement `StructureSettingsElement` to take the structure's processors and foundation in simple structures and their jigsaw layouts.
+A pool element type of your own can implement `StructureSettingsElement` to take the structure's processors and foundation in modular structures and their jigsaw layouts.
 
 Reference: [`StructureSettingsElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/StructureSettingsElement.java).
 

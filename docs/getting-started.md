@@ -79,7 +79,7 @@ public final class ExampleStructures {
 
     public static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set
             .evenSpreadPlacement(18, 0.6F)
-            .simple(tower -> tower
+            .modular(tower -> tower
                     .surface()
                     .single("ruined_tower")
                     .filterFlatness(3)
@@ -89,7 +89,7 @@ public final class ExampleStructures {
 
 - `registerSet(...)`: declares a structure set and returns the keys of the set and its structures.
 - `evenSpreadPlacement(18, 0.6F)`: attempts are at least 18 chunks apart, about 24 on average, and 60% of them generate.
-- `simple(...)`: adds a simple structure to the set.
+- `modular(...)`: adds a modular structure to the set.
 - `surface()`: puts the structure's origin on the surface.
 - `single("ruined_tower")`: places the template `examplemod:ruined_tower`.
 - `filterFlatness(3)`: skips spots where the ground varies by more than 3 blocks. Use sparingly.

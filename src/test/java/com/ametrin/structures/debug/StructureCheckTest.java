@@ -4,10 +4,10 @@ import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
-import com.ametrin.structures.structure.simple.PieceSource;
-import com.ametrin.structures.structure.simple.PieceSources;
-import com.ametrin.structures.structure.simple.SimpleStructure;
-import com.ametrin.structures.structure.simple.TemplateEntry;
+import com.ametrin.structures.structure.modular.PieceSource;
+import com.ametrin.structures.structure.modular.PieceSources;
+import com.ametrin.structures.structure.modular.ModularStructure;
+import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
@@ -63,7 +63,7 @@ class StructureCheckTest {
 
     @Test
     void aMissingTemplateIsReported(MinecraftServer server) {
-        var report = check(server, simple(Identifier.fromNamespaceAndPath("test", "missing")));
+        var report = check(server, modular(Identifier.fromNamespaceAndPath("test", "missing")));
         assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(report));
     }
 
@@ -71,7 +71,7 @@ class StructureCheckTest {
     void aMissingTemplateSomethingAskedForIsStillReported(MinecraftServer server) {
         var missing = Identifier.fromNamespaceAndPath("test", "asked_for");
         server.getStructureManager().getOrCreate(missing);
-        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, simple(missing))));
+        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(missing))));
     }
 
     @Test
@@ -86,7 +86,7 @@ class StructureCheckTest {
                      {type: "ametrin_structures:preset", preset: "test:missing"},
                      {type: "test:unknown"}]}}]}
                 """);
-        var report = check(server, simple(template));
+        var report = check(server, modular(template));
         assertEquals(List.of(
                 "TEMPLATE test:references fixture_offset",
                 "TEMPLATE test:references missing_loot_table",
@@ -105,7 +105,7 @@ class StructureCheckTest {
                      {conditions: [{type: "neoforge:mod_loaded", modid: "missing_mod"}], type: "ametrin_structures:loot_container", loot_table: "missing_mod:chest"},
                      {conditions: [{type: "neoforge:mod_loaded", modid: "missing_mod"}], type: "missing_mod:unknown"}]}}]}
                 """);
-        assertEquals(List.of(), describe(check(server, simple(template))));
+        assertEquals(List.of(), describe(check(server, modular(template))));
     }
 
     @Test
@@ -177,27 +177,27 @@ class StructureCheckTest {
                 .check(Map.of(STRUCTURE, structure));
     }
 
-    private static SimpleStructure simple(Identifier template) {
-        return simple(new PieceSources.SingleSource(TemplateEntry.of(template)));
+    private static ModularStructure modular(Identifier template) {
+        return modular(new PieceSources.SingleSource(TemplateEntry.of(template)));
     }
 
     // In a compound, so the check has to look inside it.
-    private static SimpleStructure jigsawSource(MinecraftServer server, StructurePoolElement element) {
+    private static ModularStructure jigsawSource(MinecraftServer server, StructurePoolElement element) {
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
         var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(Pools.EMPTY), List.of(Pair.of(element, 1))));
-        return simple(new PieceSources.CompoundSource(List.of(new JigsawSource.Builder(start).build())));
+        return modular(new PieceSources.CompoundSource(List.of(new JigsawSource.Builder(start).build())));
     }
 
     private static StructurePoolElement single(Identifier template) {
         return StructurePoolElement.single(template.toString()).apply(StructureTemplatePool.Projection.RIGID);
     }
 
-    private static SimpleStructure simple(PieceSource pieces) {
-        return new SimpleStructure(
+    private static ModularStructure modular(PieceSource pieces) {
+        return new ModularStructure(
                 new Structure.StructureSettings(HolderSet.empty()),
                 ExtendedStructureSettings.DEFAULT,
                 pieces,
-                SimpleStructure.ON_SURFACE_START_HEIGHT,
+                ModularStructure.ON_SURFACE_START_HEIGHT,
                 LiquidSettings.IGNORE_WATERLOGGING,
                 Optional.<Foundation>empty(),
                 Optional.empty());

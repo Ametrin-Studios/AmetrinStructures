@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASPieceTypes;
 import net.minecraft.core.BlockPos;
@@ -22,7 +22,7 @@ import java.util.function.Function;
 
 /// A pool element placed by a [TemplateEntry]. It fits the terrain to its [TerrainBox] with the structure's terrain adaptation.
 @ApiStatus.Internal
-public class SimpleStructurePiece extends PoolElementStructurePiece implements PieceBeardifierModifier {
+public class ModularStructurePiece extends PoolElementStructurePiece implements PieceBeardifierModifier {
     private static final String TERRAIN_ADAPTATION_KEY = "terrain_adaptation";
     private static final String TERRAIN_BOX_KEY = "terrain_box";
 
@@ -31,7 +31,7 @@ public class SimpleStructurePiece extends PoolElementStructurePiece implements P
     private final Optional<BoundingBox> terrainBox;
 
     /// @param groundLevelDelta how far above the bottom of the element the ground lies, the negated Y of the entry's offset
-    public SimpleStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, Rotation rotation, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation, TerrainBox terrainBox, int groundLevelDelta) {
+    public ModularStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, Rotation rotation, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation, TerrainBox terrainBox, int groundLevelDelta) {
         super(templates, element, position, terrainBox.groundLevelDelta(groundLevelDelta), rotation, element.getBoundingBox(templates, position, rotation), liquidSettings);
         this.terrainAdaptation = terrainAdaptation;
         this.terrainBox = element instanceof SinglePoolElement single
@@ -39,7 +39,7 @@ public class SimpleStructurePiece extends PoolElementStructurePiece implements P
                 : terrainBox instanceof TerrainBox.Local(var local) ? Optional.of(local) : Optional.empty();
     }
 
-    public SimpleStructurePiece(StructurePieceSerializationContext context, CompoundTag tag) {
+    public ModularStructurePiece(StructurePieceSerializationContext context, CompoundTag tag) {
         super(context, tag);
         this.terrainAdaptation = tag.read(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE);
         this.terrainBox = tag.read(TERRAIN_BOX_KEY, BoundingBox.CODEC);
@@ -47,7 +47,7 @@ public class SimpleStructurePiece extends PoolElementStructurePiece implements P
 
     @Override
     public StructurePieceType getType() {
-        return ASPieceTypes.SIMPLE.get();
+        return ASPieceTypes.MODULAR.get();
     }
 
     @Override

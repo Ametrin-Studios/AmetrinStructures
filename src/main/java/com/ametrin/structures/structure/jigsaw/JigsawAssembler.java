@@ -1,7 +1,7 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
-import com.ametrin.structures.structure.simple.PieceSource;
+import com.ametrin.structures.structure.modular.PieceSource;
 import com.ametrin.structures.util.ASLog;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

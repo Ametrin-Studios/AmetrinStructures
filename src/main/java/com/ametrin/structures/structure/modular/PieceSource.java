@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.Foundation;

@@ -26,7 +26,7 @@ class StructureBootstrapTest {
     void aSetTakesVanillaStructures() {
         var structures = new StructureBootstrap("test");
         var keys = structures.registerSet("mixed", set -> set
-                .simple(tower -> tower.single("tower"))
+                .modular(tower -> tower.single("tower"))
                 .existing(BuiltinStructures.IGLOO, 3));
         assertEquals(Map.of(keys.structure(""), 1, BuiltinStructures.IGLOO, 3), weights(build(structures), keys.key()));
         assertEquals(List.of(BuiltinStructures.IGLOO), keys.existing());
@@ -43,8 +43,8 @@ class StructureBootstrapTest {
     @Test
     void aStructureWithoutASetCanJoinOneLater() {
         var structures = new StructureBootstrap("test");
-        var tower = structures.registerSimple("tower", builder -> builder.single("tower"));
-        var shrine = structures.registerSimple("shrine", builder -> builder.jigsaw(Pools.EMPTY, jigsaw -> jigsaw.size(1)));
+        var tower = structures.registerModular("tower", builder -> builder.single("tower"));
+        var shrine = structures.registerModular("shrine", builder -> builder.jigsaw(Pools.EMPTY, jigsaw -> jigsaw.size(1)));
         var keys = structures.registerSet("towers", set -> set.existing(tower).existing(shrine, 2));
 
         var registries = build(structures);
@@ -57,9 +57,9 @@ class StructureBootstrapTest {
     @Test
     void aNameIsTakenOnceAcrossSetsAndStructures() {
         var structures = new StructureBootstrap("test");
-        structures.registerSimple("tower", builder -> builder.single("tower"));
-        assertThrows(IllegalStateException.class, () -> structures.registerSet("tower", set -> set.simple(tower -> tower.single("tower"))));
-        assertThrows(IllegalStateException.class, () -> structures.registerSimple("tower", builder -> builder.single("tower")));
+        structures.registerModular("tower", builder -> builder.single("tower"));
+        assertThrows(IllegalStateException.class, () -> structures.registerSet("tower", set -> set.modular(tower -> tower.single("tower"))));
+        assertThrows(IllegalStateException.class, () -> structures.registerModular("tower", builder -> builder.single("tower")));
     }
 
     @Test
@@ -70,13 +70,13 @@ class StructureBootstrapTest {
                 .existing(BuiltinStructures.IGLOO)
                 .existing(BuiltinStructures.IGLOO)));
         assertThrows(IllegalStateException.class, () -> structures.registerSet("own", set -> set
-                .simple(tower -> tower.single("tower"))
+                .modular(tower -> tower.single("tower"))
                 .existing(ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath("test", "own")))));
     }
 
     @Test
     void aStructureWithoutASetIsCheckedRightAway() {
-        assertThrows(IllegalStateException.class, () -> new StructureBootstrap("test").registerSimple("tower", builder -> builder.surface()));
+        assertThrows(IllegalStateException.class, () -> new StructureBootstrap("test").registerModular("tower", builder -> builder.surface()));
     }
 
     @Test

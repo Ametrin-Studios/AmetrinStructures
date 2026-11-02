@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
@@ -95,7 +95,7 @@ class StartHeightTest {
 
     @Test
     void theDefaultIsTheSurface() {
-        assertEquals(StartHeight.at(HeightAnchor.surface(0)), SimpleStructure.ON_SURFACE_START_HEIGHT);
+        assertEquals(StartHeight.at(HeightAnchor.surface(0)), ModularStructure.ON_SURFACE_START_HEIGHT);
     }
 
     private static StartHeight parse(String json) {

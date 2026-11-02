@@ -5,9 +5,9 @@ import com.ametrin.structures.registry.ASAttachments;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASSpawnerProfiles;
 import com.ametrin.structures.spawner.SpawnerAccess;
-import com.ametrin.structures.structure.simple.SimpleStructurePiece;
-import com.ametrin.structures.structure.simple.TemplateEntry;
-import com.ametrin.structures.structure.simple.TerrainBox;
+import com.ametrin.structures.structure.modular.ModularStructurePiece;
+import com.ametrin.structures.structure.modular.TemplateEntry;
+import com.ametrin.structures.structure.modular.TerrainBox;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.FrontAndTop;
@@ -43,7 +43,7 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-/// One marker per fixture type, placed through a real [SimpleStructurePiece]. Each test places the whole layout and checks only its own marker.
+/// One marker per fixture type, placed through a real [ModularStructurePiece]. Each test places the whole layout and checks only its own marker.
 ///
 /// The markers are written into the test area and captured into a template, so the fixtures are defined here with their codecs instead of in a hand-made file.
 final class FixtureLayout {
@@ -139,7 +139,7 @@ final class FixtureLayout {
         return new BlockPos(1 + 3 * slot, 1, 2);
     }
 
-    /// Writes every marker, captures the area into a template and places that template back through a [SimpleStructurePiece].
+    /// Writes every marker, captures the area into a template and places that template back through a [ModularStructurePiece].
     static void place(GameTestHelper helper) {
         var level = helper.getLevel();
         var registries = level.registryAccess();
@@ -166,7 +166,7 @@ final class FixtureLayout {
             helper.setBlock(entry.pos(), Blocks.AIR);
         }
 
-        var piece = new SimpleStructurePiece(templates, TemplateEntry.of(TEMPLATE).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
+        var piece = new ModularStructurePiece(templates, TemplateEntry.of(TEMPLATE).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
         piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), level.getRandom(), BoundingBox.infinite(), ChunkPos.containing(origin), origin);
     }
 }

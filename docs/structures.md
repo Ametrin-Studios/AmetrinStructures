@@ -30,10 +30,10 @@ A set can hold more than one structure. They're tried in weighted order at each 
 ```java
 STRUCTURES.registerSet("graves", set -> set
         .evenSpreadPlacement(20, 0.5F)
-        .simple("small", 3, grave -> grave
+        .modular("small", 3, grave -> grave
                 .single("graves/small")
                 .surface())
-        .simple("large", 1, grave -> grave
+        .modular("large", 1, grave -> grave
                 .single("graves/large")
                 .surface()));
 ```
@@ -46,10 +46,10 @@ Structures in a set are named `<set>/<suffix>`, here `examplemod:graves/small` a
 
 ### Existing structures
 
-`existing(...)` adds a structure registered elsewhere to a set, with an optional weight. It can be one of yours or one from vanilla or another mod. `registerSimple(...)` and `registerStructure(...)` declare a structure without a set and return its key:
+`existing(...)` adds a structure registered elsewhere to a set, with an optional weight. It can be one of yours or one from vanilla or another mod. `registerModular(...)` and `registerStructure(...)` declare a structure without a set and return its key:
 
 ```java
-public static final ResourceKey<Structure> WELL = STRUCTURES.registerSimple("well", well -> well.single("well").surface());
+public static final ResourceKey<Structure> WELL = STRUCTURES.registerModular("well", well -> well.single("well").surface());
 
 public static final StructureSetKeys VILLAGE_EXTRAS = STRUCTURES.registerSet("village_extras", set -> set
         .scatteredGridPlacement(24, 0.5F)
@@ -59,7 +59,7 @@ public static final StructureSetKeys VILLAGE_EXTRAS = STRUCTURES.registerSet("vi
 
 The set's keys list these under `existing()` and its own under `declared()`. `structures()` returns both.
 
-To create a simple structure outside a bootstrap, use `SimpleStructure.builder(id)...build(context)`.
+To create a modular structure outside a bootstrap, use `ModularStructure.builder(id)...build(context)`.
 
 ### Excluding dimensions
 
@@ -91,7 +91,7 @@ The set's structures don't generate there, and `/locate`, explorer maps and the 
 
 ## Pieces
 
-A simple structure places one or more templates:
+A modular structure is built from piece sources:
 
 - `single("tower")` places one template.
 - `weighted(...)` picks one of several at random.
@@ -206,11 +206,11 @@ Lakes don't carve into structures in the `#ametrin_structures:lake_proof` struct
 
 ## JSON
 
-Datagen writes simple structures as `ametrin_structures:simple`. Pack authors can edit that JSON or write their own:
+Datagen writes modular structures as `ametrin_structures:modular`. Pack authors can edit that JSON or write their own:
 
 ```json
 {
-  "type": "ametrin_structures:simple",
+  "type": "ametrin_structures:modular",
   "biomes": "#minecraft:is_forest",
   "spawn_overrides": {},
   "terrain_adaptation": "beard_thin",
@@ -281,4 +281,4 @@ The placements are `ametrin_structures:even_spread` with `min_distance` and `ame
 }
 ```
 
-Reference: [`SimpleStructure`](../src/main/java/com/ametrin/structures/structure/simple/SimpleStructure.java), [`PieceSources`](../src/main/java/com/ametrin/structures/structure/simple/PieceSources.java), [`TemplateEntry`](../src/main/java/com/ametrin/structures/structure/simple/TemplateEntry.java), [`PlacementFilters`](../src/main/java/com/ametrin/structures/structure/filter/PlacementFilters.java), [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java) and [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java).
+Reference: [`ModularStructure`](../src/main/java/com/ametrin/structures/structure/modular/ModularStructure.java), [`PieceSources`](../src/main/java/com/ametrin/structures/structure/modular/PieceSources.java), [`TemplateEntry`](../src/main/java/com/ametrin/structures/structure/modular/TemplateEntry.java), [`PlacementFilters`](../src/main/java/com/ametrin/structures/structure/filter/PlacementFilters.java), [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java) and [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java).

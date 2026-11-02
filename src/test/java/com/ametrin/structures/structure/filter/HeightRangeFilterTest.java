@@ -1,6 +1,6 @@
 package com.ametrin.structures.structure.filter;
 
-import com.ametrin.structures.structure.simple.HeightAnchor;
+import com.ametrin.structures.structure.modular.HeightAnchor;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;

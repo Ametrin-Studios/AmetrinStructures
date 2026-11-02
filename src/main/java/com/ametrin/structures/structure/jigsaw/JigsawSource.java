@@ -1,9 +1,9 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.registry.ASPieceSources;
-import com.ametrin.structures.structure.simple.PieceSource;
-import com.ametrin.structures.structure.simple.PieceSourceType;
-import com.ametrin.structures.structure.simple.TemplateEntry;
+import com.ametrin.structures.structure.modular.PieceSource;
+import com.ametrin.structures.structure.modular.PieceSourceType;
+import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.ametrin.structures.util.ASLog;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
