@@ -2,8 +2,6 @@
 
 Most parts of the library are registry based. Implement the interface, give it a `MapCodec`, and register a type for it in the library's registry with a normal `DeferredRegister`. It then works from the Java builders and from JSON. The registry keys are in `ASRegistries`.
 
-[Dungeons Enhanced](https://github.com/Ametrin-Studios/DungeonsEnhanced) is a source-available mod built on this library, if you want a real example.
-
 ## Placement filters
 
 A filter decides if a simple structure, or any other `ExtendedStructure`, can generate at a spot.
@@ -37,15 +35,19 @@ Reference: [`PlacementFilters`](../src/main/java/com/ametrin/structures/structur
 
 A piece source decides which pieces a simple structure places. Register a `PieceSourceType` in `ASRegistries.PIECE_SOURCE_TYPE` and pass your source to `.pieces(...)`.
 
-`PieceSources.createPiece(entry, context)` creates the same piece the built-in sources use. The context holds the structure's settings: terrain adaptation, liquid settings, foundation and processors. `createPiece` applies them, and pieces you create yourself need to take them from the context, since the structure doesn't hand them over afterwards. Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards. Pieces that depend on the terrain or on the other pieces, like a jigsaw layout's, can be added in a step registered with `context.afterPlacement(...)`. It runs once every source appended its pieces and they're at their start height, and returns false to reject the spot.
+Create pieces relative to `context.origin()`, which is at Y 0. The structure moves them to the start height afterwards, measured under them.
 
-`templates()` lists every template entry the source can place. `/ametrin structures check` uses it.
+`PieceSources.createPiece(entry, context)` creates the same piece the built-in sources use. The context holds the structure's settings: terrain adaptation, liquid settings, foundation and processors. `createPiece` applies them. Pieces you create yourself need to take them from the context, since the structure doesn't hand them over afterwards.
+
+Pieces that depend on the terrain or on the other pieces, like a jigsaw layout's, can be added in a step registered with `context.afterPlacement(...)`. It runs once every source appended its pieces and they're at their start height, and returns false to reject the spot.
+
+`templates()` lists every template entry the source can place, so `/ametrin structures check` can check them.
 
 Reference: [`PieceSources`](../src/main/java/com/ametrin/structures/structure/simple/PieceSources.java) and [`ASPieceSources`](../src/main/java/com/ametrin/structures/registry/ASPieceSources.java).
 
 ## Structures of your own
 
-A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual. A structure that isn't an `ExtendedStructure` ignores the extended settings:
+A set can hold any structure, not just simple ones. `structure(...)` takes a factory that creates your structure from the shared settings. Biomes, step, terrain adaptation and spawn overrides are set on the builder as usual. It takes the same suffix and weight arguments as `simple(...)`, and both can be mixed in one set:
 
 ```java
 STRUCTURES.registerSet("castle", set -> set
@@ -93,99 +95,29 @@ Pass the extended settings on, and filters, processors and `onlyWhenPickedFirst(
         castle -> castle.biomes(BiomeTags.IS_TAIGA).filterFlatness(4))
 ```
 
-`SimpleStructure` can be subclassed too. It has getters for all its settings, so a subclass can write its own codec. To create one outside a set, e.g. in your own bootstrap, use `SimpleStructure.builder(id)...build(context)`.
+`SimpleStructure` can be subclassed too. It has getters for all its settings, so a subclass can write its own codec.
 
-For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
+Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java).
 
-Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structure/ExtendedStructure.java) and [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java).
+### Template pieces
 
-## Structures without a set
+For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the simple structure's pieces, it runs fixtures, removes foam, places foundations, leaves out structure blocks, sets up mobs and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
 
-`registerSimple(...)` and `registerStructure(...)` on the `StructureBootstrap` declare a structure on its own and return its key. 
+Reference: [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java).
 
-`existing(...)` adds a structure registered elsewhere to a set, with an optional weight. It can be one of yours or one from vanilla or another mod:
+### Pool elements
 
-```java
-public static final ResourceKey<Structure> WELL = STRUCTURES.registerSimple("well", well -> well.single("well").surface());
+A pool element type of your own can implement `StructureSettingsElement` to take the structure's processors and foundation in simple structures and their jigsaw layouts.
 
-public static final StructureSetKeys VILLAGE_EXTRAS = STRUCTURES.registerSet("village_extras", set -> set
-        .scatteredGridPlacement(24, 0.5F)
-        .existing(WELL, 3)
-        .existing(BuiltinStructures.IGLOO));
-```
-
-The set's keys list these under `existing()` and its own under `declared()`. `structures()` returns both.
-
-Reference: [`StructureBootstrap`](../src/main/java/com/ametrin/structures/structure/StructureBootstrap.java) and [`StructureSetKeys`](../src/main/java/com/ametrin/structures/structure/StructureSetKeys.java).
+Reference: [`StructureSettingsElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/StructureSettingsElement.java).
 
 ## Placements
 
-`horizontalPlacement(...)` takes any `StructurePlacement`, vanilla or your own. The overload with a function gets the bootstrap context, for placements that need registry entries.
-
-The library has two placements:
-
-- `evenSpreadPlacement(...)` spreads attempts evenly without a visible pattern. They're always at least `min_distance` chunks apart, and about 1.3 times that on average.
-- `scatteredGridPlacement(...)` puts one attempt in each cell of a grid. Sets with the same spacing can be interleaved with a shared `grid_offset`, and explorer maps can search further for it. It's also faster than even spread.
+`horizontalPlacement(...)` on a set takes any `StructurePlacement`, including your own.
 
 `StructurePlacements.hasStructureChunkInRange(...)` checks if a structure, holder set or tag has a spot nearby. `StructureLookup` checks if a position or box is inside a structure. Both are useful for placements and features that should keep away from structures.
 
-### Excluding dimensions
-
-Biomes keep most structures in the right dimension. When a dimension reuses vanilla's biomes the `ametrin_structures:excluded_dimensions` data map takes structure sets out of it. It works for any set, vanilla and modded, e.g. in `data/<namespace>/data_maps/worldgen/structure_set/excluded_dimensions.json`:
-
-```json
-{
-  "values": {
-    "minecraft:villages": ["examplemod:example_dimension"],
-    "minecraft:igloos": ["examplemod:example_dimension"]
-  }
-}
-```
-
-Or with a `DataMapProvider`:
-
-```java
-static final ResourceKey<Level> EXAMPLE_DIMENSION = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("examplemod", "example_dimension"));
-
-@Override
-protected void gather(HolderLookup.Provider provider) {
-    builder(ASDataMaps.EXCLUDED_DIMENSIONS)
-            .add(BuiltinStructureSets.VILLAGES, List.of(EXAMPLE_DIMENSION), false)
-            .add(BuiltinStructureSets.IGLOOS, List.of(EXAMPLE_DIMENSION), false);
-}
-```
-
-The set's structures don't generate there, and `/locate`, explorer maps and the spread report skip them. Lists from several packs are combined. Changes need a server restart.
-
-Reference: [`EvenSpreadPlacement`](../src/main/java/com/ametrin/structures/placement/EvenSpreadPlacement.java), [`ScatteredGridPlacement`](../src/main/java/com/ametrin/structures/placement/ScatteredGridPlacement.java), [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java) and [`StructureLookup`](../src/main/java/com/ametrin/structures/placement/StructureLookup.java).
-
-## Processors
-
-`ReplaceBlockProcessor` replaces random blocks, e.g. to make a build look weathered.
-
-A structure's `processors(...)` run on every template piece that has no processors of its own: `ExtendedTemplateStructurePiece`s, including the pieces of your own structures, and the single, legacy and list elements of simple structures, in template entries and jigsaw layouts. A piece's own processors replace the structure's. Add `InlineFromStructureProcessor.INSTANCE` to its list to run the structure's processors at that point. A pool element type of your own can implement `StructureSettingsElement` to take the structure's processors and foundation in simple structures.
-
-`RetainExistingProcessor.ALL` only places blocks where the world has something replaceable, like air, plants or water. Ruins blend into the terrain instead of cutting through it. `RetainExistingProcessor.REPLACEABLE_ONLY` (`"replaceable_only": true`) always places solid blocks and only holds back the template's air, plants and water. A building keeps its walls, but its air doesn't dig into the terrain around it. Water in the world counts as replaceable, so template air still removes it.
-
-`RemoveUnsupportedProcessor.INSTANCE` (`ametrin_structures:remove_unsupported`) removes the sides of glow lichen, resin clumps, sculk veins and similar blocks that touch nothing solid, and places air when no side is left, so they don't break and drop as items. Put it after a `ReplaceBlockProcessor` that turns vines into resin clumps with `preserve_state`.
-
-`ConditionalProcessor` (`ametrin_structures:conditional`) runs its processors only when NeoForge conditions pass, e.g. when another mod is installed. Its processors are only read then, so they can use the other mod's blocks without breaking anything when it's missing. One processor list can hold the swaps for several mods side by side:
-
-```json
-{
-  "processor_type": "ametrin_structures:conditional",
-  "conditions": [{ "type": "neoforge:mod_loaded", "modid": "othermod" }],
-  "processors": [
-    { "processor_type": "ametrin_structures:replace_block", "condition": "minecraft:stone_bricks", "chance": 0.2, "change_to": { "Name": "othermod:cracked_stone_tiles" } }
-  ]
-}
-```
-
-`processors` can also be a processor list id.
-
-Every piece gets a `RemoveFoamProcessor` automatically. Add one yourself to fill foam with something else, e.g. `RemoveFoamProcessor.WATER` to flood a sunken build.
-
-Reference: [`ReplaceBlockProcessor`](../src/main/java/com/ametrin/structures/processor/ReplaceBlockProcessor.java), [`RetainExistingProcessor`](../src/main/java/com/ametrin/structures/processor/RetainExistingProcessor.java), [`RemoveUnsupportedProcessor`](../src/main/java/com/ametrin/structures/processor/RemoveUnsupportedProcessor.java), [`ConditionalProcessor`](../src/main/java/com/ametrin/structures/processor/ConditionalProcessor.java), [`InlineFromStructureProcessor`](../src/main/java/com/ametrin/structures/structure/InlineFromStructureProcessor.java) and [`RemoveFoamProcessor`](../src/main/java/com/ametrin/structures/foam/RemoveFoamProcessor.java).
+Reference: [`StructurePlacements`](../src/main/java/com/ametrin/structures/placement/StructurePlacements.java) and [`StructureLookup`](../src/main/java/com/ametrin/structures/placement/StructureLookup.java).
 
 ## Fixtures
 
@@ -215,124 +147,13 @@ static final DeferredHolder<FixtureType, FixtureType> LANTERN = FIXTURES.registe
 
 A field is `required`, `withDefault` or `optional` (wrapped in an `Optional`). `FieldType` covers the common value types, like numbers, registry keys, block states, items and NBT. `validated` adds a check to one.
 
-If an alternative can't be decoded, e.g. because it names a block from a mod that isn't installed, it's kept as it was stored and skipped at generation. A broken fixture never stops a template from loading.
-
 Override `references()` to return the registry keys the fixture uses, like loot tables. `/ametrin structures check` then reports the missing ones.
 
 `context.placeBlock(...)` places a block the way the built-in fixtures do, turned to match the marker. For a block state field, use `BlockStateMerging.mergedBlockState()`. It leaves out the properties the marker sets. `Fixtures` has more shared helpers, like `spawnEntity(...)` and `placeSpawner(...)`.
 
+To add your own [condition](fixtures.md#conditions) types, register a `FixtureConditionType` in `ASRegistries.FIXTURE_CONDITION_TYPE`.
+
 Reference: the built-in fixtures, like [`LootContainerFixture`](../src/main/java/com/ametrin/structures/fixture/LootContainerFixture.java), and [`Fixtures`](../src/main/java/com/ametrin/structures/fixture/Fixtures.java).
-
-## Fixture presets
-
-A `FixturePreset` is a shared weighted list of fixtures, the same as the list in a fixture block. When you change a preset, every structure using it changes too, and datapacks can override it.
-
-```java
-static final ResourceKey<FixturePreset> DUNGEON_CHEST = ResourceKey.create(ASRegistries.FIXTURE_PRESET, id("dungeon_chest"));
-
-static void bootstrap(BootstrapContext<FixturePreset> context) {
-    context.register(DUNGEON_CHEST, FixturePreset.builder()
-            .add(3, new LootContainerFixture(BuiltInLootTables.SIMPLE_DUNGEON))
-            .add(new WeightedFixture(1, 0.5F, new LootContainerFixture(BuiltInLootTables.BURIED_TREASURE)))
-            .build());
-    context.register(GUARD, FixturePreset.builder()
-            .add(1, EntityFixture.of(EntityType.SKELETON).withEquipment(GUARD_EQUIPMENT))
-            .entity(1, new EntityDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON))
-            .build());
-}
-
-// Datagen
-registries.add(ASRegistries.FIXTURE_PRESET, ExamplePresets::bootstrap);
-```
-
-In the fixture's screen, choose the `preset` type and enter the preset's id. It's an alternative like any other:
-
-- To use the whole list, make the preset the only alternative.
-- To use it as one option, mix it with others, e.g. weight 5 for `empty` and 1 for a `rare_chest` preset.
-
-When the preset is picked, it picks from its own alternatives, so its weights work the same everywhere. Presets can use other presets, and their generation chances multiply. Offset, gravity, `becomes`, facing and post-processing still come from the fixture block.
-
-Presets are stored at `data/<namespace>/ametrin_structures/fixture_preset/<name>.json`. Each alternative has the fixture's fields next to its `type`, `weight` and `generation_chance`:
-
-```json
-{"fixtures": [
-  {"weight": 3, "type": "ametrin_structures:loot_container", "loot_table": "minecraft:chests/simple_dungeon"},
-  {"type": "ametrin_structures:empty"}
-]}
-```
-
-Reference: [`FixturePreset`](../src/main/java/com/ametrin/structures/fixture/FixturePreset.java).
-
-## Fixture conditions
-
-Any alternative, in a fixture block or a preset, can have `conditions`. They're tested at the position the fixture acts on, after the marker is removed. Alternatives whose conditions fail are dropped before picking, and the rest keep their relative weights. If none pass, the fixture does nothing.
-
-```json
-{"fixtures": [
-  {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/snowy",
-   "conditions": [{"type": "ametrin_structures:biome", "biomes": "#minecraft:spawns_snow_foxes"}]},
-  {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/crate", "block": {"Name": "othermod:crate"},
-   "conditions": [{"type": "neoforge:mod_loaded", "modid": "othermod"}]},
-  {"type": "ametrin_structures:loot_container", "loot_table": "example:chests/default"}
-]}
-```
-
-- `ametrin_structures:biome`: the biome is in `biomes`, which is a biome, a list or a `#tag`.
-- `ametrin_structures:dimension`: the dimension is in `dimensions`.
-- `ametrin_structures:height_range`: Y is between `min` and `max`. Either can be left out.
-- `ametrin_structures:not`, `any_of` and `all_of` combine other conditions.
-- Any NeoForge condition, like `neoforge:mod_loaded` or `neoforge:tag_empty`. Tag conditions use the world's tags.
-
-An alternative for a mod that isn't installed can't be decoded, but its conditions still work. So a `neoforge:mod_loaded` condition removes it, instead of it being picked and placing nothing.
-
-In Java, add conditions with `withConditions(...)`. Wrap NeoForge conditions in `FixtureConditions.NeoForge`:
-
-```java
-.add(new WeightedFixture(1, new LootContainerFixture(CRATE_LOOT))
-        .withConditions(new FixtureConditions.NeoForge(new ModLoadedCondition("othermod"))))
-```
-
-Biome conditions take a `HolderSet`, which you get from the bootstrap context. For example, a husk spawner in deserts and a zombie spawner everywhere else:
-
-```java
-var desert = new FixtureConditions.InBiome(context.lookup(Registries.BIOME).getOrThrow(Tags.Biomes.IS_DESERT));
-context.register(CRYPT_SPAWNER, FixturePreset.builder()
-        .add(new WeightedFixture(1, SpawnerFixture.of(EntityType.HUSK)).withConditions(desert))
-        .add(new WeightedFixture(1, SpawnerFixture.of(EntityType.ZOMBIE)).withConditions(new FixtureConditions.Not(desert)))
-        .build());
-```
-
-The fixture's screen edits conditions as SNBT. To add your own condition types, register a `FixtureConditionType` in `ASRegistries.FIXTURE_CONDITION_TYPE`.
-
-Reference: [`FixtureConditions`](../src/main/java/com/ametrin/structures/fixture/FixtureConditions.java).
-
-## Spawner profiles
-
-A `SpawnerProfile` configures a spawner: delays, counts, ranges and what it spawns. Use the `spawner_profile` fixture to place spawners with it. A spawner applies its profile every time it loads, so changes to the profile, from your mod or a datapack, also reach spawners that already generated.
-
-```java
-static final ResourceKey<SpawnerProfile> CRYPT = ResourceKey.create(ASRegistries.SPAWNER_PROFILE, id("crypt"));
-
-static void bootstrap(BootstrapContext<SpawnerProfile> context) {
-    context.register(CRYPT, SpawnerProfile.builder()
-            .spawnCount(2)
-            .add(EntityType.ZOMBIE, 3)
-            .add(new EntityDataBuilder(EntityType.SPIDER).passenger(EntityType.SKELETON), 1)
-            .add(SpawnDataBuilder.of(EntityType.HUSK).noLightLimit(), 1)
-            .build());
-}
-
-// Datagen
-registries.add(ASRegistries.SPAWNER_PROFILE, ExampleSpawnerProfiles::bootstrap);
-```
-
-Profiles are stored at `data/<namespace>/ametrin_structures/spawner_profile/<name>.json`. All fields are optional and default to vanilla's values. Without `spawn_potentials` the spawner keeps its current entity.
-
-`EntityDataBuilder` describes an entity for spawners, entity fixtures and passengers: name, health and other attributes, effects, equipment per slot, death loot, left-handedness, baby, passengers and more. If you set any of it, the entity skips its own spawn randomization, like random armor, the same as with vanilla spawners. Entity fixtures also skip it when you set a death loot table.
-
-`SpawnDataBuilder` adds settings only spawners use: an equipment loot table and spawn rules, like `noLightLimit()` to spawn in daylight. For entity fixtures, set the equipment loot table with `withEquipment(...)`.
-
-Reference: [`SpawnerProfile`](../src/main/java/com/ametrin/structures/spawner/SpawnerProfile.java).
 
 ## Foam
 

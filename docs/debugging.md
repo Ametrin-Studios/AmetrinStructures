@@ -62,7 +62,7 @@ Checks every structure, or the ones in a namespace, for mistakes that would othe
 - a start jigsaw name that no template in the start pool has
 - conditional elements in vanilla jigsaw structures, which ignore their conditions
 - loot tables that containers in templates use but that don't exist
-- fixtures in templates, and the presets they use, that can't be read or that use something that doesn't exist, like  a loot table, preset, spawner profile or entity
+- fixtures in templates, and the presets they use, that can't be read or that use something that doesn't exist, like a loot table, preset, spawner profile or entity
 - fixtures in templates with an offset of more than 16 blocks along an axis
 
 It checks simple and jigsaw structures and tells you how many of other types it skipped. Chat shows the first 50 problems, and the log has all of them.
@@ -77,58 +77,44 @@ These lay out a structure at random seeds where you stand. They ignore the biome
 /ametrin structures pieces <structure> [layouts]
 ```
 
-Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything. It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first. Hover over a template to see how many of it a layout has and how many jigsaws deep it sits, counted from the start piece. Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
+Lays out the structure 100 times, or `layouts` times up to 1000, without placing anything.
+
+- It shows how many pieces a layout has, its average and largest size, and how often each template appears, rarest first.
+- Hover over a template to see how many of it a layout has and how many jigsaws deep it sits, counted from the start piece.
+- Hover over the open jigsaws line to see which pools jigsaws pointed into that nothing attached to, for example because the structure reached its size. Jigsaws into `minecraft:empty` aren't counted, since they aren't meant to connect.
 
 ```
 /ametrin structures gallery <structure> [count]
 ```
 
-Places 9 layouts, or `count` up to 100, in a grid next to you, each in a cell as big as the biggest layout, with a gap of a quarter of its size, at least 8 blocks. Only do this in a throw-away test word.
-
-## Fixtures
-
-"Generate now" in a fixture's screen runs it in place like generation would, but ignores its generation chance. The fixture goes back into your inventory first, with all its settings, so you can place it again.
-
-If a value can't be parsed or isn't accepted, the fixture uses its default instead. Turn on debug logging to see why.
-
-Broken fixture presets are logged as warnings when the server starts: unknown fixture types, fields or presets, values that can't be parsed, and presets that use each other in a loop.
+Places 9 layouts, or `count` up to 100, in a grid next to you, each in a cell as big as the biggest layout, with a gap of a quarter of its size, at least 8 blocks. Only do this in a throw-away test world.
 
 ## Loot tables
 
-`/ametrin loot_stats table <loot_table> [samples]` rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. For each item it shows how many a chest has on average and how many chests have at least one. Hover an item for the fewest and most seen in one chest. Only the 10 rarest items are listed, click `[+N more]` for the rest. `[copy]` copies the whole report as tab-separated values, e.g. to paste into a spreadsheet. The table can also be inline JSON, like for `/loot`.
-
-The counts are what the table produces. A real chest can hold fewer when the items don't fit.
-
-`/ametrin loot_stats structure <structure> [radius] [layouts]` does the same for all chests of a structure. It lays out the structure at the nearest 100 spots, or `layouts` spots, where it would generate within 128 chunks, or `radius` chunks, up to 16384. It shows the items per structure. Hover the loot sources line to see how often each loot table, armor stand and item frame appears per structure. A structure tag, like `#minecraft:village`, counts all its structures together, as they come up around you, and lists how many layouts each one contributed. Containers with a loot table count, and so do loot container and fill container fixtures, drawn like generation would draw them. Armor stands and item frames count with everything they hold. That includes entity fixtures and their equipment tables.
-
-The structure isn't placed, so processors that would remove or replace a chest don't, and fixture conditions are checked at the marker. Only template pieces are read. Pieces that place their contents in code, like most vanilla structures from before jigsaws, and data markers, which the piece turns into a chest in code, like a shipwreck's, can't be read, so the report says how many there are. Suspicious blocks, vaults, spawners and mobs aren't counted.
-
-## Structure blocks
-
-The structure block's name box completes every template id the server can load, from mods, datapacks and the world's saved templates. The jigsaw block's pool box completes the server's template pools, and its "Turns into" box completes block states.
-
-`/ametrin structures save [radius]` saves every structure block in save mode within `radius` blocks (64 by default), as if you pressed each one's save button.
-
-### Exporting templates
-
 ```
-/ametrin structures export_templates [namespace]
+/ametrin loot_stats table <loot_table> [samples]
 ```
 
-Copies the templates your structure blocks saved in this world (in `<world>/generated/`) into the project's resources at `data/<namespace>/structure/`, so they ship with the mod. It tells you how many were new, changed or unchanged.
+Rolls a loot table 10,000 times, or `samples` times, as if you opened a chest where you stand. Your luck counts, e.g. from the Luck effect. The table can also be inline JSON, like for `/loot`.
 
-- Only namespaces that already have a `data/<namespace>` folder in your resources are exported. Edited vanilla templates or other mods' templates stay out.
-- The world keeps its saved copies, and the game loads those before the mod's own. Delete them from `generated/` once you're done, otherwise they hide later changes to your resources.
-- By default the resources are `src/main/resources` next to the `run` folder. For a different layout, list the folders in the `ametrin_structures.template_sources` system property, separated like a classpath:
+- For each item it shows how many a chest has on average and how many chests have at least one. Hover an item for the fewest and most seen in one chest.
+- Only the 10 rarest items are listed. Click `[+N more]` for the rest.
+- `[copy]` copies the whole report as tab-separated values, e.g. to paste into a spreadsheet.
+- The counts are what the table produces. A real chest can hold fewer when the items don't fit.
 
-  ```groovy
-  configureEach {
-      systemProperty 'ametrin_structures.template_sources', file('src/main/resources').absolutePath
-  }
-  ```
+```
+/ametrin loot_stats structure <structure|#tag> [radius] [layouts]
+```
 
-The command only exists in a development environment, never on a real server or client, because it writes into the project.
+Does the same for all chests of a structure. It lays out the structure at the nearest 100 spots, or `layouts` spots, where it would generate within 128 chunks, or `radius` chunks, up to 16384, and shows the items per structure.
+
+- Hover the loot sources line to see how often each loot table, armor stand and item frame appears per structure.
+- A structure tag, like `#minecraft:village`, counts all its structures together, as they come up around you, and lists how many layouts each one contributed.
+- Containers with a loot table count, and so do loot container and fill container fixtures, drawn like generation would draw them. Armor stands and item frames count with everything they hold, including entity fixtures and their equipment tables.
+- Suspicious blocks, vaults, spawners and mobs aren't counted.
+
+The structure isn't placed, so processors that would remove or replace a chest don't, and fixture conditions are checked at the marker. Only template pieces are read. Pieces that place their contents in code, like most vanilla structures from before jigsaws, and data markers, which the piece turns into a chest in code, like a shipwreck's, can't be read, so the report says how many there are.
 
 ## Debug logging
 
-Some details are only logged at debug level, like loot that didn't fit into a container. The run configurations from NeoForge's mod template log at that level.
+Some details are only logged at debug level, like loot that didn't fit into a container or why a fixture value wasn't accepted. The run configurations from NeoForge's mod template log at that level.
