@@ -1,9 +1,10 @@
 ## 0.4.0-beta
+- simple structures are now modular structures: `ModularStructure`, `modular(...)`, `registerModular(...)`, `ametrin_structures:modular` and the piece type `modular_element`.
+- `extended_jigsaw` structures are removed, modular structures grow jigsaw layouts with the `ametrin_structures:jigsaw` piece source instead
+- `ametrin_structures:conditional` pool elements limit how often (`min_count`, `soft_min_count`, `max_count`), how deep (`min_depth`, `max_depth`) and where (`filters`) an element appears in a jigsaw layout.
 - `fill_container` fixtures need a `block` and no longer accept blocks that take a loot table, use `loot_container` for those
-- foam items without a spread component no longer spread
-- foam uses vanilla's sneak check, so it also works while flying
 - jigsaw blocks show their pool above them, toggled by the `jigsaw_name_tags` client config
-- no longer show examples in fixture blocks to avoid confusion with default values
+- `HeightMode.CENTER`
 
 ## 0.3.2-beta
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)

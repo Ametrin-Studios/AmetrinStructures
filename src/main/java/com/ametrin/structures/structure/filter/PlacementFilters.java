@@ -1,6 +1,8 @@
 package com.ametrin.structures.structure.filter;
 
 import com.ametrin.structures.registry.ASPlacementFilters;
+import com.ametrin.structures.structure.modular.HeightAnchor;
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
@@ -11,9 +13,12 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.VerticalAnchor;
+import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 import java.util.Optional;
@@ -22,29 +27,68 @@ import java.util.function.Predicate;
 public final class PlacementFilters {
     private PlacementFilters() {}
 
-    /// Requires the start Y to be within `min` to `max` inclusive.
-    public record HeightRange(int min, int max) implements PlacementFilter {
+    /// Requires a height between `min` and `max` inclusive. Either can be left out.
+    /// Each is an absolute Y or a [HeightAnchor], so it can be relative to the terrain under the footprint.
+    ///
+    /// @param check what's compared: the origin's Y, or the footprint's lowest block with `min` and its highest with `max`
+    public record HeightRange(Optional<HeightAnchor> min, Optional<HeightAnchor> max, Check check) implements PlacementFilter {
+        private static final Codec<HeightAnchor> Y_CODEC = Codec.either(Codec.INT, HeightAnchor.CODEC).xmap(
+                either -> either.map(HeightAnchor::absolute, anchor -> anchor),
+                anchor -> anchor instanceof HeightAnchor.Fixed(VerticalAnchor.Absolute(int y)) ? Either.left(y) : Either.right(anchor));
+
         public static final MapCodec<HeightRange> CODEC = RecordCodecBuilder.<HeightRange>mapCodec(instance -> instance.group(
-                                Codec.INT.fieldOf("min").forGetter(HeightRange::min),
-                                Codec.INT.fieldOf("max").forGetter(HeightRange::max))
+                                Y_CODEC.optionalFieldOf("min").forGetter(HeightRange::min),
+                                Y_CODEC.optionalFieldOf("max").forGetter(HeightRange::max),
+                                Check.CODEC.optionalFieldOf("check", Check.ORIGIN).forGetter(HeightRange::check))
                         .apply(instance, HeightRange::new))
                 .validate(HeightRange::validate);
 
+        /// Between the absolute Ys `min` and `max`, checked at the origin.
+        public HeightRange(int min, int max) {
+            this(Optional.of(HeightAnchor.absolute(min)), Optional.of(HeightAnchor.absolute(max)), Check.ORIGIN);
+        }
+
         public DataResult<HeightRange> validate() {
-            return min > max
-                    ? DataResult.error(() -> "height range min " + min + " is above max " + max)
-                    : DataResult.success(this);
+            if (min.isEmpty() && max.isEmpty()) {
+                return DataResult.error(() -> "height range needs a min or a max");
+            }
+            if (min.orElse(null) instanceof HeightAnchor.Fixed(VerticalAnchor.Absolute(int low)) && max.orElse(null) instanceof HeightAnchor.Fixed(VerticalAnchor.Absolute(int high)) && low > high) {
+                return DataResult.error(() -> "height range min " + low + " is above max " + high);
+            }
+            return DataResult.success(this);
         }
 
         @Override
         public boolean test(Context context) {
-            int y = context.origin().getY();
-            return y >= min && y <= max;
+            var world = new WorldGenerationContext(context.generation().chunkGenerator(), context.generation().heightAccessor());
+            HeightAnchor.Terrain terrain = (heightmap, mode) -> mode.measure(context.terrain(), heightmap, context.origin(), context.footprint());
+            int bottom = check == Check.BOX ? context.footprint().minY() : context.origin().getY();
+            int top = check == Check.BOX ? context.footprint().maxY() : context.origin().getY();
+            return min.map(anchor -> bottom >= anchor.resolve(world, terrain)).orElse(true)
+                    && max.map(anchor -> top <= anchor.resolve(world, terrain)).orElse(true);
         }
 
         @Override
         public PlacementFilterType type() {
             return ASPlacementFilters.HEIGHT_RANGE.get();
+        }
+
+        public enum Check implements StringRepresentable {
+            ORIGIN("origin"),
+            BOX("box");
+
+            public static final Codec<Check> CODEC = StringRepresentable.fromEnum(Check::values);
+
+            private final String name;
+
+            Check(String name) {
+                this.name = name;
+            }
+
+            @Override
+            public String getSerializedName() {
+                return name;
+            }
         }
     }
 

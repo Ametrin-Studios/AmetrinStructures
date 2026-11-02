@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -8,6 +8,7 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -45,6 +46,22 @@ public sealed interface TerrainBox {
     /// @param groundLevelDelta how far above the bottom of the template the ground lies
     @ApiStatus.Internal
     Optional<BoundingBox> resolve(StructureTemplate template, int groundLevelDelta);
+
+    /// How far above the bottom of the box the ground lies. Only a local box moves it, and its bottom is the ground.
+    ///
+    /// @param groundLevelDelta how far above the bottom of the template the ground lies
+    @ApiStatus.Internal
+    default int groundLevelDelta(int groundLevelDelta) {
+        return this instanceof Local ? 0 : groundLevelDelta;
+    }
+
+    /// A box from [#resolve] placed like the template, so it follows the rotation, the mirror and any later move.
+    @ApiStatus.Internal
+    static BoundingBox place(BoundingBox local, StructurePlaceSettings settings, BlockPos position) {
+        return BoundingBox.fromCorners(
+                StructureTemplate.calculateRelativePosition(settings, new BlockPos(local.minX(), local.minY(), local.minZ())).offset(position),
+                StructureTemplate.calculateRelativePosition(settings, new BlockPos(local.maxX(), local.maxY(), local.maxZ())).offset(position));
+    }
 
     enum Automatic implements TerrainBox, StringRepresentable {
         TEMPLATE("template"),

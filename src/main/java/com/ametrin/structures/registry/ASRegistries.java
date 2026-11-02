@@ -8,7 +8,7 @@ import com.ametrin.structures.foam.FoamSpreadBehaviorType;
 import com.ametrin.structures.foam.FoamSpreadRestrictionType;
 import com.ametrin.structures.spawner.SpawnerProfile;
 import com.ametrin.structures.structure.filter.PlacementFilterType;
-import com.ametrin.structures.structure.simple.PieceSourceType;
+import com.ametrin.structures.structure.modular.PieceSourceType;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.neoforged.neoforge.registries.NewDatapackRegistryEvent;

@@ -13,7 +13,7 @@ import net.neoforged.neoforge.registries.datamaps.RegisterDataMapTypesEvent;
 import java.util.List;
 
 public final class ASDataMaps {
-    /// Dimensions the structure set is left out of, see `docs/extending.md`.
+    /// Dimensions the structure set is left out of, see `docs/structures.md`.
     public static final DataMapType<StructureSet, List<ResourceKey<Level>>> EXCLUDED_DIMENSIONS = AdvancedDataMapType
             .builder(AmetrinStructures.locate("excluded_dimensions"), Registries.STRUCTURE_SET, ResourceKey.codec(Registries.DIMENSION).listOf())
             .merger(DataMapValueMerger.listMerger())

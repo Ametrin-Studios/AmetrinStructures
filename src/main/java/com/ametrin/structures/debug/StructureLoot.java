@@ -10,6 +10,7 @@ import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.structure.StructureSetOrder;
+import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -60,7 +61,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-/// The loot containers, armor stands and item frames in real layouts of a structure, without placing it.
+/// The loot containers, armor stands and item frames in real layouts of a structure, or in a template, without placing it.
 ///
 /// Fixtures are drawn like generation would, with conditions checked at the marker. Processors only run when placing, so containers they would remove still count.
 /// Only template pieces are read. Pieces that place their contents in code, like the desert pyramid's, and data markers are only counted.
@@ -170,7 +171,7 @@ final class StructureLoot {
     }
 
     static Contents contents(ServerLevel level, PiecesContainer pieces, RandomSource random) {
-        var collector = new Collector(level, random);
+        var collector = new Collector(level);
         for (var piece : pieces.pieces()) {
             switch (piece) {
                 case TemplateStructurePiece template -> collector.collect(template.template(), template.placeSettings(), template.templatePosition());
@@ -178,20 +179,47 @@ final class StructureLoot {
                 default -> collector.codePieces++;
             }
         }
-        return new Contents(List.copyOf(collector.containers), List.copyOf(collector.displays), collector.codePieces, collector.dataMarkers);
+        return collector.draw(random);
     }
 
-    private static final class Collector {
+    /// What `template` holds when placed unrotated at `origin`. Each [Collector#draw] draws its fixtures anew.
+    static Collector template(ServerLevel level, StructureTemplate template, BlockPos origin) {
+        var collector = new Collector(level);
+        collector.collect(template, new StructurePlaceSettings(), origin);
+        return collector;
+    }
+
+    private record Marker(List<WeightedFixture> alternatives, BlockPos pos) {}
+
+    static final class Collector {
         private final ServerLevel level;
-        private final RandomSource random;
         private final List<Container> containers = new ArrayList<>();
         private final List<Display> displays = new ArrayList<>();
+        private final List<Marker> markers = new ArrayList<>();
         private int codePieces;
         private int dataMarkers;
 
-        Collector(ServerLevel level, RandomSource random) {
+        private Collector(ServerLevel level) {
             this.level = level;
-            this.random = random;
+        }
+
+        /// The contents with every fixture drawn like generation would draw it.
+        Contents draw(RandomSource random) {
+            var drawnContainers = new ArrayList<>(containers);
+            var drawnDisplays = new ArrayList<>(displays);
+            for (var marker : markers) {
+                switch (FixtureGeneration.draw(marker.alternatives(), new FixtureCondition.Context(level, marker.pos()), random, false).orElse(EmptyFixture.INSTANCE)) {
+                    case LootContainerFixture container -> drawnContainers.add(new Container(container.lootTable(), marker.pos()));
+                    case FillContainerFixture container -> drawnContainers.add(new Container(container.lootTable(), marker.pos()));
+                    case EntityFixture entity -> BuiltInRegistries.ENTITY_TYPE.getOptional(entity.entity())
+                            .filter(Display::accepts)
+                            .map(type -> new Display(type, entity.nbt().orElseGet(CompoundTag::new), entity.equipment(), entity.items(), marker.pos()))
+                            .filter(Display::holdsAnything)
+                            .ifPresent(drawnDisplays::add);
+                    default -> {}
+                }
+            }
+            return new Contents(List.copyOf(drawnContainers), List.copyOf(drawnDisplays), codePieces, dataMarkers);
         }
 
         // A list element places each of its elements at the same spot.
@@ -202,6 +230,7 @@ final class StructureLoot {
                         new StructurePlaceSettings().setRotation(piece.getRotation()),
                         piece.getPosition());
                 case ListPoolElement list -> list.getElements().forEach(child -> collect(child, piece));
+                case ConditionalPoolElement counted -> collect(counted.element(), piece);
                 case EmptyPoolElement _, FeaturePoolElement _ -> {}
                 default -> codePieces++;
             }
@@ -229,24 +258,10 @@ final class StructureLoot {
             } else if (block.nbt() == null || block.state().getBlock() instanceof BrushableBlock) {
                 return;
             } else if (block.state().is(ASBlocks.FIXTURE)) {
-                fixture(block.nbt(), pos);
+                var ops = level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
+                markers.add(new Marker(block.nbt().read(FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElse(List.of()), pos));
             } else {
                 block.nbt().read(RandomizableContainer.LOOT_TABLE_TAG, LootTable.KEY_CODEC).ifPresent(table -> containers.add(new Container(table, pos)));
-            }
-        }
-
-        private void fixture(CompoundTag marker, BlockPos pos) {
-            var ops = level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
-            var alternatives = marker.read(FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElse(List.of());
-            switch (FixtureGeneration.draw(alternatives, new FixtureCondition.Context(level, pos), random, false).orElse(EmptyFixture.INSTANCE)) {
-                case LootContainerFixture container -> containers.add(new Container(container.lootTable(), pos));
-                case FillContainerFixture container -> containers.add(new Container(container.lootTable(), pos));
-                case EntityFixture entity -> BuiltInRegistries.ENTITY_TYPE.getOptional(entity.entity())
-                        .filter(Display::accepts)
-                        .map(type -> new Display(type, entity.nbt().orElseGet(CompoundTag::new), entity.equipment(), entity.items(), pos))
-                        .filter(Display::holdsAnything)
-                        .ifPresent(displays::add);
-                default -> {}
             }
         }
     }

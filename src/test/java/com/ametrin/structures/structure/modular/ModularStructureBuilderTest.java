@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.StructureBootstrap;
 import com.ametrin.structures.structure.StructureSetBuilder;
@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /// Every one of these is a build-time failure with a message naming the structure. Deferring them to
 /// generation time is what makes a misconfigured structure look like a worldgen bug.
-class SimpleStructureBuilderTest {
+class ModularStructureBuilderTest {
     private static final String ID = "tower";
     private static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath("test", "tower");
 
@@ -29,7 +29,7 @@ class SimpleStructureBuilderTest {
 
     @Test
     void missingPieceSourceFails() {
-        assertNamedFailure(() -> register(set -> set.simple(tower -> tower.surface())));
+        assertNamedFailure(() -> register(set -> set.modular(tower -> tower.surface())));
     }
 
     @Test
@@ -40,61 +40,61 @@ class SimpleStructureBuilderTest {
     @Test
     void duplicateStructureFails() {
         assertNamedFailure(() -> register(set -> set
-                .simple(tower -> tower.single(b -> b.template(TEMPLATE)))
-                .simple(tower -> tower.single(b -> b.template(TEMPLATE)))));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
     }
 
     @Test
     void weightBelowOneFails() {
-        assertNamedFailure(() -> register(set -> set.simple("tower", 0, tower -> tower.single(b -> b.template(TEMPLATE)))));
+        assertNamedFailure(() -> register(set -> set.modular("tower", 0, tower -> tower.single(b -> b.template(TEMPLATE)))));
     }
 
     @Test
     void probabilityOutsideZeroToOneFails() {
         assertNamedFailure(() -> register(set -> set
                 .scatteredGridPlacement(24, 1.5F)
-                .simple(tower -> tower.single(b -> b.template(TEMPLATE)))));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
         assertNamedFailure(() -> register(set -> set
                 .scatteredGridPlacement(24, -0.1F)
-                .simple(tower -> tower.single(b -> b.template(TEMPLATE)))));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
     }
 
     @Test
     void negativeSpacingFails() {
         assertNamedFailure(() -> register(set -> set
                 .scatteredGridPlacement(-4)
-                .simple(tower -> tower.single(b -> b.template(TEMPLATE)))));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
     }
 
     @Test
     void anInvalidFilterFails() {
-        assertNamedFailure(() -> register(set -> set.simple(tower -> tower.single(b -> b.template(TEMPLATE)).filterFlatness(-1))));
+        assertNamedFailure(() -> register(set -> set.modular(tower -> tower.single(b -> b.template(TEMPLATE)).filterFlatness(-1))));
     }
 
     @Test
     void aStructureBuildsOutsideASet() {
         var key = ResourceKey.create(Registries.STRUCTURE, TEMPLATE);
         var standalone = new RegistrySetBuilder().add(Registries.STRUCTURE, context ->
-                context.register(key, SimpleStructure.builder(TEMPLATE).single("tower").filterFlatness(2).build(context)));
+                context.register(key, ModularStructure.builder(TEMPLATE).single("tower").filterFlatness(2).build(context)));
         var registries = RegistryPatchGenerator.createWorldLookup(CompletableFuture.completedFuture(VanillaRegistries.createWorldLookup()), standalone)
                 .join()
                 .full();
-        var structure = (SimpleStructure) registries.lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
+        var structure = (ModularStructure) registries.lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
         assertEquals(1, structure.filters().size());
     }
 
     @Test
     void registeringASetTwiceFails() {
         var structures = new StructureBootstrap("test");
-        structures.registerSet(ID, set -> set.simple(tower -> tower.single("tower")));
-        assertNamedFailure(() -> structures.registerSet(ID, set -> set.simple(tower -> tower.single("tower"))));
+        structures.registerSet(ID, set -> set.modular(tower -> tower.single("tower")));
+        assertNamedFailure(() -> structures.registerSet(ID, set -> set.modular(tower -> tower.single("tower"))));
     }
 
     @Test
     void theKeysNameEveryStructure() {
         var keys = register(set -> set
-                .simple("small", 1, tower -> tower.single("tower"))
-                .simple("large", 1, tower -> tower.single("tower")));
+                .modular("small", 1, tower -> tower.single("tower"))
+                .modular("large", 1, tower -> tower.single("tower")));
         assertEquals("test:tower", keys.key().identifier().toString());
         assertEquals("test:tower/large", keys.structure("large").identifier().toString());
         assertEquals(List.of("small", "large"), List.copyOf(keys.declared().keySet()));
@@ -106,7 +106,7 @@ class SimpleStructureBuilderTest {
     void theCommonCaseBuilds() {
         assertDoesNotThrow(() -> register(set -> set
                 .scatteredGridPlacement(24, 0.6F)
-                .simple(tower -> tower.single(b -> b.template(TEMPLATE)).surface())));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)).surface())));
     }
 
     private static void assertNamedFailure(Runnable action) {

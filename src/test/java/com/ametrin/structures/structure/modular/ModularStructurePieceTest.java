@@ -1,7 +1,9 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.GenerationContexts;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
+import com.mojang.datafixers.util.Either;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
@@ -9,16 +11,22 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -31,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /// Terrain adaptation keeps the ground at the structure's start height, whatever a template's offset.
 @ExtendWith(EphemeralTestServerProvider.class)
-class SimpleStructurePieceTest {
+class ModularStructurePieceTest {
     private static final BlockPos ORIGIN = new BlockPos(0, 64, 0);
     private static final Identifier TEMPLATE = Identifier.withDefaultNamespace("igloo/top");
 
@@ -52,7 +60,7 @@ class SimpleStructurePieceTest {
     void groundLevelAndTerrainAdaptationAreSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0));
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
+        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
         assertEquals(4, reloaded.getGroundLevelDelta());
         assertEquals(TerrainAdjustment.BEARD_THIN, reloaded.getTerrainAdjustment());
     }
@@ -68,7 +76,7 @@ class SimpleStructurePieceTest {
     void aLocalTerrainBoxTurnsWithTheTemplate(MinecraftServer server) {
         for (var rotation : Rotation.values()) {
             var piece = createPiece(server, BlockPos.ZERO, rotation, TerrainBox.of(0, 0, 0, 0, 0, 0));
-            var corner = StructureTemplate.calculateRelativePosition(piece.placeSettings(), BlockPos.ZERO).offset(piece.templatePosition());
+            var corner = StructureTemplate.calculateRelativePosition(new StructurePlaceSettings().setRotation(rotation), BlockPos.ZERO).offset(piece.getPosition());
             assertEquals(new BoundingBox(corner), piece.getBeardifierBox(), rotation.toString());
         }
     }
@@ -89,28 +97,47 @@ class SimpleStructurePieceTest {
     void theTerrainBoxIsSavedWithThePiece(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0), Rotation.CLOCKWISE_180, TerrainBox.of(1, 2, 1, 2, 3, 2));
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        var reloaded = new SimpleStructurePiece(context, piece.createTag(context));
+        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
         assertEquals(piece.getBeardifierBox(), reloaded.getBeardifierBox());
         assertEquals(piece.getGroundLevelDelta(), reloaded.getGroundLevelDelta());
     }
 
     @Test
-    void theStructuresProcessorsAreSavedByIdAndExpandedOnLoad(MinecraftServer server) {
+    void theStructuresProcessorsAreSavedByIdWithThePiece(MinecraftServer server) {
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
-        var piece = createPiece(server, processors(InlineFromStructureProcessor.INSTANCE), Optional.of(mossify));
+        var piece = createPiece(server, Optional.empty(), Optional.of(mossify));
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
         var tag = piece.createTag(context);
-        assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT.identifier().toString()), tag.getString("structure_processors"));
-        var reloaded = new SimpleStructurePiece(context, tag);
-        assertEquals(piece.placeSettings().getProcessors(), reloaded.placeSettings().getProcessors());
+        assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT.identifier().toString()), tag.getCompoundOrEmpty("pool_element").getString("processors"));
+        var reloaded = new ModularStructurePiece(context, tag);
+        assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
     }
 
     @Test
-    void unusedStructureProcessorsAreNotSaved(MinecraftServer server) {
+    void ownProcessorsReplaceTheStructuresUnlessTheyInlineThem(MinecraftServer server) {
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
-        var piece = createPiece(server, processors(new BlockIgnoreProcessor(List.of(Blocks.STONE))), Optional.of(mossify));
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        assertFalse(piece.createTag(context).contains("structure_processors"));
+        var own = processors(new BlockIgnoreProcessor(List.of(Blocks.STONE)));
+        assertSame(own.orElseThrow(), assertInstanceOf(SinglePoolElement.class, createPiece(server, own, Optional.of(mossify)).getElement()).processors);
+        var inlining = assertInstanceOf(SinglePoolElement.class, createPiece(server, processors(InlineFromStructureProcessor.INSTANCE), Optional.of(mossify)).getElement());
+        assertEquals(mossify.value().list(), inlining.processors.value().list());
+    }
+
+    @Test
+    void anEntryIsATemplateOrAnElement(MinecraftServer server) {
+        var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+        var templateJson = JsonParser.parseString("""
+                {"template": "minecraft:igloo/top", "offset": [0, -2, 0]}
+                """);
+        var template = TemplateEntry.CODEC.parse(ops, templateJson).getOrThrow();
+        assertEquals(TEMPLATE, assertInstanceOf(ExtendedSinglePoolElement.class, template.element()).getTemplateLocation());
+        assertEquals(templateJson, TemplateEntry.CODEC.encodeStart(ops, template).getOrThrow());
+
+        var elementJson = JsonParser.parseString("""
+                {"element": {"element_type": "minecraft:empty_pool_element"}}
+                """);
+        var element = TemplateEntry.CODEC.parse(ops, elementJson).getOrThrow();
+        assertSame(EmptyPoolElement.INSTANCE, element.element());
+        assertEquals(elementJson, TemplateEntry.CODEC.encodeStart(ops, element).getOrThrow());
     }
 
     @Test
@@ -123,28 +150,26 @@ class SimpleStructurePieceTest {
         return TerrainBox.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow();
     }
 
-    private static SimpleStructurePiece createPiece(MinecraftServer server, BlockPos offset) {
+    private static ModularStructurePiece createPiece(MinecraftServer server, BlockPos offset) {
         return createPiece(server, offset, Rotation.NONE, TerrainBox.template());
     }
 
-    private static SimpleStructurePiece createPiece(
+    private static ModularStructurePiece createPiece(
             MinecraftServer server, Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
         return createPiece(server, BlockPos.ZERO, Rotation.NONE, TerrainBox.template(), processors, structureProcessors);
     }
 
-    private static SimpleStructurePiece createPiece(MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox) {
+    private static ModularStructurePiece createPiece(MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox) {
         return createPiece(server, offset, rotation, terrainBox, Optional.empty(), Optional.empty());
     }
 
-    private static SimpleStructurePiece createPiece(
+    private static ModularStructurePiece createPiece(
             MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox,
             Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
         var generation = GenerationContexts.overPlains(server, 0, biome -> biome.is(Biomes.PLAINS));
-        var entry = new TemplateEntry(TEMPLATE, offset, processors, terrainBox);
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN);
-        var piece = (SimpleStructurePiece) PieceSources.createPiece(entry, context);
-        piece.setStructureProcessors(structureProcessors);
-        return piece;
+        var element = new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors.orElse(ExtendedSinglePoolElement.NO_PROCESSORS), StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
+        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), structureProcessors);
+        return (ModularStructurePiece) PieceSources.createPiece(new TemplateEntry(element, offset, terrainBox), context);
     }
 
     private static Optional<Holder<StructureProcessorList>> processors(StructureProcessor... processors) {

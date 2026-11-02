@@ -9,12 +9,15 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
 /// Game tests rather than unit tests, since laying out a structure needs a server level.
 public final class LayoutGameTests {
-    public static final Map<String, Consumer<GameTestHelper>> TESTS = Map.of("layout_describes_a_village", LayoutGameTests::describesAVillage);
+    public static final Map<String, Consumer<GameTestHelper>> TESTS = Map.of(
+            "layout_describes_a_village", LayoutGameTests::describesAVillage,
+            "layout_depths_tell_stacked_pieces_apart", LayoutGameTests::depthsTellStackedPiecesApart);
 
     private LayoutGameTests() {}
 
@@ -25,10 +28,18 @@ public final class LayoutGameTests {
         var layout = PiecesCommand.describe(level.getStructureTemplateManager(), pieces);
 
         int centers = layout.pieces().entrySet().stream()
-                .filter(entry -> entry.getKey().startsWith("minecraft:village/plains/town_centers/"))
+                // Zombie villages have their own, under village/plains/zombie/.
+                .filter(entry -> entry.getKey().contains("/town_centers/"))
                 .mapToInt(Map.Entry::getValue)
                 .sum();
         helper.assertValueEqual(centers, 1, "town centers");
+        var centerDepths = layout.depths().entrySet().stream()
+                .filter(entry -> entry.getKey().contains("/town_centers/"))
+                .flatMap(entry -> entry.getValue().stream())
+                .toList();
+        helper.assertValueEqual(centerDepths, List.of(0), "the town center's depth");
+        helper.assertTrue(layout.depths().entrySet().stream().filter(entry -> !entry.getKey().contains("/town_centers/")).allMatch(entry -> entry.getValue().stream().allMatch(depth -> depth > 0)),
+                "every other piece is attached to something, got " + layout.depths());
         helper.assertValueEqual(layout.pieces().values().stream().mapToInt(Integer::intValue).sum(), pieces.pieces().size(), "pieces");
         helper.assertFalse(layout.openJigsaws().containsKey("minecraft:empty"), "jigsaws into the empty pool are never open");
         // Each piece but the start hangs off a jigsaw into a pool, so at least that many of those are attached.
@@ -40,6 +51,22 @@ public final class LayoutGameTests {
                 .count();
         int open = layout.openJigsaws().values().stream().mapToInt(Integer::intValue).sum();
         helper.assertTrue(intoPools - open >= pieces.pieces().size() - 1, "attached jigsaws aren't open, got " + open + " open of " + intoPools + " for " + pieces.pieces().size() + " pieces");
+        helper.succeed();
+    }
+
+    // Bastions and ancient cities are rigid and have pieces stacked on top of each other, with sideways jigsaws in the same columns.
+    private static void depthsTellStackedPiecesApart(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var chunk = ChunkPos.containing(helper.absolutePos(BlockPos.ZERO));
+        for (var key : List.of(BuiltinStructures.BASTION_REMNANT, BuiltinStructures.ANCIENT_CITY)) {
+            var structure = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
+            for (long seed = 0; seed < 5; seed++) {
+                var pieces = StructureLayouts.layOut(level, structure, chunk, seed).orElseThrow();
+                var depths = PiecesCommand.describe(level.getStructureTemplateManager(), pieces).depths();
+                long starts = depths.values().stream().flatMap(List::stream).filter(depth -> depth == 0).count();
+                helper.assertValueEqual(starts, 1L, "pieces at depth 0 in " + key.identifier() + " at seed " + seed + ", got " + depths);
+            }
+        }
         helper.succeed();
     }
 }

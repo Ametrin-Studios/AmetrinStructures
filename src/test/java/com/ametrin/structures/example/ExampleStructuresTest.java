@@ -37,10 +37,10 @@ class ExampleStructuresTest {
                 .full();
         var ops = registries.createSerializationContext(JsonOps.INSTANCE);
 
-        for (var simple : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves/small", "graves/large", "castle/ruin"}) {
-            assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, simple, "ametrin_structures:simple");
+        for (var modular : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves/small", "graves/large", "castle/ruin"}) {
+            assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, modular, "ametrin_structures:modular");
         }
-        assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, "castle", "ametrin_structures:extended_jigsaw");
+        assertType(registries, ops, Registries.STRUCTURE, Structure.DIRECT_CODEC, "castle", "ametrin_structures:modular");
         for (var set : new String[]{"ruined_tower", "crypt", "sunken_shrine", "graves", "castle"}) {
             assertType(registries, ops, Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, set, null);
         }

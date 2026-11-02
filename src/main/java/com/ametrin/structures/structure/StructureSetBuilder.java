@@ -2,8 +2,7 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.placement.EvenSpreadPlacement;
 import com.ametrin.structures.placement.ScatteredGridPlacement;
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
-import com.ametrin.structures.structure.simple.SimpleStructure;
+import com.ametrin.structures.structure.modular.ModularStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
@@ -11,7 +10,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
-import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,20 +35,12 @@ public final class StructureSetBuilder {
         this.placement = _ -> salted(EvenSpreadPlacement.builder()::build);
     }
 
-    public StructureSetBuilder simple(String suffix, int weight, Consumer<SimpleStructure.Builder> configure) {
-        return add(suffix, weight, StructureBuilder.configured(new SimpleStructure.Builder(namespace, compose(suffix)), configure));
+    public StructureSetBuilder modular(String suffix, int weight, Consumer<ModularStructure.Builder> configure) {
+        return add(suffix, weight, StructureBuilder.configured(new ModularStructure.Builder(namespace, compose(suffix)), configure));
     }
 
-    public StructureSetBuilder simple(Consumer<SimpleStructure.Builder> configure) {
-        return simple("", 1, configure);
-    }
-
-    public StructureSetBuilder jigsaw(String suffix, int weight, ResourceKey<StructureTemplatePool> startPool, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        return add(suffix, weight, StructureBuilder.configured(new ExtendedJigsawStructure.Builder(compose(suffix), startPool), configure));
-    }
-
-    public StructureSetBuilder jigsaw(ResourceKey<StructureTemplatePool> startPool, Consumer<ExtendedJigsawStructure.Builder> configure) {
-        return jigsaw("", 1, startPool, configure);
+    public StructureSetBuilder modular(Consumer<ModularStructure.Builder> configure) {
+        return modular("", 1, configure);
     }
 
     public StructureSetBuilder structure(String suffix, int weight, CustomStructureBuilder.Factory factory, Consumer<CustomStructureBuilder> configure) {
@@ -61,7 +51,7 @@ public final class StructureSetBuilder {
         return structure("", 1, factory, configure);
     }
 
-    /// Adds a structure registered elsewhere, like a vanilla one or one from [StructureBootstrap#registerSimple].
+    /// Adds a structure registered elsewhere, like a vanilla one or one from [StructureBootstrap#registerModular].
     public StructureSetBuilder existing(ResourceKey<Structure> structure) {
         return existing(structure, 1);
     }

@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.filter.TerrainSampler;
 import com.mojang.serialization.Codec;
@@ -13,6 +13,8 @@ import java.util.stream.IntStream;
 public enum HeightMode implements StringRepresentable {
     /// At the structure's origin. The cheapest.
     ORIGIN("origin"),
+    /// At the center of the footprint.
+    CENTER("center"),
     /// The mean of the four footprint corners, like vanilla's igloo.
     CORNERS_MEAN("corners_mean"),
     /// The lowest of the four footprint corners, so no corner floats.
@@ -32,6 +34,9 @@ public enum HeightMode implements StringRepresentable {
         if (this == ORIGIN) {
             return terrain.surfaceHeight(heightmap, origin.getX(), origin.getZ());
         }
+        if (this == CENTER) {
+            return terrain.surfaceHeight(heightmap, (footprint.minX() + footprint.maxX()) / 2, (footprint.minZ() + footprint.maxZ()) / 2);
+        }
 
         var corners = IntStream.of(
                 terrain.surfaceHeight(heightmap, footprint.minX(), footprint.minZ()),
@@ -44,7 +49,7 @@ public enum HeightMode implements StringRepresentable {
             case LOWEST_CORNER -> corners.min().orElseThrow();
             case HIGHEST_CORNER -> corners.max().orElseThrow();
             case CORNERS_MEAN -> corners.sum() / 4;
-            case ORIGIN -> throw new RuntimeException();
+            case ORIGIN, CENTER -> throw new RuntimeException();
         };
     }
 

@@ -5,10 +5,9 @@ import com.ametrin.structures.processor.ReplaceBlockProcessor;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.StructureBootstrap;
 import com.ametrin.structures.structure.StructureSetKeys;
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
 import com.ametrin.structures.structure.jigsaw.JigsawPools;
-import com.ametrin.structures.structure.simple.HeightAnchor;
-import com.ametrin.structures.structure.simple.HeightMode;
+import com.ametrin.structures.structure.modular.HeightAnchor;
+import com.ametrin.structures.structure.modular.HeightMode;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.ProcessorLists;
@@ -30,7 +29,7 @@ import net.neoforged.neoforge.data.event.GatherDataRegistryEntriesEvent;
 
 import java.util.List;
 
-/// A full example of declaring structures with this library: simple structures, a jigsaw structure
+/// A full example of declaring structures with this library: modular structures, a jigsaw structure
 /// with its pools, and the datagen setup.
 final class ExampleStructures {
     static final String MODID = "examplemod";
@@ -45,7 +44,7 @@ final class ExampleStructures {
     // One template on dry, level ground. Needs no Structure subclass, structure type or piece type.
     static final StructureSetKeys RUINED_TOWER = STRUCTURES.registerSet("ruined_tower", set -> set
             .evenSpreadPlacement(18, 0.6F)
-            .simple(tower -> tower
+            .modular(tower -> tower
                     .single("ruined_tower")
                     .surface(0, HeightMode.CORNERS_MEAN)
                     // At the mean height some corners float above the ground. The foundation fills under them.
@@ -58,7 +57,7 @@ final class ExampleStructures {
     // One of several templates, at a random height between just above bedrock and well below the surface.
     static final StructureSetKeys CRYPT = STRUCTURES.registerSet("crypt", set -> set
             .evenSpreadPlacement(spread -> spread.minDistance(24).probability(0.5F).minChunksFromCenter(16))
-            .simple(crypt -> crypt
+            .modular(crypt -> crypt
                     // Every template gets mossy. The large one also gets cobwebs where its foam was.
                     .weighted(weighted -> weighted
                             .single(3, "crypt/small")
@@ -74,7 +73,7 @@ final class ExampleStructures {
     // Sunk in the sea, at least 20 chunks apart. The interior foam turns into water, the stairs get mossy, and it needs water above it.
     static final StructureSetKeys SUNKEN_SHRINE = STRUCTURES.registerSet("sunken_shrine", set -> set
             .evenSpreadPlacement(20, 0.4F)
-            .simple(shrine -> shrine
+            .modular(shrine -> shrine
                     .single(template -> template.template("sunken_shrine").processors(List.of(
                             new RemoveFoamProcessor(Fluids.WATER.defaultFluidState().createLegacyBlock()),
                             new ReplaceBlockProcessor(
@@ -91,12 +90,12 @@ final class ExampleStructures {
     // other one if the first doesn't fit.
     static final StructureSetKeys GRAVES = STRUCTURES.registerSet("graves", set -> set
             .horizontalPlacement(new RandomSpreadStructurePlacement(20, 8, RandomSpreadType.LINEAR, 482_193))
-            .simple("small", 3, grave -> grave
+            .modular("small", 3, grave -> grave
                     .surface()
                     .filterFlatness(2)
                     .single("graves/small")
             )
-            .simple("large", 1, grave -> grave
+            .modular("large", 1, grave -> grave
                     .surface()
                     .filterFlatness(1)
                     .single("graves/large")
@@ -105,11 +104,11 @@ final class ExampleStructures {
     // A jigsaw castle, sometimes replaced by a simple ruin.
     static final StructureSetKeys CASTLE = STRUCTURES.registerSet("castle", set -> set
             .scatteredGridPlacement(40, 0.5F)
-            .jigsaw("", 4, CastlePools.START, castle -> castle
-                    .size(8)
+            .modular("", 4, castle -> castle
+                    .jigsaw(CastlePools.START, jigsaw -> jigsaw.size(8))
                     .biomes(BiomeTags.IS_TAIGA)
                     .terrainAdaptation(TerrainAdjustment.BEARD_THIN))
-            .simple("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
+            .modular("ruin", 1, ruin -> ruin.single("castle/ruin").surface().biomes(BiomeTags.IS_TAIGA)));
 
     // Any structure type, here vanilla's igloo in snowy taigas and groves.
     static final StructureSetKeys IGLOO = STRUCTURES.registerSet("igloo", set -> set

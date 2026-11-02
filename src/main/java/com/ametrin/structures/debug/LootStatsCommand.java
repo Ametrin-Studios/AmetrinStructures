@@ -6,9 +6,12 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
 import net.minecraft.commands.arguments.ResourceOrIdArgument;
 import net.minecraft.core.BlockPos;
@@ -35,8 +38,10 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.ametrin.structures.debug.ChatReport.*;
 
@@ -45,6 +50,7 @@ import static com.ametrin.structures.debug.ChatReport.*;
 /// - `/ametrin loot_stats table <loot_table> [samples]`: one chest where the caller stands.
 /// - `/ametrin loot_stats structure <structure> [radius] [layouts]`: every chest in the nearest layouts of the structure, see [StructureLoot].
 ///   For a structure tag, the layouts of all its structures together.
+/// - `/ametrin loot_stats template <template> [samples]`: every chest in the template, placed unrotated where the caller stands.
 public final class LootStatsCommand {
     public static final class Keys {
         public static final String SUMMARY = "commands.ametrin_structures.loot_stats.summary";
@@ -58,11 +64,17 @@ public final class LootStatsCommand {
         public static final String DATA_MARKERS = "commands.ametrin_structures.loot_stats.data_markers";
         public static final String RANGE_CHEST = "commands.ametrin_structures.loot_stats.range_chest";
         public static final String RANGE_STRUCTURE = "commands.ametrin_structures.loot_stats.range_structure";
+        public static final String TEMPLATE_SUMMARY = "commands.ametrin_structures.loot_stats.template_summary";
+        public static final String RANGE_TEMPLATE = "commands.ametrin_structures.loot_stats.range_template";
+        public static final String UNKNOWN_TEMPLATE = "commands.ametrin_structures.loot_stats.unknown_template";
 
         private Keys() {}
     }
 
+    private static final DynamicCommandExceptionType UNKNOWN_TEMPLATE = new DynamicCommandExceptionType(id -> Component.translatable(Keys.UNKNOWN_TEMPLATE, id));
+
     private static final int DEFAULT_SAMPLES = 10_000;
+    private static final int DEFAULT_TEMPLATE_SAMPLES = 1_000;
     private static final int MAX_SAMPLES = 100_000;
     private static final int DEFAULT_LAYOUTS = 100;
     private static final int MAX_LAYOUTS = 1_000;
@@ -87,6 +99,12 @@ public final class LootStatsCommand {
                                         .then(Commands.argument("layouts", IntegerArgumentType.integer(1, MAX_LAYOUTS))
                                                 .executes(command -> structure(command,
                                                         IntegerArgumentType.getInteger(command, "radius"), IntegerArgumentType.getInteger(command, "layouts")))))))
+                .then(Commands.literal("template")
+                        .then(Commands.argument("template", IdentifierArgument.id())
+                                .suggests((command, builder) -> SharedSuggestionProvider.suggestResource(command.getSource().getServer().getStructureTemplateManager().listTemplates(), builder))
+                                .executes(command -> template(command, DEFAULT_TEMPLATE_SAMPLES))
+                                .then(Commands.argument("samples", IntegerArgumentType.integer(1, MAX_SAMPLES))
+                                        .executes(command -> template(command, IntegerArgumentType.getInteger(command, "samples"))))))
                 .then(ChatReport.more());
     }
 
@@ -186,35 +204,22 @@ public final class LootStatsCommand {
         return 1;
     }
 
-    private static void structureReport(CommandSourceStack source, ResourceOrTagKeyArgument.Result<Structure> structures, String name, StructureLoot.Layouts found, RandomSource random) {
-        var level = source.getLevel();
-        var layouts = found.layouts();
-        var player = player(source);
-        var lootTables = level.getServer().reloadableRegistries();
-        var stats = sample(layouts.size(), layout -> {
-            var contents = layouts.get(layout).contents();
-            var items = new ArrayList<ItemStack>();
-            for (var container : contents.containers()) {
-                items.addAll(lootTables.getLootTable(container.lootTable()).getRandomItems(chestParams(source, container.pos(), player), random));
-            }
-            for (var display : contents.displays()) {
-                items.addAll(display.drops(level, random));
-            }
-            return items;
-        });
-        // A display without an equipment table is listed by its entity type.
-        var sources = count(layouts.stream().map(layout -> {
-            var perSource = new HashMap<String, Integer>();
-            layout.contents().containers().forEach(container -> perSource.merge(container.lootTable().identifier().toString(), 1, Integer::sum));
-            layout.contents().displays().forEach(display -> perSource.merge(
-                    display.equipment().map(table -> table.identifier().toString()).orElseGet(() -> BuiltInRegistries.ENTITY_TYPE.getKey(display.type()).toString()),
-                    1, Integer::sum));
-            return (Map<String, Integer>) perSource;
-        }).toList());
+    private static int template(CommandContext<CommandSourceStack> command, int samples) throws CommandSyntaxException {
+        var source = command.getSource();
+        var id = IdentifierArgument.getId(command, "template");
+        var template = source.getServer().getStructureTemplateManager().get(id).orElseThrow(() -> UNKNOWN_TEMPLATE.create(id));
+        var collected = StructureLoot.template(source.getLevel(), template, BlockPos.containing(source.getPosition()));
+        var random = source.getLevel().getRandom().fork();
+        var contents = IntStream.range(0, samples).mapToObj(_ -> collected.draw(random)).toList();
+        var luck = format(luck(player(source)));
+        contentsReport(source, stats -> Component.translatable(Keys.TEMPLATE_SUMMARY, id.toString(), samples, luck, percent(stats.empty(), samples)),
+                List.of(), contents, "template", Keys.RANGE_TEMPLATE, random);
+        return 1;
+    }
 
-        int samples = layouts.size();
-        var summary = Component.translatable(Keys.STRUCTURE_SUMMARY,
-                name, samples, found.radius(), format(luck(player)), percent(stats.empty(), samples));
+    private static void structureReport(CommandSourceStack source, ResourceOrTagKeyArgument.Result<Structure> structures, String name, StructureLoot.Layouts found, RandomSource random) {
+        var layouts = found.layouts();
+        var luck = format(luck(player(source)));
         var extraLines = new ArrayList<Component>();
         if (structures.unwrap().right().isPresent()) {
             var mix = layouts.stream()
@@ -225,19 +230,52 @@ public final class LootStatsCommand {
                     .collect(Collectors.joining(", "));
             extraLines.add(Component.translatable(Keys.STRUCTURE_MIX, mix));
         }
+        int samples = layouts.size();
+        contentsReport(source, stats -> Component.translatable(Keys.STRUCTURE_SUMMARY, name, samples, found.radius(), luck, percent(stats.empty(), samples)),
+                extraLines, layouts.stream().map(StructureLoot.Layout::contents).toList(), "structure", Keys.RANGE_STRUCTURE, random);
+    }
+
+    /// Rolls the loot of each sample once and reports the items and loot sources.
+    ///
+    /// @param per what one sample is, "structure" or "template"
+    private static void contentsReport(CommandSourceStack source, Function<Stats, MutableComponent> summary, List<Component> extraLines, List<StructureLoot.Contents> contents, String per, String rangeKey, RandomSource random) {
+        var level = source.getLevel();
+        var player = player(source);
+        var lootTables = level.getServer().reloadableRegistries();
+        var stats = sample(contents.size(), sample -> {
+            var items = new ArrayList<ItemStack>();
+            for (var container : contents.get(sample).containers()) {
+                items.addAll(lootTables.getLootTable(container.lootTable()).getRandomItems(chestParams(source, container.pos(), player), random));
+            }
+            for (var display : contents.get(sample).displays()) {
+                items.addAll(display.drops(level, random));
+            }
+            return items;
+        });
+        // A display without an equipment table is listed by its entity type.
+        var sources = count(contents.stream().map(sample -> {
+            var perSource = new HashMap<String, Integer>();
+            sample.containers().forEach(container -> perSource.merge(container.lootTable().identifier().toString(), 1, Integer::sum));
+            sample.displays().forEach(display -> perSource.merge(
+                    display.equipment().map(table -> table.identifier().toString()).orElseGet(() -> BuiltInRegistries.ENTITY_TYPE.getKey(display.type()).toString()),
+                    1, Integer::sum));
+            return (Map<String, Integer>) perSource;
+        }).toList());
+
+        var lines = new ArrayList<>(extraLines);
         var sortedSources = sortedByTotal(sources);
-        var sourceBreakdown = breakdown("loot source\tper structure\tshare of structures", sortedSources, samples);
-        extraLines.add(Component.translatable(Keys.SOURCES, sortedSources.size())
+        var sourceBreakdown = breakdown("loot source\tper " + per + "\tshare of " + per + "s", sortedSources, contents.size());
+        lines.add(Component.translatable(Keys.SOURCES, sortedSources.size())
                 .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(sourceBreakdown.hover()))));
-        double codePieces = layouts.stream().mapToInt(layout -> layout.contents().codePieces()).average().orElse(0);
+        double codePieces = contents.stream().mapToInt(StructureLoot.Contents::codePieces).average().orElse(0);
         if (codePieces > 0) {
-            extraLines.add(Component.translatable(Keys.CODE_PIECES, format(codePieces)));
+            lines.add(Component.translatable(Keys.CODE_PIECES, format(codePieces), per));
         }
-        double dataMarkers = layouts.stream().mapToInt(layout -> layout.contents().dataMarkers()).average().orElse(0);
+        double dataMarkers = contents.stream().mapToInt(StructureLoot.Contents::dataMarkers).average().orElse(0);
         if (dataMarkers > 0) {
-            extraLines.add(Component.translatable(Keys.DATA_MARKERS, format(dataMarkers)));
+            lines.add(Component.translatable(Keys.DATA_MARKERS, format(dataMarkers), per));
         }
-        sendReport(source, summary, extraLines, stats, "structure", Keys.RANGE_STRUCTURE, sourceBreakdown.tsv());
+        sendReport(source, summary.apply(stats), lines, stats, per, rangeKey, sourceBreakdown.tsv());
     }
 
     private static @Nullable Player player(CommandSourceStack source) {
@@ -259,7 +297,7 @@ public final class LootStatsCommand {
 
     /// Sends the summary with a copy button, then the rarest items.
     ///
-    /// @param per         what one sample is, "chest" or "structure"
+    /// @param per         what one sample is, "chest", "structure" or "template"
     /// @param extraTsv    appended to the copied items, e.g. the loot sources
     private static void sendReport(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, Stats stats, String per, String rangeKey, String extraTsv) {
         var items = sortedByTotal(stats.items()).reversed();

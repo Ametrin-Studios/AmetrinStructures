@@ -1,13 +1,18 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASPieceSources;
+import com.ametrin.structures.structure.jigsaw.JigsawSource;
+import com.ametrin.structures.structure.jigsaw.StructureElements;
 import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderGetter;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.random.WeightedList;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import java.util.List;
@@ -18,13 +23,13 @@ public final class PieceSources {
     private PieceSources() {
     }
 
-    /// One template. Anywhere a source is expected it can also be written as the bare template entry.
+    /// One template or pool element. Anywhere a source is expected it can also be written as the bare template entry.
     public record SingleSource(TemplateEntry template) implements PieceSource {
         public static final MapCodec<SingleSource> CODEC = TemplateEntry.MAP_CODEC.xmap(SingleSource::new, SingleSource::template);
 
         @Override
-        public void appendPieces(List<StructurePiece> builder, Context context) {
-            builder.add(createPiece(template, context));
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
+            builder.addPiece(createPiece(template, context));
         }
 
         @Override
@@ -45,7 +50,7 @@ public final class PieceSources {
                 .apply(instance, WeightedSource::new));
 
         @Override
-        public void appendPieces(List<StructurePiece> builder, Context context) {
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
             sources.getRandom(context.generation().random()).ifPresent(source -> source.appendPieces(builder, context));
         }
 
@@ -71,7 +76,7 @@ public final class PieceSources {
         }
 
         @Override
-        public void appendPieces(List<StructurePiece> builder, Context context) {
+        public void appendPieces(StructurePiecesBuilder builder, Context context) {
             for (var source : sources) {
                 source.appendPieces(builder, context);
             }
@@ -88,25 +93,22 @@ public final class PieceSources {
         }
     }
 
+    /// A piece for `entry` with the structure's settings, see [StructureElements].
     public static StructurePiece createPiece(TemplateEntry entry, PieceSource.Context context) {
-        return new SimpleStructurePiece(
-                context.generation().structureTemplateManager(),
-                entry.template(),
-                context.origin().offset(entry.offset().rotate(context.rotation())),
-                context.rotation(),
-                entry.processors(),
-                context.terrainAdaptation(),
-                entry.terrainBox(),
-                -entry.offset().getY());
+        var element = StructureElements.withStructureSettings(entry.element(), context.processors(), context.foundation());
+        return new ModularStructurePiece(context.generation().structureTemplateManager(), element, context.origin().offset(entry.offset().rotate(context.rotation())), context.rotation(),
+                context.liquidSettings(), context.terrainAdaptation(), entry.terrainBox(), -entry.offset().getY());
     }
 
     public abstract static class NestingBuilder {
         protected final String defaultNamespace;
         protected final HolderGetter<StructureProcessorList> processorsGetter;
+        protected final HolderGetter<StructureTemplatePool> poolsGetter;
 
-        protected NestingBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter) {
+        protected NestingBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter, HolderGetter<StructureTemplatePool> poolsGetter) {
             this.defaultNamespace = defaultNamespace;
             this.processorsGetter = processorsGetter;
+            this.poolsGetter = poolsGetter;
         }
 
         protected SingleSource makeSingle(Consumer<TemplateEntry.Builder> configure) {
@@ -116,15 +118,21 @@ public final class PieceSources {
         }
 
         protected WeightedSource makeWeighted(Consumer<WeightedBuilder> configure) {
-            var weighted = new WeightedBuilder(defaultNamespace, processorsGetter);
+            var weighted = new WeightedBuilder(defaultNamespace, processorsGetter, poolsGetter);
             configure.accept(weighted);
             return weighted.build();
         }
 
         protected CompoundSource makeCompound(Consumer<CompoundBuilder> configure) {
-            var compound = new CompoundBuilder(defaultNamespace, processorsGetter);
+            var compound = new CompoundBuilder(defaultNamespace, processorsGetter, poolsGetter);
             configure.accept(compound);
             return compound.build();
+        }
+
+        protected JigsawSource makeJigsaw(ResourceKey<StructureTemplatePool> startPool, Consumer<JigsawSource.Builder> configure) {
+            var jigsaw = new JigsawSource.Builder(poolsGetter.getOrThrow(startPool));
+            configure.accept(jigsaw);
+            return jigsaw.build();
         }
 
     }
@@ -132,8 +140,8 @@ public final class PieceSources {
     public static class WeightedBuilder extends NestingBuilder {
         private final WeightedList.Builder<PieceSource> builder = WeightedList.builder();
 
-        public WeightedBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter) {
-            super(defaultNamespace, processorsGetter);
+        public WeightedBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter, HolderGetter<StructureTemplatePool> poolsGetter) {
+            super(defaultNamespace, processorsGetter, poolsGetter);
         }
 
         public WeightedBuilder add(int weight, PieceSource source) {
@@ -157,6 +165,11 @@ public final class PieceSources {
             return add(weight, makeCompound(configure));
         }
 
+        /// A jigsaw layout grown from `startPool`, see [JigsawSource].
+        public WeightedBuilder jigsaw(int weight, ResourceKey<StructureTemplatePool> startPool, Consumer<JigsawSource.Builder> configure) {
+            return add(weight, makeJigsaw(startPool, configure));
+        }
+
         public WeightedSource build() {
             var sources = builder.build();
             if (sources.isEmpty()) {
@@ -169,8 +182,8 @@ public final class PieceSources {
     public static class CompoundBuilder extends NestingBuilder {
         private final ImmutableList.Builder<PieceSource> builder = new ImmutableList.Builder<>();
 
-        public CompoundBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter) {
-            super(defaultNamespace, processorsGetter);
+        public CompoundBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter, HolderGetter<StructureTemplatePool> poolsGetter) {
+            super(defaultNamespace, processorsGetter, poolsGetter);
         }
 
         public CompoundBuilder add(PieceSource source) {
@@ -192,6 +205,11 @@ public final class PieceSources {
 
         public CompoundBuilder compound(Consumer<CompoundBuilder> configure) {
             return add(makeCompound(configure));
+        }
+
+        /// A jigsaw layout grown from `startPool`, see [JigsawSource]. It grows around the pieces of the other sources.
+        public CompoundBuilder jigsaw(ResourceKey<StructureTemplatePool> startPool, Consumer<JigsawSource.Builder> configure) {
+            return add(makeJigsaw(startPool, configure));
         }
 
         public CompoundSource build() {

@@ -5,8 +5,9 @@ import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
-import com.ametrin.structures.structure.simple.SimpleStructurePiece;
-import com.ametrin.structures.structure.simple.TerrainBox;
+import com.ametrin.structures.structure.modular.ModularStructurePiece;
+import com.ametrin.structures.structure.modular.TemplateEntry;
+import com.ametrin.structures.structure.modular.TerrainBox;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -118,7 +119,7 @@ public final class LootStatsGameTests {
                 "{id: \"minecraft:glow_item_frame\"}")) {
             template.entityInfoList.add(new StructureTemplate.StructureEntityInfo(new Vec3(1.5, 1, 1.5), new BlockPos(1, 1, 1), nbt(entity)));
         }
-        var piece = new SimpleStructurePiece(level.getStructureTemplateManager(), id, origin, Rotation.NONE, Optional.empty(), TerrainAdjustment.NONE, TerrainBox.template(), 0);
+        var piece = new ModularStructurePiece(level.getStructureTemplateManager(), TemplateEntry.of(id).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
         var contents = StructureLoot.contents(level, new PiecesContainer(List.of(piece)), RandomSource.create(0));
 
         helper.assertValueEqual(Set.copyOf(contents.containers()), Set.of(
@@ -132,6 +133,12 @@ public final class LootStatsGameTests {
         helper.assertValueEqual(contents.displays().size(), 3, "armor stands and item frames");
         helper.assertValueEqual(contents.dataMarkers(), 1, "data markers");
         helper.assertValueEqual(contents.codePieces(), 0, "pieces built in code");
+
+        // The template on its own holds the same, with its fixture drawn on every draw.
+        var collected = StructureLoot.template(level, template, origin);
+        for (int draw = 0; draw < 2; draw++) {
+            helper.assertValueEqual(Set.copyOf(collected.draw(RandomSource.create(draw)).containers()), Set.copyOf(contents.containers()), "containers of the template");
+        }
 
         // A list element places each of its templates, so it has the chests of both.
         var list = StructurePoolElement.list(List.of(StructurePoolElement.single(id.toString()), StructurePoolElement.single(id.toString()))).apply(StructureTemplatePool.Projection.RIGID);

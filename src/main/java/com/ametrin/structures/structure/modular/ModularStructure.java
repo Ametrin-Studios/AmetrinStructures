@@ -1,8 +1,9 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASStructureTypes;
 import com.ametrin.structures.structure.*;
 import com.ametrin.structures.structure.filter.TerrainSampler;
+import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -11,48 +12,47 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/// A structure made of one or more templates, at a start height measured from the terrain. It's a built-in type, so you don't need your own structure type, piece type or codec:
+/// A structure built from piece sources, like templates and jigsaw layouts, at a start height measured from the terrain. It's a built-in type, so you don't need your own structure type, piece type or codec:
 ///
 /// ```
 /// STRUCTURES.registerSet("tower", set -> set
 ///     .evenSpreadPlacement(18, 0.6F)
-///     .simple(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST)));
+///     .modular(tower -> tower.single("tower").surface().biomes(BiomeTags.IS_FOREST)));
 /// ```
-public class SimpleStructure extends ExtendedStructure {
+public class ModularStructure extends ExtendedStructure {
     public static final StartHeight ON_SURFACE_START_HEIGHT = StartHeight.at(HeightAnchor.surface(0));
 
-    public static final MapCodec<SimpleStructure> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+    public static final MapCodec<ModularStructure> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     settingsCodec(instance),
                     extendedSettingsCodec(instance),
-                    PieceSource.CODEC.fieldOf("pieces").forGetter(SimpleStructure::pieces),
-                    StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(SimpleStructure::startHeight),
-                    LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(SimpleStructure::liquidSettings),
-                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(SimpleStructure::foundation),
-                    Rotation.CODEC.optionalFieldOf("rotation").forGetter(SimpleStructure::rotation))
-            .apply(instance, SimpleStructure::new));
+                    PieceSource.CODEC.fieldOf("pieces").forGetter(ModularStructure::pieces),
+                    StartHeight.CODEC.optionalFieldOf("start_height", ON_SURFACE_START_HEIGHT).forGetter(ModularStructure::startHeight),
+                    LiquidSettings.CODEC.optionalFieldOf("liquid_settings", LiquidSettings.IGNORE_WATERLOGGING).forGetter(ModularStructure::liquidSettings),
+                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(ModularStructure::foundation),
+                    Rotation.CODEC.optionalFieldOf("rotation").forGetter(ModularStructure::rotation))
+            .apply(instance, ModularStructure::new));
 
     private final PieceSource pieces;
     private final StartHeight startHeight;
@@ -60,7 +60,7 @@ public class SimpleStructure extends ExtendedStructure {
     private final Optional<Foundation> foundation;
     private final Optional<Rotation> rotation;
 
-    public SimpleStructure(
+    public ModularStructure(
             StructureSettings settings,
             ExtendedStructureSettings extendedSettings,
             PieceSource pieces,
@@ -97,39 +97,39 @@ public class SimpleStructure extends ExtendedStructure {
 
         // Create the pieces first, at Y 0, so the terrain can be measured under their actual footprint.
         long start = System.nanoTime();
-        var created = new ArrayList<StructurePiece>();
-        pieces.appendPieces(created, new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation()));
-        var unplacedFootprint = BoundingBox.encapsulatingBoxes(created.stream().map(StructurePiece::getBoundingBox).toList());
+        var builder = new StructurePiecesBuilder();
+        var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
+        var pieceContext = new PieceSource.Context(context, unplaced, rotation.orElseGet(() -> Rotation.getRandom(context.random())), terrainAdaptation(), liquidSettings, foundation, processors(), terrain, new ArrayList<>());
+        pieces.appendPieces(builder, pieceContext);
         timer.pieces(System.nanoTime() - start);
-        if (unplacedFootprint.isEmpty()) {
+        if (builder.isEmpty()) {
             return Either.right(new Evaluation.NoPieces());
         }
+        var unplacedFootprint = builder.getBoundingBox();
 
         start = System.nanoTime();
-        var terrain = new TerrainSampler(context, startHeight.groundHeightmap().orElse(Heightmap.Types.WORLD_SURFACE_WG));
-        var sampled = startHeight.sample(context.random(), world, (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint.get()));
+        var sampled = startHeight.sample(context.random(), world, (heightmap, mode) -> mode.measure(terrain, heightmap, unplaced, unplacedFootprint));
         timer.startHeight(System.nanoTime() - start);
         if (sampled.isEmpty()) {
             return Either.right(new Evaluation.NoStartHeight());
         }
 
         var origin = unplaced.atY(sampled.getAsInt());
-        var footprint = unplacedFootprint.get().moved(0, origin.getY(), 0);
-        return Either.left(new Candidate(origin, terrain, () -> footprint, () -> place(created, origin)));
-    }
-
-    // Moves the pieces up to the start height and hands them the structure's settings.
-    private GenerationStub place(List<StructurePiece> created, BlockPos origin) {
-        var builder = new StructurePiecesBuilder();
-        for (var piece : created) {
-            piece.move(0, origin.getY(), 0);
-            if (piece instanceof ExtendedTemplateStructurePiece template) {
-                template.setLiquidSettings(liquidSettings);
-                template.setFoundation(foundation);
+        builder.offsetPiecesVertically(origin.getY());
+        if (!pieceContext.placementSteps().isEmpty()) {
+            // The steps can be expensive, like growing a jigsaw layout, so rule out the wrong biome first, as the evaluation would afterward.
+            if (!isValidBiome(context, origin)) {
+                return Either.right(new Evaluation.WrongBiome(origin));
             }
-            builder.addPiece(piece);
+            start = System.nanoTime();
+            var placed = pieceContext.place(builder, origin);
+            timer.pieces(System.nanoTime() - start);
+            if (!placed) {
+                return Either.right(new Evaluation.NoPieces());
+            }
         }
-        return new GenerationStub(origin, Either.right(builder));
+        var footprint = builder.getBoundingBox();
+        return Either.left(new Candidate(origin, terrain, () -> footprint, () -> new GenerationStub(origin, Either.right(builder))));
     }
 
     public PieceSource pieces() {
@@ -155,7 +155,7 @@ public class SimpleStructure extends ExtendedStructure {
 
     @Override
     public StructureType<?> type() {
-        return ASStructureTypes.SIMPLE.get();
+        return ASStructureTypes.MODULAR.get();
     }
 
     /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap]. Templates default to `id`'s namespace.
@@ -168,7 +168,7 @@ public class SimpleStructure extends ExtendedStructure {
         private final String namespace;
 
         @Nullable
-        private Function<HolderGetter<StructureProcessorList>, PieceSource> pieces;
+        private Function<BootstrapContext<Structure>, PieceSource> pieces;
         private StartHeight startHeight = ON_SURFACE_START_HEIGHT;
         private LiquidSettings liquidSettings = LiquidSettings.IGNORE_WATERLOGGING;
         private Optional<Foundation> foundation = Optional.empty();
@@ -199,24 +199,36 @@ public class SimpleStructure extends ExtendedStructure {
 
         /// A source drawn by weight.
         public Builder weighted(Consumer<PieceSources.WeightedBuilder> configure) {
-            return pieces(g -> {
-                var weighted = new PieceSources.WeightedBuilder(namespace, g);
+            this.pieces = context -> {
+                var weighted = new PieceSources.WeightedBuilder(namespace, context.lookup(Registries.PROCESSOR_LIST), context.lookup(Registries.TEMPLATE_POOL));
                 configure.accept(weighted);
                 return weighted.build();
-            });
+            };
+            return this;
         }
 
         /// Several pieces placed together.
         public Builder compound(Consumer<PieceSources.CompoundBuilder> configure) {
-            return pieces(g -> {
-                var builder = new PieceSources.CompoundBuilder(namespace, g);
+            this.pieces = context -> {
+                var builder = new PieceSources.CompoundBuilder(namespace, context.lookup(Registries.PROCESSOR_LIST), context.lookup(Registries.TEMPLATE_POOL));
                 configure.accept(builder);
                 return builder.build();
-            });
+            };
+            return this;
+        }
+
+        /// A jigsaw layout grown from `startPool`, see [JigsawSource].
+        public Builder jigsaw(ResourceKey<StructureTemplatePool> startPool, Consumer<JigsawSource.Builder> configure) {
+            this.pieces = context -> {
+                var jigsaw = new JigsawSource.Builder(context.lookup(Registries.TEMPLATE_POOL).getOrThrow(startPool));
+                configure.accept(jigsaw);
+                return jigsaw.build();
+            };
+            return this;
         }
 
         public Builder pieces(Function<HolderGetter<StructureProcessorList>, PieceSource> pieces) {
-            this.pieces = pieces;
+            this.pieces = context -> pieces.apply(context.lookup(Registries.PROCESSOR_LIST));
             return this;
         }
 
@@ -283,6 +295,7 @@ public class SimpleStructure extends ExtendedStructure {
             return foundation(Foundation.of(state, maxDepth));
         }
 
+        /// Pieces only get it on rigid `ametrin_structures:single_pool_element`s without a foundation of their own. Templates are those unless they set one.
         public Builder foundation(Foundation foundation) {
             this.foundation = Optional.of(foundation);
             return this;
@@ -298,25 +311,24 @@ public class SimpleStructure extends ExtendedStructure {
         protected void validate() {
             super.validate();
             if (pieces == null) {
-                throw fail("no piece source was set - call single(), weighted() or compound()");
+                throw fail("no piece source was set - call single(), weighted(), compound() or jigsaw()");
             }
         }
 
         @Override
-        public SimpleStructure build(BootstrapContext<Structure> context) {
-            return (SimpleStructure) super.build(context);
+        public ModularStructure build(BootstrapContext<Structure> context) {
+            return (ModularStructure) super.build(context);
         }
 
         @Override
-        protected SimpleStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
-            var processorLists = context.lookup(Registries.PROCESSOR_LIST);
+        protected ModularStructure create(StructureSettings settings, ExtendedStructureSettings extendedSettings, BootstrapContext<Structure> context) {
             PieceSource builtPieces;
             try {
-                builtPieces = Objects.requireNonNull(pieces).apply(processorLists);
+                builtPieces = Objects.requireNonNull(pieces).apply(context);
             } catch (IllegalStateException exception) {
                 throw fail(exception.getMessage(), exception);
             }
-            return new SimpleStructure(settings, extendedSettings, builtPieces, startHeight, liquidSettings, foundation, Optional.ofNullable(rotation));
+            return new ModularStructure(settings, extendedSettings, builtPieces, startHeight, liquidSettings, foundation, Optional.ofNullable(rotation));
         }
     }
 }

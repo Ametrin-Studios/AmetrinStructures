@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.simple;
+package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.GenerationContexts;
 import com.google.gson.JsonElement;
@@ -12,12 +12,14 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -64,7 +66,8 @@ class PieceSourcesTest {
         var top = json.getAsJsonArray("sources").get(0).getAsJsonObject();
         assertFalse(top.has("type"));
         assertEquals("minecraft:igloo/top", top.get("template").getAsString());
-        assertEquals(source, PieceSource.CODEC.parse(ops(server), json).getOrThrow());
+        // Pool elements have no equality, so the source is compared by its JSON.
+        assertEquals(json, PieceSource.CODEC.encodeStart(ops(server), PieceSource.CODEC.parse(ops(server), json).getOrThrow()).getOrThrow());
     }
 
     @Test
@@ -89,8 +92,8 @@ class PieceSourcesTest {
 
     private static List<StructurePiece> appendPieces(MinecraftServer server, PieceSource source, long seed) {
         var generation = GenerationContexts.overPlains(server, seed, biome -> biome.is(Biomes.PLAINS));
-        var pieces = new ArrayList<StructurePiece>();
-        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE));
-        return pieces;
+        var pieces = new StructurePiecesBuilder();
+        source.appendPieces(pieces, new PieceSource.Context(generation, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty()));
+        return pieces.build().pieces();
     }
 }

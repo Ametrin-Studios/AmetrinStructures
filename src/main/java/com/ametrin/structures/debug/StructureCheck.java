@@ -3,12 +3,17 @@ package com.ametrin.structures.debug;
 import com.ametrin.structures.fixture.*;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
-import com.ametrin.structures.structure.jigsaw.ExtendedJigsawStructure;
-import com.ametrin.structures.structure.simple.SimpleStructure;
+import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
+import com.ametrin.structures.structure.jigsaw.JigsawSource;
+import com.ametrin.structures.structure.modular.PieceSource;
+import com.ametrin.structures.structure.modular.PieceSources;
+import com.ametrin.structures.structure.modular.ModularStructure;
 import com.ametrin.structures.util.RegistryConditionContext;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.Pools;
@@ -44,7 +49,7 @@ import java.util.stream.Stream;
 
 /// Finds problems that would otherwise silently break structures: missing templates, jigsaws that
 /// can't connect, and loot tables, fixture presets and other entries that templates use but that
-/// don't exist. Checks simple and jigsaw structures and skips other types.
+/// don't exist. Checks modular and jigsaw structures and skips other types.
 ///
 /// Only loads templates and doesn't place anything, so it's safe to run off the server thread.
 public final class StructureCheck {
@@ -62,6 +67,7 @@ public final class StructureCheck {
         public static final String EMPTY_POOL = "commands.ametrin_structures.check.empty_pool";
         public static final String UNMATCHED_JIGSAW = "commands.ametrin_structures.check.unmatched_jigsaw";
         public static final String MISFACING_JIGSAW = "commands.ametrin_structures.check.misfacing_jigsaw";
+        public static final String IGNORED_CONDITIONS = "commands.ametrin_structures.check.ignored_conditions";
 
         private Keys() {}
     }
@@ -131,12 +137,13 @@ public final class StructureCheck {
     /// @return false for a type it can't look into
     private boolean check(Identifier id, Structure structure) {
         switch (structure) {
-            case SimpleStructure simple -> simple.pieces().templates().forEach(entry -> template(id, entry.template()));
-            case ExtendedJigsawStructure jigsaw ->
-                    checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases());
+            case ModularStructure modular -> {
+                modular.pieces().templates().forEach(entry -> templatesExist(id, entry.element()));
+                jigsawSources(modular.pieces()).forEach(jigsaw -> checkJigsaw(id, jigsaw.startPool(), jigsaw.startJigsawName(), jigsaw.poolAliases(), true));
+            }
             // Vanilla's start jigsaw name has no getter.
             case JigsawStructure jigsaw ->
-                    checkJigsaw(id, jigsaw.getStartPool(), Optional.empty(), jigsaw.getPoolAliases());
+                    checkJigsaw(id, jigsaw.getStartPool(), Optional.empty(), jigsaw.getPoolAliases(), false);
             default -> {
                 return false;
             }
@@ -144,11 +151,22 @@ public final class StructureCheck {
         return true;
     }
 
+    // Only the built-in sources can be looked into.
+    private static Stream<JigsawSource> jigsawSources(PieceSource source) {
+        return switch (source) {
+            case JigsawSource jigsaw -> Stream.of(jigsaw);
+            case PieceSources.CompoundSource compound -> compound.sources().stream().flatMap(StructureCheck::jigsawSources);
+            case PieceSources.WeightedSource weighted -> weighted.sources().unwrap().stream().flatMap(entry -> jigsawSources(entry.value()));
+            default -> Stream.empty();
+        };
+    }
+
     /// Checks the template's contents the first time it's requested. A missing template is reported for `structure`.
     private Optional<StructureTemplate> template(Identifier structure, Identifier id) {
         var template = checkedTemplates.get(id);
         if (template == null) {
-            template = templates.get(id);
+            // Once something asked for a missing template, the manager holds an empty one in its place.
+            template = templates.get(id).filter(found -> !found.getSize().equals(Vec3i.ZERO));
             checkedTemplates.put(id, template);
             template.ifPresent(found -> checkContents(id, found));
         }
@@ -222,7 +240,8 @@ public final class StructureCheck {
 
     private record Link(Connector source, Holder<StructureTemplatePool> target) {}
 
-    private void checkJigsaw(Identifier structure, Holder<StructureTemplatePool> startPool, Optional<Identifier> startJigsawName, List<PoolAliasBinding> poolAliases) {
+    /// @param followsConditions false for vanilla's layout, which places [ConditionalPoolElement]s like the element inside them
+    private void checkJigsaw(Identifier structure, Holder<StructureTemplatePool> startPool, Optional<Identifier> startJigsawName, List<PoolAliasBinding> poolAliases, boolean followsConditions) {
         // Follows every jigsaw from the start pool, as generation could, and checks that each can connect.
         var aliases = new HashMap<ResourceKey<StructureTemplatePool>, Set<ResourceKey<StructureTemplatePool>>>();
         poolAliases.forEach(binding -> collectAliases(binding, aliases));
@@ -241,6 +260,12 @@ public final class StructureCheck {
             var pool = queue.poll();
             if (!visited.add(pool)) {
                 continue;
+            }
+            if (!followsConditions) {
+                pool.value().getTemplates().stream()
+                        .map(Pair::getFirst)
+                        .filter(StructureCheck::isConditional)
+                        .forEach(element -> problem(Problem.Subject.STRUCTURE, structure, Keys.IGNORED_CONDITIONS, poolName(pool), elementName(element)));
             }
             var fallback = pool.value().getFallback();
             if (isEmpty(fallback)) {
@@ -336,6 +361,7 @@ public final class StructureCheck {
     private boolean templatesExist(Identifier structure, StructurePoolElement element) {
         return switch (element) {
             case SinglePoolElement single -> template(structure, single.getTemplateLocation()).isPresent();
+            case ConditionalPoolElement counted -> templatesExist(structure, counted.element());
             case ListPoolElement list -> {
                 var all = true;
                 for (var child : list.getElements()) {
@@ -350,10 +376,15 @@ public final class StructureCheck {
     private static String elementName(StructurePoolElement element) {
         return switch (element) {
             case SinglePoolElement single -> single.getTemplateLocation().toString();
+            case ConditionalPoolElement counted -> elementName(counted.element());
             // A list element's jigsaws are its first element's.
             case ListPoolElement list when !list.getElements().isEmpty() -> elementName(list.getElements().getFirst());
             default -> element.toString();
         };
+    }
+
+    private static boolean isConditional(StructurePoolElement element) {
+        return element instanceof ConditionalPoolElement || element instanceof ListPoolElement list && list.getElements().stream().anyMatch(StructureCheck::isConditional);
     }
 
     // minecraft:empty is meant to be empty.
