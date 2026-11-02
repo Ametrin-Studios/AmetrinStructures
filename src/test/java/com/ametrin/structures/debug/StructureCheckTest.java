@@ -62,13 +62,8 @@ class StructureCheckTest {
     }
 
     @Test
-    void aMissingTemplateIsReported(MinecraftServer server) {
-        var report = check(server, modular(Identifier.fromNamespaceAndPath("test", "missing")));
-        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(report));
-    }
-
-    @Test
-    void aMissingTemplateSomethingAskedForIsStillReported(MinecraftServer server) {
+    void aMissingTemplateIsReportedEvenOnceSomethingAskedForIt(MinecraftServer server) {
+        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(Identifier.fromNamespaceAndPath("test", "missing")))));
         var missing = Identifier.fromNamespaceAndPath("test", "asked_for");
         server.getStructureTemplateManager().getOrCreate(missing);
         assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(missing))));
@@ -99,7 +94,7 @@ class StructureCheckTest {
     void fixturesForMissingModsArentReported(MinecraftServer server) throws CommandSyntaxException {
         var template = template(server, "guarded", """
                 {size: [1, 1, 1], entities: [],
-                 palette: [{Name: "ametrin_structures:fixture"}],
+                 palette: [{id: "ametrin_structures:fixture"}],
                  blocks: [
                    {pos: [0, 0, 0], state: 0, nbt: {id: "ametrin_structures:fixture", fixtures: [
                      {conditions: [{type: "neoforge:mod_loaded", modid: "missing_mod"}], type: "ametrin_structures:loot_container", loot_table: "missing_mod:chest"},

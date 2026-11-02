@@ -12,15 +12,11 @@ import static org.junit.jupiter.api.Assertions.*;
 /// Which blocks a foundation column grows through, and the foundation as a datapack author writes it.
 class FoundationTest {
     @Test
-    void columnsGrowThroughAirFluidsAndReplaceables() {
+    void columnsGrowThroughAirFluidsAndReplaceablesAndStopAtGround() {
         assertTrue(Foundation.isFillable(Blocks.AIR.defaultBlockState()));
         assertTrue(Foundation.isFillable(Blocks.WATER.defaultBlockState()));
         assertTrue(Foundation.isFillable(Blocks.SHORT_GRASS.defaultBlockState()));
         assertTrue(Foundation.isFillable(Blocks.SNOW.defaultBlockState()));
-    }
-
-    @Test
-    void columnsStopAtGround() {
         assertFalse(Foundation.isFillable(Blocks.STONE.defaultBlockState()));
         assertFalse(Foundation.isFillable(Blocks.DIRT.defaultBlockState()));
         assertFalse(Foundation.isFillable(Blocks.OAK_LEAVES.defaultBlockState()));
@@ -36,13 +32,9 @@ class FoundationTest {
     }
 
     @Test
-    void anEmptyFoundationRepeatsTheBottomBlock() {
+    void anEmptyFoundationRepeatsTheBottomBlockAndOneWithAStateRoundTrips() {
         var parsed = Foundation.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString("{}")).getOrThrow();
         assertEquals(new Foundation(Optional.empty(), Foundation.DEFAULT_MAX_DEPTH), parsed);
-    }
-
-    @Test
-    void aFoundationWithAStateRoundTrips() {
         var foundation = Foundation.of(Blocks.COBBLESTONE.defaultBlockState(), 20);
         var json = Foundation.CODEC.encodeStart(JsonOps.INSTANCE, foundation).getOrThrow();
         assertEquals(foundation, Foundation.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow());

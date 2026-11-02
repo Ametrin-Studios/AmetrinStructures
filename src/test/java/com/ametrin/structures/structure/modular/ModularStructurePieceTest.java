@@ -44,25 +44,12 @@ class ModularStructurePieceTest {
     private static final Identifier TEMPLATE = Identifier.withDefaultNamespace("igloo/top");
 
     @Test
-    void aSunkTemplateKeepsTheGroundAtTheStartHeight(MinecraftServer server) {
-        var piece = createPiece(server, new BlockPos(0, -4, 0));
-        assertEquals(4, piece.getGroundLevelDelta());
-        assertEquals(ORIGIN.getY(), piece.getBeardifierBox().minY() + piece.getGroundLevelDelta());
-    }
-
-    @Test
-    void aRaisedTemplateStandsAboveTheGround(MinecraftServer server) {
-        var piece = createPiece(server, new BlockPos(0, 3, 0));
-        assertEquals(ORIGIN.getY(), piece.getBeardifierBox().minY() + piece.getGroundLevelDelta());
-    }
-
-    @Test
-    void groundLevelAndTerrainAdaptationAreSavedWithThePiece(MinecraftServer server) {
-        var piece = createPiece(server, new BlockPos(0, -4, 0));
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
-        assertEquals(4, reloaded.getGroundLevelDelta());
-        assertEquals(TerrainAdjustment.BEARD_THIN, reloaded.getTerrainAdjustment());
+    void theGroundStaysAtTheStartHeightWhetherTheTemplateIsSunkOrRaised(MinecraftServer server) {
+        var sunk = createPiece(server, new BlockPos(0, -4, 0));
+        assertEquals(4, sunk.getGroundLevelDelta());
+        assertEquals(ORIGIN.getY(), sunk.getBeardifierBox().minY() + sunk.getGroundLevelDelta());
+        var raised = createPiece(server, new BlockPos(0, 3, 0));
+        assertEquals(ORIGIN.getY(), raised.getBeardifierBox().minY() + raised.getGroundLevelDelta());
     }
 
     @Test
@@ -94,19 +81,20 @@ class ModularStructurePieceTest {
     }
 
     @Test
-    void theTerrainBoxIsSavedWithThePiece(MinecraftServer server) {
-        var piece = createPiece(server, new BlockPos(0, -4, 0), Rotation.CLOCKWISE_180, TerrainBox.of(1, 2, 1, 2, 3, 2));
+    void theTerrainSettingsAndTheStructuresProcessorsAreSavedWithThePiece(MinecraftServer server) {
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
-        assertEquals(piece.getBeardifierBox(), reloaded.getBeardifierBox());
-        assertEquals(piece.getGroundLevelDelta(), reloaded.getGroundLevelDelta());
-    }
+        var sunk = createPiece(server, new BlockPos(0, -4, 0));
+        var reloadedSunk = new ModularStructurePiece(context, sunk.createTag(context));
+        assertEquals(4, reloadedSunk.getGroundLevelDelta());
+        assertEquals(TerrainAdjustment.BEARD_THIN, reloadedSunk.getTerrainAdjustment());
+        var boxed = createPiece(server, new BlockPos(0, -4, 0), Rotation.CLOCKWISE_180, TerrainBox.of(1, 2, 1, 2, 3, 2));
+        var reloadedBoxed = new ModularStructurePiece(context, boxed.createTag(context));
+        assertEquals(boxed.getBeardifierBox(), reloadedBoxed.getBeardifierBox());
+        assertEquals(boxed.getGroundLevelDelta(), reloadedBoxed.getGroundLevelDelta());
 
-    @Test
-    void theStructuresProcessorsAreSavedByIdWithThePiece(MinecraftServer server) {
+        // By id, not inline.
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
         var piece = createPiece(server, Optional.empty(), Optional.of(mossify));
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
         var tag = piece.createTag(context);
         assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT.identifier().toString()), tag.getCompoundOrEmpty("pool_element").getString("processors"));
         var reloaded = new ModularStructurePiece(context, tag);
@@ -138,10 +126,8 @@ class ModularStructurePieceTest {
         var element = TemplateEntry.CODEC.parse(ops, elementJson).getOrThrow();
         assertSame(EmptyPoolElement.INSTANCE, element.element());
         assertEquals(elementJson, TemplateEntry.CODEC.encodeStart(ops, element).getOrThrow());
-    }
 
-    @Test
-    void aTerrainBoxIsANameOrABox() {
+        // A terrain box is a name or a box.
         assertEquals(TerrainBox.footprint(), parse("\"footprint\""));
         assertEquals(TerrainBox.of(0, 1, 2, 3, 4, 5), parse("[0, 1, 2, 3, 4, 5]"));
     }

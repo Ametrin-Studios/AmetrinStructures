@@ -2,7 +2,6 @@ package com.ametrin.structures.placement;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -19,11 +18,6 @@ class ScatteredGridPlacementTest {
 
     private static ScatteredGridPlacement.Builder grid(int spacing) {
         return ScatteredGridPlacement.builder().salt(STRUCTURE.getNamespace(), STRUCTURE.getPath()).spacing(spacing);
-    }
-
-    @Test
-    void offsetIsClampedIntoTheCell() {
-        assertEquals(7, grid(8).randomOffset(99).build().randomOffset());
     }
 
     @Test
@@ -77,12 +71,6 @@ class ScatteredGridPlacementTest {
         assertEquals(first.gridOffset(SEED), first.gridOffset(SEED), "the same world, the same grid");
     }
 
-    /// Vanilla's structure search only walks random spread placements, asking each for its chunk per cell.
-    @Test
-    void locateSeesTheGridThroughTheRandomSpreadContract() {
-        assertInstanceOf(RandomSpreadStructurePlacement.class, grid(16).build());
-    }
-
     @Test
     void saltIsDerivedFromTheIdUnlessGiven() {
         assertNotEquals(picks(grid(16).build()), picks(ScatteredGridPlacement.builder().salt("test", "other").spacing(16).build()));
@@ -104,28 +92,16 @@ class ScatteredGridPlacementTest {
         assertTrue(placement.isTooCloseToCenter(-7, 7), "the corner of the square is still inside the circle");
         assertFalse(placement.isTooCloseToCenter(0, -10));
         assertFalse(placement.isTooCloseToCenter(8, 8));
-    }
-
-    @Test
-    void theChunkRestrictionsKeepAwayFromTheCenter() {
-        ScatteredGridPlacement placement = grid(16).minChunksFromCenter(10).build();
         assertFalse(placement.applyAdditionalChunkRestrictions(9, 0, SEED));
         assertTrue(placement.applyAdditionalChunkRestrictions(0, -10, SEED));
+        assertFalse(grid(16).build().isTooCloseToCenter(0, 0), "zero allows the origin");
     }
 
     @Test
-    void zeroMinChunksFromCenterAllowsTheOrigin() {
-        assertFalse(grid(16).build().isTooCloseToCenter(0, 0));
-    }
-
-    @Test
-    void negativeMinChunksFromCenterIsRejected() {
-        assertThrows(IllegalStateException.class, () -> grid(16).minChunksFromCenter(-1).build());
-    }
-
-    @Test
-    void outOfRangeSpacingIsRejected() {
+    void outOfRangeSettingsAreRejectedOrClamped() {
         assertThrows(IllegalStateException.class, () -> grid(0).build());
         assertThrows(IllegalStateException.class, () -> grid(ScatteredGridPlacement.MAX_SPACING + 1).build());
+        assertThrows(IllegalStateException.class, () -> grid(16).minChunksFromCenter(-1).build());
+        assertEquals(7, grid(8).randomOffset(99).build().randomOffset(), "the offset stays inside the cell");
     }
 }

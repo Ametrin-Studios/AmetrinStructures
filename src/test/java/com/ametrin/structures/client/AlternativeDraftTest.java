@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(EphemeralTestServerProvider.class)
 class AlternativeDraftTest {
     @Test
-    void aStoredAlternativeComesBackAsItWas(MinecraftServer server) {
+    void storedAlternativesComeBackAsTheyWere(MinecraftServer server) {
         var stored = new CompoundTag();
         stored.putString("type", ASFixtures.LOOT_CONTAINER.getId().toString());
         stored.put("weight", IntTag.valueOf(3));
@@ -28,6 +28,13 @@ class AlternativeDraftTest {
         assertEquals("0.5", draft.chance);
         assertEquals("minecraft:chests/simple_dungeon", draft.texts.get("loot_table"));
         assertEquals(stored, draft.toTag(server.registryAccess()));
+
+        var unknown = new CompoundTag();
+        unknown.putString("type", "othermod:crate");
+        unknown.putInt("size", 9);
+        var unknownDraft = new AlternativeDraft(unknown, server.registryAccess());
+        assertTrue(unknownDraft.fields().isEmpty());
+        assertEquals(unknown, unknownDraft.toTag(server.registryAccess()), "an unknown type keeps its fields");
     }
 
     @Test
@@ -55,18 +62,6 @@ class AlternativeDraftTest {
         var expected = new CompoundTag();
         expected.putString("type", ASFixtures.EMPTY.getId().toString());
         assertEquals(expected, draft.toTag(server.registryAccess()));
-    }
-
-    @Test
-    void anUnknownTypeKeepsItsFields(MinecraftServer server) {
-        var stored = new CompoundTag();
-        stored.putString("type", "othermod:crate");
-        stored.putInt("size", 9);
-
-        var draft = new AlternativeDraft(stored, server.registryAccess());
-
-        assertTrue(draft.fields().isEmpty());
-        assertEquals(stored, draft.toTag(server.registryAccess()));
     }
 
     @Test

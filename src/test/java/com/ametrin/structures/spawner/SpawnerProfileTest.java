@@ -80,22 +80,14 @@ class SpawnerProfileTest {
     }
 
     @Test
-    void omittedFieldsKeepVanillasValues() {
+    void omittedFieldsKeepVanillasValuesAndOthersMustFitASpawner() {
         var profile = parse("{\"spawn_count\": 2}").getOrThrow();
         assertEquals(2, profile.spawnCount());
         assertEquals(SpawnerProfile.DEFAULT.maxNearbyEntities(), profile.maxNearbyEntities());
         assertTrue(profile.spawnPotentials().isEmpty());
-    }
-
-    @Test
-    void valuesMustFitTheShortsASpawnerSaves() {
-        assertTrue(parse("{\"max_spawn_delay\": 40000}").isError());
+        assertTrue(parse("{\"max_spawn_delay\": 40000}").isError(), "a spawner saves it as a short");
         assertTrue(parse("{\"max_spawn_delay\": 32767}").isSuccess());
-    }
-
-    @Test
-    void theMinimumDelayCantExceedTheMaximum() {
-        assertTrue(parse("{\"min_spawn_delay\": 900, \"max_spawn_delay\": 100}").isError());
+        assertTrue(parse("{\"min_spawn_delay\": 900, \"max_spawn_delay\": 100}").isError(), "the minimum can't exceed the maximum");
     }
 
     private static DataResult<SpawnerProfile> parse(String json) {

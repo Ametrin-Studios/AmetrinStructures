@@ -12,25 +12,17 @@ class FlatnessFilterTest {
     private static final BoundingBox FOOTPRINT = new BoundingBox(0, 60, 0, 20, 70, 10);
 
     @Test
-    void marginDefaultsToZero() {
+    void marginDefaultsToZeroAndStaysInItsRange() {
         assertEquals(new PlacementFilters.Flatness(3, 0), parse("{\"max_variance\":3}"));
         assertEquals(new PlacementFilters.Flatness(3, -4), parse("{\"max_variance\":3,\"margin\":-4}"));
-    }
-
-    @Test
-    void marginOutsideTheRangeIsRejected() {
         var result = PlacementFilters.Flatness.CODEC.codec()
                 .parse(JsonOps.INSTANCE, JsonParser.parseString("{\"max_variance\":3,\"margin\":-65}"));
         assertEquals("flatness margin -65 is outside -64 to 64", result.error().orElseThrow().message());
     }
 
     @Test
-    void aPositiveMarginWidensTheFootprint() {
+    void aPositiveMarginWidensTheFootprintAndANegativeOneNarrowsItDownToTheCenter() {
         assertEquals(new BoundingBox(-2, 60, -2, 22, 70, 12), new PlacementFilters.Flatness(3, 2).sampledArea(FOOTPRINT));
-    }
-
-    @Test
-    void aNegativeMarginNarrowsItDownToTheCenter() {
         assertEquals(new BoundingBox(3, 60, 3, 17, 70, 7), new PlacementFilters.Flatness(3, -3).sampledArea(FOOTPRINT));
         // The center is (10, 5): past it, each axis stops there.
         assertEquals(new BoundingBox(7, 60, 5, 13, 70, 5), new PlacementFilters.Flatness(3, -7).sampledArea(FOOTPRINT));

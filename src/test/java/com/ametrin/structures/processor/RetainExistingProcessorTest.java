@@ -35,12 +35,8 @@ class RetainExistingProcessorTest {
     }
 
     @Test
-    void replaceableOnlyAlwaysPlacesSolidBlocks() {
+    void replaceableOnlyAlwaysPlacesSolidBlocksAndKeepsTemplateAirOutOfSolidTerrain() {
         assertEquals(STONE, process(RetainExistingProcessor.REPLACEABLE_ONLY, STONE, STONE));
-    }
-
-    @Test
-    void replaceableOnlyKeepsTemplateAirOutOfSolidTerrain() {
         assertNull(process(RetainExistingProcessor.REPLACEABLE_ONLY, AIR, STONE));
         assertEquals(AIR, process(RetainExistingProcessor.REPLACEABLE_ONLY, AIR, GRASS));
     }

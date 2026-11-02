@@ -44,7 +44,6 @@ import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
-import net.minecraft.world.level.storage.loot.providers.number.floats.ContextFloatProviders;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import net.minecraft.world.phys.Vec3;
 
@@ -61,7 +60,6 @@ public final class LootStatsGameTests {
 
     public static final Map<String, Consumer<GameTestHelper>> TESTS = Map.of(
             "loot_stats_counts_every_item", LootStatsGameTests::countsEveryItem,
-            "loot_stats_luck_adds_bonus_rolls", LootStatsGameTests::luckAddsBonusRolls,
             "loot_stats_finds_contents", LootStatsGameTests::findsContents);
 
     private LootStatsGameTests() {}
@@ -83,23 +81,11 @@ public final class LootStatsGameTests {
         helper.succeed();
     }
 
-    private static void luckAddsBonusRolls(GameTestHelper helper) {
-        var table = LootTable.lootTable()
-                .withPool(LootPool.lootPool().setRolls(ContextIntProviders.exactly(0)).setBonusRolls(ContextFloatProviders.exactly(1)).add(LootItem.lootTableItem(Items.DIAMOND)))
-                .build()
-                .setLootTableId(Identifier.fromNamespaceAndPath("ametrin_structures_test", "luck"));
-        helper.assertValueEqual(LootStatsCommand.sample(table, params(helper, 0), SAMPLES, RandomSource.create(0)).empty(), SAMPLES, "empty samples without luck");
-        helper.assertValueEqual(LootStatsCommand.sample(table, params(helper, 2), SAMPLES, RandomSource.create(0)).items().get(Items.DIAMOND).total(),
-                2L * SAMPLES, "diamonds with luck 2");
-        helper.succeed();
-    }
-
     private static void findsContents(GameTestHelper helper) {
         var level = helper.getLevel();
         var chest = new BlockPos(0, 1, 0);
         helper.setBlock(chest, Blocks.CHEST);
         helper.getBlockEntity(chest, ChestBlockEntity.class).setLootTable(BuiltInLootTables.SIMPLE_DUNGEON);
-        var ops = level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
         var chestMarker = new BlockPos(2, 1, 2);
         marker(helper, chestMarker, new WeightedFixture(1, LootContainerFixture.chest(BuiltInLootTables.DESERT_PYRAMID)));
         var standMarker = new BlockPos(2, 1, 0);

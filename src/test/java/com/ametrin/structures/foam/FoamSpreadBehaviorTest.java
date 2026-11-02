@@ -53,11 +53,6 @@ class FoamSpreadBehaviorTest {
         assertFalse(offsets.contains(ORIGIN.below()));
         assertTrue(offsets.contains(ORIGIN.north()));
         assertTrue(offsets.contains(ORIGIN.east()));
-    }
-
-    @Test
-    void planarWithoutAnAxisFallsBackToFaces() {
-        assertEquals(
-                6, FoamSpreadBehaviors.Planar.INSTANCE.offsets(FoamSpreadBehavior.Context.of(ORIGIN)).size());
+        assertEquals(6, FoamSpreadBehaviors.Planar.INSTANCE.offsets(FoamSpreadBehavior.Context.of(ORIGIN)).size(), "without an axis it spreads like faces");
     }
 }

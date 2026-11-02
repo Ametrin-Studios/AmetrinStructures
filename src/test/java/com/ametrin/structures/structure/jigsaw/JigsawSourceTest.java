@@ -113,12 +113,13 @@ class JigsawSourceTest {
     }
 
     @Test
-    void aSoftMinCountNeverRejectsTheSpot(MinecraftServer server) {
-        // The library rarely fits, so its soft minimum often can't be met.
+    void aSoftMinCountIsMetInMostLayoutsAndNeverRejectsTheSpot(MinecraftServer server) {
+        // The library rarely fits, so without undoing earlier pieces it fits in fewer than half of the layouts.
         var counts = countAcrossSeeds(server, Identifier.withDefaultNamespace("village/plains/houses/plains_library_1"), element -> new ConditionalPoolElement(element, 0, 1, Optional.empty()));
         assertTrue(counts.stream().noneMatch(count -> count == FAILED), "every spot generates, got " + counts);
         assertTrue(counts.stream().anyMatch(count -> count == 0), "the test needs a layout that can't meet it, got " + counts);
-        assertTrue(counts.stream().anyMatch(count -> count >= 1), "it's met where it fits, got " + counts);
+        var reached = counts.stream().filter(count -> count != UNREACHED).toList();
+        assertTrue(reached.stream().filter(count -> count >= 1).count() >= reached.size() * 3 / 4, "met in most layouts, got " + counts);
     }
 
     @Test
@@ -152,14 +153,6 @@ class JigsawSourceTest {
     }
 
     @Test
-    void piecesInTheWayOfASoftMinimumAreUndone(MinecraftServer server) {
-        // Without undoing earlier pieces, the library fits in fewer than half of the layouts.
-        var counts = countAcrossSeeds(server, Identifier.withDefaultNamespace("village/plains/houses/plains_library_1"), element -> new ConditionalPoolElement(element, 0, 1, Optional.empty()));
-        var reached = counts.stream().filter(count -> count != UNREACHED).toList();
-        assertTrue(reached.stream().filter(count -> count >= 1).count() >= reached.size() * 3 / 4, "met in most layouts, got " + counts);
-    }
-
-    @Test
     void anElementOnlyAttachesWithinItsDepths(MinecraftServer server) {
         var unlimited = countAcrossSeeds(server, SMALL_HOUSE, element -> element);
         assertTrue(unlimited.stream().anyMatch(count -> count > 0), "the test needs a house that appears on its own, got " + unlimited);
@@ -181,7 +174,7 @@ class JigsawSourceTest {
     }
 
     @Test
-    void readsTheConditionsFromJson(MinecraftServer server) {
+    void readsTheConditionsFromJsonAndRejectsInvalidOnes(MinecraftServer server) {
         var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
         var conditional = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
                 {"element_type": "ametrin_structures:conditional", "min_depth": 2, "max_depth": 5,
@@ -194,6 +187,23 @@ class JigsawSourceTest {
         assertTrue(StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
                 {"element_type": "ametrin_structures:conditional", "min_depth": 5, "max_depth": 2, "element": {"element_type": "minecraft:empty_pool_element"}}
                 """)).isError());
+
+        var minOnly = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_count": 2, "element": {"element_type": "minecraft:empty_pool_element"}}
+                """)).getOrThrow());
+        assertEquals(2, minOnly.softMinCount(), "the soft minimum defaults to the minimum");
+        var all = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_count": 1, "soft_min_count": 3, "max_count": 4, "element": {"element_type": "minecraft:empty_pool_element"}}
+                """)).getOrThrow());
+        assertEquals(List.of(1, 3, Optional.of(4)), List.of(all.minCount(), all.softMinCount(), all.maxCount()));
+        assertTrue(StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:conditional", "min_count": 2, "max_count": 1, "element": {"element_type": "minecraft:empty_pool_element"}}
+                """)).isError(), "a max count below the min count");
+
+        var element = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
+        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 2, Optional.of(1)));
+        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, -1, 0, Optional.empty()));
+        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 1, Optional.empty()));
     }
 
     @Test
@@ -288,15 +298,7 @@ class JigsawSourceTest {
     }
 
     @Test
-    void anOffsetCountsTowardTheStructureRange(MinecraftServer server) {
-        var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "max_distance_from_center": 100, "offset": [0, 0, -20]}
-                """);
-        assertTrue(PieceSource.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), json).isError());
-    }
-
-    @Test
-    void theStructuresFoundationReachesExtendedElements(MinecraftServer server) {
+    void theStructuresSettingsReachTheStartPieceAndAreSavedWithIt(MinecraftServer server) {
         var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
                 StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
@@ -306,16 +308,44 @@ class JigsawSourceTest {
         var generated = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server, 0)));
         var placed = (PoolElementStructurePiece) generated.stub().getPiecesBuilder().build().pieces().getFirst();
         assertEquals(Optional.of(Foundation.repeating()), assertInstanceOf(ExtendedSinglePoolElement.class, placed.getElement()).foundation());
+
+        // A vanilla element without processors gets the structure's and keeps them when saved.
+        var mossify = mossify(server);
+        var piece = startPiece(server, StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID), Optional.of(mossify));
+        assertSame(mossify, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
+        var reloaded = new PoolElementStructurePiece(context, piece.createTag(context));
+        assertEquals(mossify.unwrapKey(), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
     }
 
     @Test
-    void anElementsOwnFoundationAndVanillaElementsStayAsTheyAre() {
+    void anElementsOwnSettingsReplaceTheStructuresUnlessItInlinesThem(MinecraftServer server) {
         var own = Foundation.of(Blocks.STONE.defaultBlockState(), 4);
-        var element = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
+        var withFoundation = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
                 StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own));
-        assertSame(element, StructureElements.withStructureSettings(element, Optional.empty(), Optional.of(Foundation.repeating())));
+        assertSame(withFoundation, StructureElements.withStructureSettings(withFoundation, Optional.empty(), Optional.of(Foundation.repeating())));
         var vanilla = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
-        assertSame(vanilla, StructureElements.withStructureSettings(vanilla, Optional.empty(), Optional.of(Foundation.repeating())));
+        assertSame(vanilla, StructureElements.withStructureSettings(vanilla, Optional.empty(), Optional.of(Foundation.repeating())), "vanilla elements get no foundation");
+
+        var mossify = mossify(server);
+        var withProcessors = StructurePoolElement.single(TEMPLE.toString(), Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE))))))
+                .apply(StructureTemplatePool.Projection.RIGID);
+        assertSame(withProcessors, StructureElements.withStructureSettings(withProcessors, Optional.of(mossify), Optional.empty()));
+        var inlining = StructurePoolElement.single(TEMPLE.toString(), Holder.direct(new StructureProcessorList(List.of(InlineFromStructureProcessor.INSTANCE))))
+                .apply(StructureTemplatePool.Projection.RIGID);
+        var copy = assertInstanceOf(SinglePoolElement.class, StructureElements.withStructureSettings(inlining, Optional.of(mossify), Optional.empty()));
+        assertEquals(mossify.value().list(), copy.processors.value().list());
+
+        // An element type of its own decides what it takes.
+        var replacement = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
+        var deciding = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty()) {
+            @Override
+            public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
+                return replacement;
+            }
+        };
+        assertSame(replacement, StructureElements.withStructureSettings(deciding, Optional.of(mossify), Optional.empty()));
     }
 
     @Test
@@ -328,44 +358,6 @@ class JigsawSourceTest {
             withHouse |= pieces.stream().anyMatch(piece -> piece.getElement() == houses.placed());
         }
         assertTrue(withHouse, "the test needs a layout with the house");
-    }
-
-    @Test
-    void anElementWithoutProcessorsGetsTheStructuresAndKeepsThemWhenSaved(MinecraftServer server) {
-        var mossify = mossify(server);
-        var element = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
-        var piece = startPiece(server, element, Optional.of(mossify));
-        assertSame(mossify, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
-
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        var reloaded = new PoolElementStructurePiece(context, piece.createTag(context));
-        assertEquals(mossify.unwrapKey(), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
-    }
-
-    @Test
-    void anElementsOwnProcessorsReplaceTheStructuresUnlessTheyInlineThem(MinecraftServer server) {
-        var mossify = mossify(server);
-        var own = Holder.direct(new StructureProcessorList(List.of(new BlockIgnoreProcessor(List.of(Blocks.STONE)))));
-        var element = StructurePoolElement.single(TEMPLE.toString(), own).apply(StructureTemplatePool.Projection.RIGID);
-        assertSame(element, StructureElements.withStructureSettings(element, Optional.of(mossify), Optional.empty()));
-
-        var inlining = StructurePoolElement.single(TEMPLE.toString(), Holder.direct(new StructureProcessorList(List.of(InlineFromStructureProcessor.INSTANCE))))
-                .apply(StructureTemplatePool.Projection.RIGID);
-        var copy = assertInstanceOf(SinglePoolElement.class, StructureElements.withStructureSettings(inlining, Optional.of(mossify), Optional.empty()));
-        assertEquals(mossify.value().list(), copy.processors.value().list());
-    }
-
-    @Test
-    void anElementOfItsOwnDecidesWhatItTakes(MinecraftServer server) {
-        var replacement = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
-        var element = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty()) {
-            @Override
-            public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
-                return replacement;
-            }
-        };
-        assertSame(replacement, StructureElements.withStructureSettings(element, Optional.of(mossify(server)), Optional.empty()));
     }
 
     private static PoolElementStructurePiece startPiece(MinecraftServer server, StructurePoolElement element, Optional<Holder<StructureProcessorList>> processors) {
@@ -382,51 +374,19 @@ class JigsawSourceTest {
     }
 
     @Test
-    void readsFromJson(MinecraftServer server) {
-        var json = JsonParser.parseString("""
+    void readsFromJsonAndKeepsTheLayoutInsideTheStructureRange(MinecraftServer server) {
+        var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+        var source = assertInstanceOf(JigsawSource.class, PieceSource.CODEC.parse(ops, JsonParser.parseString("""
                 {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "size": 3}
-                """);
-        var source = assertInstanceOf(JigsawSource.class, PieceSource.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), json).getOrThrow());
+                """)).getOrThrow());
         assertEquals(Optional.of(TOWN_CENTERS), source.startPool().unwrapKey());
         assertEquals(JigsawSource.DEFAULT_MAX_BACKTRACKS, source.maxBacktracks());
-    }
-
-    @Test
-    void aMaxDistanceBeyondTheStructureRangeIsRejected(MinecraftServer server) {
-        var json = JsonParser.parseString("""
+        assertTrue(PieceSource.CODEC.parse(ops, JsonParser.parseString("""
                 {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "max_distance_from_center": 117}
-                """);
-        assertTrue(PieceSource.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), json).isError());
-    }
-
-    @Test
-    void invalidCountsAreRejectedWhenBuilt() {
-        var element = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
-        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 2, Optional.of(1)));
-        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, -1, 0, Optional.empty()));
-        assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 1, Optional.empty()));
-    }
-
-    @Test
-    void theSoftMinCountDefaultsToTheMinCount(MinecraftServer server) {
-        var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-        var minOnly = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
-                {"element_type": "ametrin_structures:conditional", "min_count": 2, "element": {"element_type": "minecraft:empty_pool_element"}}
-                """)).getOrThrow());
-        assertEquals(2, minOnly.softMinCount());
-        var all = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
-                {"element_type": "ametrin_structures:conditional", "min_count": 1, "soft_min_count": 3, "max_count": 4, "element": {"element_type": "minecraft:empty_pool_element"}}
-                """)).getOrThrow());
-        assertEquals(List.of(1, 3, Optional.of(4)), List.of(all.minCount(), all.softMinCount(), all.maxCount()));
-    }
-
-    @Test
-    void aMaxCountBelowTheMinCountIsRejected(MinecraftServer server) {
-        var json = JsonParser.parseString("""
-                {"element_type": "ametrin_structures:conditional", "min_count": 2, "max_count": 1,
-                 "element": {"element_type": "minecraft:empty_pool_element"}}
-                """);
-        assertTrue(StructurePoolElement.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), json).isError());
+                """)).isError());
+        assertTrue(PieceSource.CODEC.parse(ops, JsonParser.parseString("""
+                {"type": "ametrin_structures:jigsaw", "start_pool": "minecraft:village/plains/town_centers", "max_distance_from_center": 100, "offset": [0, 0, -20]}
+                """)).isError(), "the offset counts toward the range");
     }
 
     private static void assertGrowsLikeVanilla(MinecraftServer server, JigsawSource source, int y) {

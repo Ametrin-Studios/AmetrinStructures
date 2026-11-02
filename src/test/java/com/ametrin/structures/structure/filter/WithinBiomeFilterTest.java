@@ -34,24 +34,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(EphemeralTestServerProvider.class)
 class WithinBiomeFilterTest {
     @Test
-    void passesWhenTheBoxStaysInItsBiome(MinecraftServer server) {
+    void theWidenedBoxHasToStayInTheAllowedBiomes(MinecraftServer server) {
         assertTrue(test(server, new PlacementFilters.WithinBiome(Optional.empty(), 0), box(2, 13)));
-    }
-
-    @Test
-    void failsWhenTheBoxReachesIntoAnotherBiome(MinecraftServer server) {
-        assertFalse(test(server, new PlacementFilters.WithinBiome(Optional.empty(), 0), box(2, 20)));
-    }
-
-    @Test
-    void theMarginWidensTheCheckedArea(MinecraftServer server) {
-        assertFalse(test(server, new PlacementFilters.WithinBiome(Optional.empty(), 4), box(2, 13)));
-    }
-
-    @Test
-    void anExplicitListAllowsMoreThanTheStructuresBiomes(MinecraftServer server) {
+        assertFalse(test(server, new PlacementFilters.WithinBiome(Optional.empty(), 0), box(2, 20)), "reaches into another biome");
+        assertFalse(test(server, new PlacementFilters.WithinBiome(Optional.empty(), 4), box(2, 13)), "the margin widens the checked area");
         var both = HolderSet.direct(biome(server, Biomes.PLAINS), biome(server, Biomes.DESERT));
-        assertTrue(test(server, new PlacementFilters.WithinBiome(Optional.of(both), 0), box(2, 20)));
+        assertTrue(test(server, new PlacementFilters.WithinBiome(Optional.of(both), 0), box(2, 20)), "an explicit list allows more than the structure's biomes");
+        var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
+        assertEquals(new PlacementFilters.WithinBiome(Optional.empty(), 0), PlacementFilters.WithinBiome.CODEC.codec().parse(ops, JsonParser.parseString("{}")).getOrThrow(), "both are optional");
     }
 
     @Test
@@ -104,13 +94,6 @@ class WithinBiomeFilterTest {
             sampled.add(cell);
             return cell.equals(pocket) ? desert : plains;
         }
-    }
-
-    @Test
-    void biomesAndMarginAreOptional(MinecraftServer server) {
-        var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-        var filter = PlacementFilters.WithinBiome.CODEC.codec().parse(ops, JsonParser.parseString("{}")).getOrThrow();
-        assertEquals(new PlacementFilters.WithinBiome(Optional.empty(), 0), filter);
     }
 
     private static BoundingBox box(int minX, int maxX) {

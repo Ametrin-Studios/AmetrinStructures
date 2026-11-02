@@ -35,12 +35,8 @@ class FoamSpreadTest {
             var json = FoamSpread.CODEC.encodeStart(JsonOps.INSTANCE, preset.spread()).getOrThrow();
             assertEquals(preset.spread(), FoamSpread.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow(), preset.name());
         }
-    }
-
-    @Test
-    void restrictionsDefaultToNone(MinecraftServer server) {
-        var json = JsonParser.parseString("{\"behavior\": {\"type\": \"ametrin_structures:faces\"}}");
-        assertEquals(new FoamSpread(FoamSpreadBehaviors.Faces.INSTANCE, List.of()), FoamSpread.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow());
+        var withoutRestrictions = JsonParser.parseString("{\"behavior\": {\"type\": \"ametrin_structures:faces\"}}");
+        assertEquals(new FoamSpread(FoamSpreadBehaviors.Faces.INSTANCE, List.of()), FoamSpread.CODEC.parse(JsonOps.INSTANCE, withoutRestrictions).getOrThrow());
     }
 
     @Test

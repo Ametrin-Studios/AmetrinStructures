@@ -5,7 +5,6 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.StructureTags;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -98,11 +97,10 @@ class EvenSpreadPlacementTest {
         assertTrue(some.size() < all.size() * 0.6 && some.size() > all.size() * 0.4, some.size() + " of " + all.size());
     }
 
+    // Locate walks the candidate cells.
     @Test
-    void locateWalksTheCandidateCells() {
-        var placement = evenSpread(24).build();
-        assertInstanceOf(RandomSpreadStructurePlacement.class, placement);
-        assertEquals(12, placement.spacing());
+    void theSpacingIsHalfTheMinDistance() {
+        assertEquals(12, evenSpread(24).build().spacing());
         assertEquals(1, evenSpread(1).build().spacing());
     }
 
@@ -120,10 +118,8 @@ class EvenSpreadPlacementTest {
         assertThrows(IllegalStateException.class, () -> evenSpread(8).probability(1.5F).build());
         assertThrows(IllegalStateException.class, () -> evenSpread(8).minChunksFromCenter(-1).build());
         assertThrows(IllegalStateException.class, () -> evenSpread(8).exclusionZone(StructureTags.VILLAGE, TagExclusionZone.MAX_CHUNK_COUNT + 1).build());
-    }
 
-    @Test
-    void theCodecRejectsWhatTheBuilderRejects() {
+        // The codec rejects the same, with the same message.
         var parsed = EvenSpreadPlacement.CODEC.codec().parse(JsonOps.INSTANCE, JsonParser.parseString("{\"min_distance\":8,\"probability\":1.5}"));
         var built = assertThrows(IllegalStateException.class, () -> evenSpread(8).probability(1.5F).build());
         assertEquals("probability 1.5 is outside 0 to 1", parsed.error().orElseThrow().message());

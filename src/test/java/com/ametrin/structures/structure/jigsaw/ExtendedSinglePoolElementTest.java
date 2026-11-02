@@ -27,20 +27,13 @@ class ExtendedSinglePoolElementTest {
     private static final Identifier TEMPLATE = Identifier.withDefaultNamespace("igloo/top");
 
     @Test
-    void noProcessorsAreLeftOut(MinecraftServer server) {
+    void processorsAreOnlyWrittenWhenThereAreSome(MinecraftServer server) {
         var empty = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty")));
         assertFalse(encode(server, element(empty)).has("processors"));
         assertFalse(encode(server, element(ExtendedSinglePoolElement.NO_PROCESSORS)).has("processors"));
-    }
-
-    @Test
-    void processorsAreWritten(MinecraftServer server) {
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
         assertEquals("minecraft:mossify_10_percent", encode(server, element(mossify)).get("processors").getAsString());
-    }
 
-    @Test
-    void readsWithoutProcessors(MinecraftServer server) {
         var json = JsonParser.parseString("""
                 {"element_type": "ametrin_structures:single_pool_element", "location": "minecraft:igloo/top", "projection": "rigid"}
                 """);

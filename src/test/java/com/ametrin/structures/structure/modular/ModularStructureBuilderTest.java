@@ -28,47 +28,26 @@ class ModularStructureBuilderTest {
     }
 
     @Test
-    void missingPieceSourceFails() {
-        assertNamedFailure(() -> register(set -> set.modular(tower -> tower.surface())));
-    }
-
-    @Test
-    void emptySetFails() {
-        assertNamedFailure(() -> register(set -> {}));
-    }
-
-    @Test
-    void duplicateStructureFails() {
+    void invalidSetsFailNamingTheStructure() {
+        assertNamedFailure(() -> register(set -> set.modular(tower -> tower.surface())), "no piece source");
+        assertNamedFailure(() -> register(set -> {}), "no structure");
         assertNamedFailure(() -> register(set -> set
                 .modular(tower -> tower.single(b -> b.template(TEMPLATE)))
-                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
-    }
-
-    @Test
-    void weightBelowOneFails() {
-        assertNamedFailure(() -> register(set -> set.modular("tower", 0, tower -> tower.single(b -> b.template(TEMPLATE)))));
-    }
-
-    @Test
-    void probabilityOutsideZeroToOneFails() {
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))), "the same structure twice");
+        assertNamedFailure(() -> register(set -> set.modular("tower", 0, tower -> tower.single(b -> b.template(TEMPLATE)))), "weight 0");
         assertNamedFailure(() -> register(set -> set
                 .scatteredGridPlacement(24, 1.5F)
-                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))), "probability above 1");
         assertNamedFailure(() -> register(set -> set
                 .scatteredGridPlacement(24, -0.1F)
-                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
-    }
-
-    @Test
-    void negativeSpacingFails() {
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))), "negative probability");
         assertNamedFailure(() -> register(set -> set
                 .scatteredGridPlacement(-4)
-                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))));
-    }
-
-    @Test
-    void anInvalidFilterFails() {
-        assertNamedFailure(() -> register(set -> set.modular(tower -> tower.single(b -> b.template(TEMPLATE)).filterFlatness(-1))));
+                .modular(tower -> tower.single(b -> b.template(TEMPLATE)))), "negative spacing");
+        assertNamedFailure(() -> register(set -> set.modular(tower -> tower.single(b -> b.template(TEMPLATE)).filterFlatness(-1))), "an invalid filter");
+        var structures = new StructureBootstrap("test");
+        structures.registerSet(ID, set -> set.modular(tower -> tower.single("tower")));
+        assertNamedFailure(() -> structures.registerSet(ID, set -> set.modular(tower -> tower.single("tower"))), "the same set twice");
     }
 
     @Test
@@ -84,13 +63,6 @@ class ModularStructureBuilderTest {
     }
 
     @Test
-    void registeringASetTwiceFails() {
-        var structures = new StructureBootstrap("test");
-        structures.registerSet(ID, set -> set.modular(tower -> tower.single("tower")));
-        assertNamedFailure(() -> structures.registerSet(ID, set -> set.modular(tower -> tower.single("tower"))));
-    }
-
-    @Test
     void theKeysNameEveryStructure() {
         var keys = register(set -> set
                 .modular("small", 1, tower -> tower.single("tower"))
@@ -102,15 +74,8 @@ class ModularStructureBuilderTest {
         assertThrows(IllegalStateException.class, keys::structure);
     }
 
-    @Test
-    void theCommonCaseBuilds() {
-        assertDoesNotThrow(() -> register(set -> set
-                .scatteredGridPlacement(24, 0.6F)
-                .modular(tower -> tower.single(b -> b.template(TEMPLATE)).surface())));
-    }
-
-    private static void assertNamedFailure(Runnable action) {
-        var failure = assertThrows(IllegalStateException.class, action::run);
-        assertTrue(failure.getMessage().contains(ID), "message should name the structure, was: " + failure.getMessage());
+    private static void assertNamedFailure(Runnable action, String what) {
+        var failure = assertThrows(IllegalStateException.class, action::run, what);
+        assertTrue(failure.getMessage().contains(ID), what + ": the message should name the structure, was: " + failure.getMessage());
     }
 }

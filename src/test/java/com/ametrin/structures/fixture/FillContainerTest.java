@@ -1,6 +1,7 @@
 package com.ametrin.structures.fixture;
 
 import com.google.gson.JsonParser;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -59,36 +60,17 @@ class FillContainerTest {
     }
 
     @Test
-    void aBlockWithoutAnInventoryIsRejected() {
-        var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": "minecraft:stone"}
-                """);
-        assertTrue(Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).isError());
-    }
-
-    @Test
-    void aBlockThatTakesALootTableIsRejected() {
-        var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": "minecraft:barrel"}
-                """);
-        assertTrue(Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).isError());
-    }
-
-    @Test
-    void theBlockIsRequired() {
-        var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon"}
-                """);
-        assertTrue(Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).isError());
-    }
-
-    @Test
-    void anyOtherBlockWithAnInventoryIsAccepted() {
-        var json = JsonParser.parseString("""
-                {"type": "ametrin_structures:fill_container", "loot_table": "minecraft:chests/simple_dungeon", "block": "minecraft:furnace"}
-                """);
-        var fixture = assertInstanceOf(FillContainerFixture.class, Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow());
+    void theBlockIsRequiredAndHoldsItemsWithoutTakingALootTable() {
+        assertTrue(parse(", \"block\": \"minecraft:stone\"").isError(), "no inventory");
+        assertTrue(parse(", \"block\": \"minecraft:barrel\"").isError(), "takes a loot table");
+        assertTrue(parse("").isError(), "no block");
+        var fixture = assertInstanceOf(FillContainerFixture.class, parse(", \"block\": \"minecraft:furnace\"").getOrThrow());
         assertEquals(Blocks.FURNACE, fixture.block().getBlock());
+    }
+
+    private static DataResult<Fixture> parse(String block) {
+        return Fixture.MAP_CODEC.codec().parse(JsonOps.INSTANCE, JsonParser.parseString(
+                "{\"type\": \"ametrin_structures:fill_container\", \"loot_table\": \"minecraft:chests/simple_dungeon\"" + block + "}"));
     }
 
     @Test

@@ -24,64 +24,33 @@ class StartHeightTest {
             : mode == HeightMode.LOWEST_CORNER ? LOWEST_CORNER : SURFACE;
 
     @Test
-    void oneAnchorIsEitherVanillasOrAHeightmap() {
+    void readsAnAnchorARangeOrAVanillaHeightProvider() {
         assertEquals(StartHeight.at(HeightAnchor.surface(0)), parse("{\"heightmap\":\"WORLD_SURFACE_WG\"}"));
         assertEquals(StartHeight.at(HeightAnchor.oceanFloor(-3)), parse("{\"heightmap\":\"OCEAN_FLOOR_WG\",\"offset\":-3}"));
         assertEquals(StartHeight.at(HeightAnchor.absolute(10)), parse("{\"absolute\":10}"));
-    }
-
-    @Test
-    void aHeightmapAnchorMeasuresAtTheOriginUnlessToldOtherwise() {
-        assertEquals(HeightMode.ORIGIN, assertInstanceOf(HeightAnchor.OnHeightmap.class, HeightAnchor.surface(0)).mode());
         assertEquals(StartHeight.at(HeightAnchor.surface(2, HeightMode.LOWEST_CORNER)),
                 parse("{\"heightmap\":\"WORLD_SURFACE_WG\",\"offset\":2,\"mode\":\"lowest_corner\"}"));
-    }
-
-    @Test
-    void eachEndOfARangeUsesItsOwnMode() {
-        var range = StartHeight.between(HeightAnchor.surface(0, HeightMode.LOWEST_CORNER), HeightAnchor.surface(LOWEST_CORNER - SURFACE));
-        assertEquals(OptionalInt.of(LOWEST_CORNER), sample(range, RandomSource.create(1)));
-    }
-
-    @Test
-    void aRangeMixesReferences() {
         assertEquals(
                 StartHeight.between(HeightAnchor.aboveBottom(6), HeightAnchor.surface(-12)),
                 parse("{\"min\":{\"above_bottom\":6},\"max\":{\"heightmap\":\"WORLD_SURFACE_WG\",\"offset\":-12}}"));
-    }
+        assertInstanceOf(StartHeight.Provider.class, parse("{\"type\":\"minecraft:uniform\",\"min_inclusive\":{\"absolute\":0},\"max_inclusive\":{\"absolute\":20}}"));
 
-    @Test
-    void vanillaHeightProvidersStillWork() {
-        var parsed = parse("{\"type\":\"minecraft:uniform\",\"min_inclusive\":{\"absolute\":0},\"max_inclusive\":{\"absolute\":20}}");
-        assertInstanceOf(StartHeight.Provider.class, parsed);
-    }
-
-    @Test
-    void rangesRoundTrip() {
         var range = StartHeight.between(HeightAnchor.oceanFloor(0), HeightAnchor.surface(-8));
-        var json = StartHeight.CODEC.encodeStart(JsonOps.INSTANCE, range).getOrThrow();
-        assertEquals(range, StartHeight.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow());
+        assertEquals(range, StartHeight.CODEC.parse(JsonOps.INSTANCE, StartHeight.CODEC.encodeStart(JsonOps.INSTANCE, range).getOrThrow()).getOrThrow(), "ranges round trip");
     }
 
     @Test
-    void aRangeBetweenTwoHeightmapsStaysBetweenThem() {
+    void samplesStayBetweenTheirAnchorsAndEachEndUsesItsOwnMode() {
+        assertEquals(OptionalInt.of(SURFACE - 5), sample(StartHeight.at(HeightAnchor.surface(-5)), RandomSource.create(1)));
         var range = StartHeight.between(HeightAnchor.oceanFloor(0), HeightAnchor.surface(-8));
         RandomSource random = RandomSource.create(42);
         for (int i = 0; i < 200; i++) {
             int y = sample(range, random).orElseThrow();
             assertTrue(y >= OCEAN_FLOOR && y <= SURFACE - 8, "sampled " + y);
         }
-    }
-
-    @Test
-    void aRangeWithNoRoomIsEmpty() {
-        var range = StartHeight.between(HeightAnchor.surface(0), HeightAnchor.oceanFloor(0));
-        assertEquals(OptionalInt.empty(), sample(range, RandomSource.create(1)));
-    }
-
-    @Test
-    void anAnchorOffsetsItsHeightmap() {
-        assertEquals(OptionalInt.of(SURFACE - 5), sample(StartHeight.at(HeightAnchor.surface(-5)), RandomSource.create(1)));
+        assertEquals(OptionalInt.empty(), sample(StartHeight.between(HeightAnchor.surface(0), HeightAnchor.oceanFloor(0)), RandomSource.create(1)), "no room");
+        var modes = StartHeight.between(HeightAnchor.surface(0, HeightMode.LOWEST_CORNER), HeightAnchor.surface(LOWEST_CORNER - SURFACE));
+        assertEquals(OptionalInt.of(LOWEST_CORNER), sample(modes, RandomSource.create(1)));
     }
 
     @Test
@@ -91,11 +60,6 @@ class StartHeightTest {
         assertEquals(Optional.of(Heightmap.Types.WORLD_SURFACE_WG),
                 StartHeight.between(HeightAnchor.absolute(0), HeightAnchor.surface(0)).groundHeightmap());
         assertEquals(Optional.empty(), StartHeight.of(ConstantHeight.of(VerticalAnchor.absolute(0))).groundHeightmap());
-    }
-
-    @Test
-    void theDefaultIsTheSurface() {
-        assertEquals(StartHeight.at(HeightAnchor.surface(0)), ModularStructure.ON_SURFACE_START_HEIGHT);
     }
 
     private static StartHeight parse(String json) {

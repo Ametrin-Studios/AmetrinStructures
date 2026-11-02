@@ -21,12 +21,8 @@ class InlineFromStructureProcessorTest {
             Optional.of(Holder.direct(new StructureProcessorList(List.of(STRUCTURE_ONE, STRUCTURE_TWO))));
 
     @Test
-    void aTemplateWithoutProcessorsUsesTheStructures() {
-        assertEquals(List.of(STRUCTURE_ONE, STRUCTURE_TWO), InlineFromStructureProcessor.resolve(List.of(), STRUCTURE));
-    }
-
-    @Test
     void aTemplatesOwnListReplacesTheStructures() {
+        assertEquals(List.of(STRUCTURE_ONE, STRUCTURE_TWO), InlineFromStructureProcessor.resolve(List.of(), STRUCTURE), "without one it uses the structure's");
         assertEquals(List.of(TEMPLATE_OWN), InlineFromStructureProcessor.resolve(List.of(TEMPLATE_OWN), STRUCTURE));
     }
 
@@ -38,12 +34,9 @@ class InlineFromStructureProcessorTest {
         assertEquals(
                 List.of(STRUCTURE_ONE, STRUCTURE_TWO, TEMPLATE_OWN),
                 InlineFromStructureProcessor.resolve(List.of(InlineFromStructureProcessor.INSTANCE, TEMPLATE_OWN), STRUCTURE));
-    }
-
-    @Test
-    void theMarkerStandsForNothingWhenTheStructureHasNoProcessors() {
         assertEquals(
                 List.of(TEMPLATE_OWN),
-                InlineFromStructureProcessor.resolve(List.of(InlineFromStructureProcessor.INSTANCE, TEMPLATE_OWN), Optional.empty()));
+                InlineFromStructureProcessor.resolve(List.of(InlineFromStructureProcessor.INSTANCE, TEMPLATE_OWN), Optional.empty()),
+                "it stands for nothing when the structure has no processors");
     }
 }

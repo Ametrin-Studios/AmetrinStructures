@@ -16,30 +16,22 @@ class ConditionalProcessorTest {
             [{"processor_type": "ametrin_structures:replace_block", "condition": "minecraft:stone", "chance": 1, "change_to": "%s"}]""";
 
     @Test
-    void aFailingConditionNeverReadsTheProcessors(MinecraftServer server) {
+    void processorsThatArentReadDoNothing(MinecraftServer server) {
         var json = json("missing_mod", REPLACE_STONE.formatted("missing_mod:cracked_stone"));
         var processor = ConditionalProcessor.CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow();
 
         assertTrue(processor.processors(server.registryAccess()).isEmpty());
         assertEquals(json, ConditionalProcessor.CODEC.codec().encodeStart(JsonOps.INSTANCE, processor).getOrThrow(), "kept as written");
+        var unreadable = parse(json("minecraft", REPLACE_STONE.formatted("missing_mod:cracked_stone")));
+        assertTrue(unreadable.processors(server.registryAccess()).isEmpty(), "a passing condition with processors that don't read");
     }
 
     @Test
-    void aPassingConditionRunsTheProcessors(MinecraftServer server) {
+    void aPassingConditionRunsItsProcessorsOrProcessorList(MinecraftServer server) {
         var processor = parse(json("minecraft", REPLACE_STONE.formatted("minecraft:cobblestone")));
         assertInstanceOf(ReplaceBlockProcessor.class, processor.processors(server.registryAccess()).getFirst());
-    }
-
-    @Test
-    void theProcessorsCanBeAProcessorList(MinecraftServer server) {
-        var processor = parse(json("minecraft", "\"minecraft:mossify_10_percent\""));
-        assertFalse(processor.processors(server.registryAccess()).isEmpty());
-    }
-
-    @Test
-    void processorsThatDontReadDoNothing(MinecraftServer server) {
-        var processor = parse(json("minecraft", REPLACE_STONE.formatted("missing_mod:cracked_stone")));
-        assertTrue(processor.processors(server.registryAccess()).isEmpty());
+        var list = parse(json("minecraft", "\"minecraft:mossify_10_percent\""));
+        assertFalse(list.processors(server.registryAccess()).isEmpty());
     }
 
     private static ConditionalProcessor parse(JsonElement json) {

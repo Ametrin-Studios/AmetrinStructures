@@ -32,25 +32,19 @@ class RemoveFoamProcessorTest {
     @Test
     void plainRemovalTurnsFoamIntoAirAndDropsSavedAir() {
         assertEquals(Blocks.AIR.defaultBlockState(), process(RemoveFoamProcessor.AIR, foam()));
+        assertEquals(Blocks.AIR.defaultBlockState(), process(RemoveFoamProcessor.AIR, ASBlocks.FOAM_SPREADER.get().defaultBlockState()), "a spreader saved mid fill");
         assertNull(process(RemoveFoamProcessor.AIR, Blocks.AIR.defaultBlockState()));
-    }
-
-    @Test
-    void plainRemovalLeavesWaterloggableBlocksDry() {
         BlockState slab = Blocks.OAK_SLAB.defaultBlockState();
-        assertEquals(slab, process(RemoveFoamProcessor.AIR, slab));
+        assertEquals(slab, process(RemoveFoamProcessor.AIR, slab), "waterloggable blocks stay dry");
     }
 
     @Test
-    void fillingTurnsFoamIntoASource() {
+    void fillingWithWaterTurnsFoamIntoASourceAndWaterlogsWhatCanBe() {
         assertEquals(WATER_SOURCE, process(RemoveFoamProcessor.WATER, foam()));
-    }
-
-    @Test
-    void fillingWithWaterWaterlogsWhatCanBe() {
         BlockState slab = Blocks.OAK_SLAB.defaultBlockState();
         assertEquals(slab.setValue(BlockStateProperties.WATERLOGGED, true), process(RemoveFoamProcessor.WATER, slab));
         assertEquals(Blocks.STONE.defaultBlockState(), process(RemoveFoamProcessor.WATER, Blocks.STONE.defaultBlockState()));
+        assertNull(process(RemoveFoamProcessor.WATER, Blocks.AIR.defaultBlockState()), "saved air stays void");
     }
 
     @Test
@@ -62,51 +56,20 @@ class RemoveFoamProcessorTest {
     }
 
     @Test
-    void aSpreaderSavedMidFillIsRemoved() {
-        assertEquals(Blocks.AIR.defaultBlockState(), process(RemoveFoamProcessor.AIR, ASBlocks.FOAM_SPREADER.get().defaultBlockState()));
-    }
-
-    @Test
-    void savedAirStaysVoidWhenFilled() {
-        assertNull(process(RemoveFoamProcessor.WATER, Blocks.AIR.defaultBlockState()));
-    }
-
-//    @Test
-//    void fillRoundTrips() {
-//        var json = JsonParser.parseString("{\"fill\":\"minecraft:water\"}");
-//        RemoveFoamProcessor parsed = RemoveFoamProcessor.CODEC.codec().parse(JsonOps.INSTANCE, json).getOrThrow();
-//        assertEquals(Optional.of(Fluids.WATER), parsed.fill());
-//        assertEquals(json, RemoveFoamProcessor.CODEC.codec().encodeStart(JsonOps.INSTANCE, parsed).getOrThrow());
-//    }
-
-    @Test
-    void aDeclaredRemovalKeepsItsPlace() {
-        var other = new BlockIgnoreProcessor(List.of(Blocks.STONE));
-        var settings = new StructurePlaceSettings().addProcessor(other).addProcessor(RemoveFoamProcessor.WATER);
-        assertEquals(List.of(other, RemoveFoamProcessor.WATER), RemoveFoamProcessor.addDefaultIfAbsent(settings).getProcessors());
-    }
-
-    @Test
-    void airAnEarlierProcessorProducedIsPlaced() {
+    void whatEarlierProcessorsMadeIsKept() {
         // A jigsaw block whose final state is air, or foam a first removal already turned into air.
-        var produced = process(RemoveFoamProcessor.AIR, Blocks.JIGSAW.defaultBlockState(), Blocks.AIR.defaultBlockState());
-        assertEquals(Blocks.AIR.defaultBlockState(), produced);
+        assertEquals(Blocks.AIR.defaultBlockState(), process(RemoveFoamProcessor.AIR, Blocks.JIGSAW.defaultBlockState(), Blocks.AIR.defaultBlockState()));
         assertEquals(Blocks.AIR.defaultBlockState(), process(RemoveFoamProcessor.AIR, foam(), Blocks.AIR.defaultBlockState()));
+        assertEquals(Blocks.COBWEB.defaultBlockState(), process(RemoveFoamProcessor.AIR, Blocks.AIR.defaultBlockState(), Blocks.COBWEB.defaultBlockState()), "saved air an earlier processor replaced");
     }
 
     @Test
-    void savedAirAnEarlierProcessorReplacedIsKept() {
-        assertEquals(Blocks.COBWEB.defaultBlockState(),
-                process(RemoveFoamProcessor.AIR, Blocks.AIR.defaultBlockState(), Blocks.COBWEB.defaultBlockState()));
-    }
-
-    @Test
-    void withoutADeclaredRemovalThePlainOneIsInstalled() {
+    void thePlainRemovalIsInstalledFirstUnlessOneIsDeclared() {
         var other = new BlockIgnoreProcessor(List.of(Blocks.STONE));
-        var settings = new StructurePlaceSettings().addProcessor(other);
-        var installed = RemoveFoamProcessor.addDefaultIfAbsent(settings).getProcessors();
-        assertSame(RemoveFoamProcessor.AIR, installed.getFirst());
-        assertEquals(2, installed.size());
+        var declared = new StructurePlaceSettings().addProcessor(other).addProcessor(RemoveFoamProcessor.WATER);
+        assertEquals(List.of(other, RemoveFoamProcessor.WATER), RemoveFoamProcessor.addDefaultIfAbsent(declared).getProcessors());
+        var installed = RemoveFoamProcessor.addDefaultIfAbsent(new StructurePlaceSettings().addProcessor(other)).getProcessors();
+        assertEquals(List.of(RemoveFoamProcessor.AIR, other), installed);
     }
 
     private static BlockState foam() {
