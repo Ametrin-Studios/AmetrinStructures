@@ -24,6 +24,7 @@ import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.storage.loot.LootTable;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,13 +32,14 @@ import java.util.Map;
 /// An entity's data, for spawners, entity fixtures and passengers.
 ///
 /// Setting anything makes the entity skip its own spawn randomization, like random armor and handedness, the same as vanilla spawners.
-/// Entity fixtures keep the randomization when only a [#deathLootTable] is set.
+/// Entity fixtures keep the randomization when only a [#deathLootTable] or equipment is set.
 public final class EntityDataBuilder {
     public static final String DEATH_LOOT_TABLE_KEY = "DeathLootTable";
 
     private final EntityType<?> entity;
     private final CompoundTag data = new CompoundTag();
     private final CompoundTag equipment = new CompoundTag();
+    private final Map<EquipmentSlot, ItemStackTemplate> items = new EnumMap<>(EquipmentSlot.class);
     private final CompoundTag dropChances = new CompoundTag();
     private final Map<Holder<Attribute>, Double> attributes = new LinkedHashMap<>();
     private final List<MobEffectInstance> effects = new ArrayList<>();
@@ -145,6 +147,7 @@ public final class EntityDataBuilder {
     // An item stack reads the same fields.
     private EntityDataBuilder equip(EquipmentSlot slot, ItemStackTemplate stack, DynamicOps<Tag> ops) {
         equipment.put(slot.getSerializedName(), ItemStackTemplate.MAP_CODEC.codec().encodeStart(ops, stack).getOrThrow());
+        items.put(slot, stack);
         return this;
     }
 
@@ -174,6 +177,10 @@ public final class EntityDataBuilder {
 
     public EntityType<?> type() {
         return entity;
+    }
+
+    public Map<EquipmentSlot, ItemStackTemplate> equipment() {
+        return Map.copyOf(items);
     }
 
     public CompoundTag build() {

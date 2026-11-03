@@ -93,7 +93,7 @@ Reference: [`FixtureConditions`](../src/main/java/com/ametrin/structures/fixture
 
 ## Entities
 
-`EntityDataBuilder` describes an entity for entity fixtures, spawners and passengers: name, health and other attributes, effects, equipment per slot, death loot, left-handedness, baby, passengers and more. If you set any of it, the entity skips its own spawn randomization, like random armor, the same as with vanilla spawners. Entity fixtures also skip it when you set a death loot table.
+`EntityDataBuilder` describes an entity for entity fixtures, spawners and passengers: name, health and other attributes, effects, equipment per slot, death loot, left-handedness, baby, passengers and more. If you set any of it, the entity skips its own spawn randomization, like random armor, the same as with vanilla spawners. Entity fixtures keep it when you only set a death loot table or equipment, since they place those on the entity after it spawns.
 
 For entity fixtures, set an equipment loot table with `withEquipment(...)`.
 

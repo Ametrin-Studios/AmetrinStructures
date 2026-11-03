@@ -10,6 +10,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -107,9 +109,12 @@ class FixturePresetsTest {
     }
 
     @Test
-    void deathLootIsItsOwnFieldNotExtraData() {
-        var entity = EntityFixture.of(new EntityDataBuilder(EntityTypes.SKELETON).deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON));
+    void deathLootAndEquipmentAreTheirOwnFieldsNotExtraData() {
+        var entity = EntityFixture.of(new EntityDataBuilder(EntityTypes.SKELETON)
+                .deathLootTable(BuiltInLootTables.SIMPLE_DUNGEON)
+                .equip(EquipmentSlot.HEAD, Items.IRON_HELMET));
         assertEquals(Optional.of(BuiltInLootTables.SIMPLE_DUNGEON), entity.deathLootTable());
+        assertEquals(Items.IRON_HELMET, entity.items().get(EquipmentSlot.HEAD).item().value());
         assertEquals(Optional.empty(), entity.nbt(), "extra data would turn off the entity's randomization");
     }
 
