@@ -101,9 +101,18 @@ Reference: [`ExtendedStructure`](../src/main/java/com/ametrin/structures/structu
 
 ### Template pieces
 
-For pieces placed from templates, extend `ExtendedTemplateStructurePiece`. Like the modular structure's pieces, it runs fixtures, removes foam, places foundations, leaves out structure blocks, sets up mobs and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands its pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
+To place [template entries](structures.md#json) the way modular structures do, use `ModularStructurePiece.create(...)`. It takes the entry, the origin and rotation, and the structure's terrain adaptation, liquid settings, processors and foundation. Entries without their own processors or foundation take the structure's. A structure can keep its entries in its codec with `TemplateEntry.CODEC`:
 
-Reference: [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java).
+```java
+for (var entry : entries) {
+    pieces.addPiece(ModularStructurePiece.create(context.structureTemplateManager(), entry, origin, rotation,
+            terrainAdaptation(), LiquidSettings.IGNORE_WATERLOGGING, processors(), Optional.empty()));
+}
+```
+
+For template pieces of your own, extend `ExtendedTemplateStructurePiece`. Like the modular structure's pieces, it runs fixtures, removes foam, places foundations, leaves out structure blocks, sets up mobs and fits the terrain to a `TerrainBox`. The piece decides its own terrain adaptation, so pass it the structure's `terrainAdaptation()`. An `ExtendedStructure` hands these pieces the structure's processors itself. Other template pieces place fixture blocks as they are.
+
+Reference: [`ModularStructurePiece`](../src/main/java/com/ametrin/structures/structure/modular/ModularStructurePiece.java) and [`ExtendedTemplateStructurePiece`](../src/main/java/com/ametrin/structures/structure/ExtendedTemplateStructurePiece.java).
 
 ### Pool elements
 

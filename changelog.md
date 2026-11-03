@@ -5,6 +5,7 @@
 - `fill_container` fixtures need a `block` and no longer accept blocks that take a loot table, use `loot_container` for those
 - jigsaw blocks show their pool above them, toggled by the `jigsaw_name_tags` client config
 - `HeightMode.CENTER`
+- `ModularStructurePiece.create(...)` to use them in custom structures
 
 ## 0.3.2-beta
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)
