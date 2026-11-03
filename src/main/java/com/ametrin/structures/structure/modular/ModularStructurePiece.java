@@ -1,7 +1,10 @@
 package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASPieceTypes;
+import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.jigsaw.StructureElements;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -13,15 +16,15 @@ import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.neoforged.neoforge.common.world.PieceBeardifierModifier;
-import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Optional;
 import java.util.function.Function;
 
 /// A pool element placed by a [TemplateEntry]. It fits the terrain to its [TerrainBox] with the structure's terrain adaptation.
-@ApiStatus.Internal
+/// Structures of your own can place template entries with it through [#create].
 public class ModularStructurePiece extends PoolElementStructurePiece implements PieceBeardifierModifier {
     private static final String TERRAIN_ADAPTATION_KEY = "terrain_adaptation";
     private static final String TERRAIN_BOX_KEY = "terrain_box";
@@ -37,6 +40,13 @@ public class ModularStructurePiece extends PoolElementStructurePiece implements 
         this.terrainBox = element instanceof SinglePoolElement single
                 ? terrainBox.resolve(single.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
                 : terrainBox instanceof TerrainBox.Local(var local) ? Optional.of(local) : Optional.empty();
+    }
+
+    /// A piece for `entry` at its offset from `origin`, turned with `rotation`, like modular structures create them.
+    /// Elements without processors or a foundation of their own take `processors` and `foundation`, see [com.ametrin.structures.structure.jigsaw.StructureSettingsElement].
+    public static ModularStructurePiece create(StructureTemplateManager templates, TemplateEntry entry, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings, Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
+        var element = StructureElements.withStructureSettings(entry.element(), processors, foundation);
+        return new ModularStructurePiece(templates, element, origin.offset(entry.offset().rotate(rotation)), rotation, liquidSettings, terrainAdaptation, entry.terrainBox(), -entry.offset().getY());
     }
 
     public ModularStructurePiece(StructurePieceSerializationContext context, CompoundTag tag) {

@@ -7,21 +7,15 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.ProcessorLists;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
-import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
@@ -157,21 +151,9 @@ class ModularStructurePieceTest {
     private static ModularStructurePiece createPiece(
             MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox,
             Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
-        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
-        var generation = new Structure.GenerationContext(
-                server.registryAccess(),
-                new DebugLevelSource(plains),
-                new FixedBiomeSource(plains),
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
-                server.getStructureManager(),
-                new WorldgenRandom(new LegacyRandomSource(0)),
-                0,
-                new ChunkPos(0, 0),
-                LevelHeightAccessor.create(-64, 384),
-                HolderSet.direct(plains)::contains);
         var element = new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors.orElse(ExtendedSinglePoolElement.NO_PROCESSORS), StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
-        var context = new PieceSource.Context(generation, ORIGIN, rotation, TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), structureProcessors);
-        return (ModularStructurePiece) PieceSources.createPiece(new TemplateEntry(element, offset, terrainBox), context);
+        return ModularStructurePiece.create(server.getStructureManager(), new TemplateEntry(element, offset, terrainBox), ORIGIN, rotation,
+                TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING, structureProcessors, Optional.empty());
     }
 
     private static Optional<Holder<StructureProcessorList>> processors(StructureProcessor... processors) {

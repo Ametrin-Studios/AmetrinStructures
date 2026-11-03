@@ -58,19 +58,20 @@ public record EntityFixture(
         return of(new EntityDataBuilder(entity));
     }
 
-    /// The death loot table goes into its own field, so it doesn't turn off the entity's randomization.
+    /// The death loot table and the equipment go into their own fields, so they don't turn off the entity's randomization.
     public static EntityFixture of(EntityDataBuilder entity) {
         var extraData = entity.build();
         var deathLootTable = extraData.read(EntityDataBuilder.DEATH_LOOT_TABLE_KEY, LootTable.KEY_CODEC);
         extraData.remove("id");
         extraData.remove(EntityDataBuilder.DEATH_LOOT_TABLE_KEY);
+        extraData.remove("equipment");
         return new EntityFixture(
                 BuiltInRegistries.ENTITY_TYPE.getResourceKey(entity.type()).orElseThrow(),
                 extraData.isEmpty() ? Optional.empty() : Optional.of(extraData),
                 Optional.empty(),
                 DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE,
                 deathLootTable,
-                Map.of());
+                entity.equipment());
     }
 
     public EntityFixture withEquipment(ResourceKey<LootTable> lootTable) {
