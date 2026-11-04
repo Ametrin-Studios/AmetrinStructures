@@ -12,11 +12,13 @@ import com.ametrin.structures.structure.modular.ModularStructure;
 import com.ametrin.structures.structure.modular.StartHeight;
 import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.google.gson.JsonParser;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
@@ -24,11 +26,13 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.ProcessorLists;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biomes;
@@ -180,7 +184,78 @@ class JigsawSourceTest {
     }
 
     @Test
-    void readsTheConditionsFromJsonAndRejectsInvalidOnes(MinecraftServer server) {
+    void aRepeatedElementPlacesAsManyCopiesAsPassItsFiltersInOnePiece(MinecraftServer server) throws CommandSyntaxException {
+        var shaft = Shaft.create(server, 1);
+        var pieces = shaft.assemble(server).orElseThrow();
+        // The hub, the shaft from 63 down to 20 in two block copies, and the bottom below it.
+        assertEquals(3, pieces.size());
+        var placed = pieces.get(1);
+        assertEquals(22, assertInstanceOf(RepeatedPoolElement.class, placed.getElement()).minCount(), "the piece keeps its copies");
+        assertEquals(new BoundingBox(0, 20, 0, 0, 63, 0), placed.getBoundingBox());
+        assertEquals(pieces.getFirst().getBoundingBox().minY() + pieces.getFirst().getGroundLevelDelta(), placed.getBoundingBox().minY() + placed.getGroundLevelDelta(), "the same ground level as the hub");
+        assertEquals(19, pieces.get(2).getBoundingBox().minY());
+        // Only the top of the first copy and the bottom of the last face away from the other copies.
+        assertEquals(2, placed.getElement().getShuffledJigsawBlocks(server.getStructureManager(), placed.getPosition(), placed.getRotation(), RandomSource.create(0)).size());
+
+        var tooShort = Shaft.create(server, 30).assemble(server).orElseThrow();
+        assertEquals(1, tooShort.size(), "fewer copies fit than it needs");
+    }
+
+    @Test
+    void copiesGoInTheDirectionTurnedWithThePiece(MinecraftServer server) {
+        var north = new RepeatedPoolElement(StructurePoolElement.single("igloo/top").apply(StructureTemplatePool.Projection.RIGID), Direction.NORTH, ConstantInt.of(3), 3, List.of());
+        var templates = server.getStructureManager();
+        int depth = templates.getOrCreate(Identifier.withDefaultNamespace("igloo/top")).getSize().getZ();
+        assertEquals(new BlockPos(0, 0, -2 * depth), north.copyPosition(templates, BlockPos.ZERO, Rotation.NONE, 2));
+        assertEquals(new BlockPos(2 * depth, 0, 0), north.copyPosition(templates, BlockPos.ZERO, Rotation.CLOCKWISE_90, 2));
+    }
+
+    /// A hub whose jigsaw points down into a shaft segment repeated down to Y 20, with a bottom attached below the last copy.
+    private record Shaft(Function<ResourceKey<StructureTemplatePool>, Optional<? extends Holder<StructureTemplatePool>>> lookup, StructurePoolElement hub) {
+        static Shaft create(MinecraftServer server, int minCopies) throws CommandSyntaxException {
+            var hub = element(server, "shaft/hub", """
+                    {size: [1, 1, 1], entities: [], palette: [{Name: "minecraft:jigsaw", Properties: {orientation: "down_north"}}],
+                     blocks: [{pos: [0, 0, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "test:shaft", name: "minecraft:empty", target: "test:top", joint: "rollable", final_state: "minecraft:air"}}]}
+                    """);
+            var segment = element(server, "shaft/segment", """
+                    {size: [1, 2, 1], entities: [], palette: [{Name: "minecraft:jigsaw", Properties: {orientation: "up_north"}}, {Name: "minecraft:jigsaw", Properties: {orientation: "down_north"}}],
+                     blocks: [
+                       {pos: [0, 1, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "minecraft:empty", name: "test:top", target: "minecraft:empty", joint: "rollable", final_state: "minecraft:air"}},
+                       {pos: [0, 0, 0], state: 1, nbt: {id: "minecraft:jigsaw", pool: "test:bottoms", name: "minecraft:empty", target: "test:top", joint: "rollable", final_state: "minecraft:air"}}]}
+                    """);
+            var bottom = element(server, "shaft/bottom", """
+                    {size: [1, 1, 1], entities: [], palette: [{Name: "minecraft:jigsaw", Properties: {orientation: "up_north"}}],
+                     blocks: [{pos: [0, 0, 0], state: 0, nbt: {id: "minecraft:jigsaw", pool: "minecraft:empty", name: "test:top", target: "minecraft:empty", joint: "rollable", final_state: "minecraft:air"}}]}
+                    """);
+            var registered = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
+            var empty = registered.getOrThrow(pool("empty"));
+            var above = new PlacementFilters.HeightRange(Optional.of(HeightAnchor.absolute(20)), Optional.empty(), PlacementFilters.HeightRange.Check.ORIGIN);
+            var repeated = new RepeatedPoolElement(segment, Direction.DOWN, ConstantInt.of(64), minCopies, List.of(above));
+            var pools = Map.of(
+                    ResourceKey.create(Registries.TEMPLATE_POOL, Identifier.fromNamespaceAndPath("test", "shaft")), new StructureTemplatePool(empty, List.of(Pair.of(repeated, 1))),
+                    ResourceKey.create(Registries.TEMPLATE_POOL, Identifier.fromNamespaceAndPath("test", "bottoms")), new StructureTemplatePool(empty, List.of(Pair.of(bottom, 1))));
+            return new Shaft(key -> Optional.ofNullable(pools.get(key)).<Holder<StructureTemplatePool>>map(Holder::direct).or(() -> registered.get(key)), hub);
+        }
+
+        Optional<List<PoolElementStructurePiece>> assemble(MinecraftServer server) {
+            var context = context(server, 0);
+            var templates = server.getStructureManager();
+            var position = new BlockPos(0, 64, 0);
+            var start = new PoolElementStructurePiece(templates, hub, position, hub.getGroundLevelDelta(), Rotation.NONE, hub.getBoundingBox(templates, position, Rotation.NONE), LiquidSettings.IGNORE_WATERLOGGING);
+            var free = JigsawAssembler.freeSpace(start.getBoundingBox(), 64, new JigsawStructure.MaxDistance(80), context.heightAccessor(), DimensionPadding.ZERO);
+            var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
+            return new JigsawAssembler(pieceContext, lookup, 2, false, PoolAliasLookup.EMPTY, JigsawSource.DEFAULT_MAX_BACKTRACKS).assemble(start, hub, free, List.of());
+        }
+
+        private static StructurePoolElement element(MinecraftServer server, String path, String snbt) throws CommandSyntaxException {
+            var id = Identifier.fromNamespaceAndPath("test", path);
+            server.getStructureManager().getOrCreate(id).load(server.registryAccess().lookupOrThrow(Registries.BLOCK), TagParser.parseCompoundFully(snbt));
+            return StructurePoolElement.single(id.toString()).apply(StructureTemplatePool.Projection.RIGID);
+        }
+    }
+
+    @Test
+    void readsTheElementsFromJsonAndRejectsInvalidOnes(MinecraftServer server) {
         var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
         var conditional = assertInstanceOf(ConditionalPoolElement.class, StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
                 {"element_type": "ametrin_structures:conditional", "min_depth": 2, "max_depth": 5,
@@ -210,6 +285,18 @@ class JigsawSourceTest {
         assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 2, Optional.of(1)));
         assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, -1, 0, Optional.empty()));
         assertThrows(IllegalArgumentException.class, () -> new ConditionalPoolElement(element, 2, 1, Optional.empty()));
+
+        var repeatedJson = JsonParser.parseString("""
+                {"element_type": "ametrin_structures:repeated", "direction": "down", "count": 64, "min_count": 2,
+                 "filters": [{"type": "ametrin_structures:height_range", "min": -20}],
+                 "element": {"element_type": "minecraft:empty_pool_element"}}
+                """);
+        var repeated = assertInstanceOf(RepeatedPoolElement.class, StructurePoolElement.CODEC.parse(ops, repeatedJson).getOrThrow());
+        assertEquals(List.of(Direction.DOWN, 64, 2), List.of(repeated.direction(), repeated.count().maxInclusive(), repeated.minCount()));
+        assertEquals(repeatedJson, StructurePoolElement.CODEC.encodeStart(ops, repeated).getOrThrow());
+        assertTrue(StructurePoolElement.CODEC.parse(ops, JsonParser.parseString("""
+                {"element_type": "ametrin_structures:repeated", "direction": "down", "count": 2, "min_count": 3, "element": {"element_type": "minecraft:empty_pool_element"}}
+                """)).isError(), "a min count above the count");
     }
 
     @Test

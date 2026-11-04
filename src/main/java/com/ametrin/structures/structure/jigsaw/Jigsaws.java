@@ -63,6 +63,9 @@ final class Jigsaws {
         if (element instanceof ConditionalPoolElement conditional) {
             return pools(conditional.element(), templates, random);
         }
+        if (element instanceof RepeatedPoolElement repeated) {
+            return pools(repeated.element(), templates, random);
+        }
         if (!(element instanceof SinglePoolElement single) || !LISTS_LIKE_SINGLE.get(element.getClass())) {
             return element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, random).stream().map(StructureTemplate.JigsawBlockInfo::pool);
         }

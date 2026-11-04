@@ -6,8 +6,10 @@ import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.StructureBootstrap;
 import com.ametrin.structures.structure.StructureSetKeys;
 import com.ametrin.structures.structure.jigsaw.JigsawPools;
+import com.ametrin.structures.structure.jigsaw.Repeat;
 import com.ametrin.structures.structure.modular.HeightAnchor;
 import com.ametrin.structures.structure.modular.HeightMode;
+import net.minecraft.core.Direction;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
@@ -16,6 +18,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.GenerationStep;
@@ -128,7 +131,8 @@ final class ExampleStructures {
                     .fallback("wall_ends")
                     .element("wall_straight")
                     .element("wall_corner")
-                    .element("wall_ruined", element -> element.weight(2).processors(ProcessorLists.MOSSIFY_10_PERCENT)));
+                    .element("wall_ruined", element -> element.weight(2).processors(ProcessorLists.MOSSIFY_10_PERCENT))
+                    .repeated("wall_straight", Repeat.of(Direction.EAST, UniformInt.of(2, 4)), element -> element.maxCount(2)));
 
             // Foam stays, and the air saved in this template is placed instead of treated as void.
             pools.pool("wall_ends", pool -> pool

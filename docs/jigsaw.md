@@ -85,7 +85,7 @@ The counts only apply once the layout reaches a pool that has the element. Makin
 It can also be limited to where it attaches:
 
 - `minDepth(n)` and `maxDepth(n)`: how many jigsaws deep, counted from the start piece.
-- `filter(...)`: [placement filters](structures.md#filters) that the piece has to pass. They see the piece's position and box. For example, a shaft segment with a `HeightRange` filter that checks the box only fits while it stays above a Y, so the shaft ends there and the pool's fallback attaches.
+- `filter(...)`: [placement filters](structures.md#filters) that the piece has to pass. They see the piece's position and box.
 
 Neither applies to a start piece.
 
@@ -96,6 +96,25 @@ pools.pool("tents", pool -> pool
 ```
 
 Vanilla's jigsaw structures ignore these limits. [`/ametrin structures check`](debugging.md#checking-structures) reports limited elements in them.
+
+## Repeating elements
+
+`repeated(name, repeat, ...)` adds a template like `element(...)`, placed as a row of copies, each moved by the template's size in a direction. Horizontal directions turn with the piece. The row is one piece, so a long shaft or tunnel takes up a single jigsaw depth.
+
+`Repeat.of(direction, copies)` sets the direction and the most copies, which can be a random number. The layout places as many as fit. `filter(...)` adds a [placement filter](structures.md#filters) that each copy has to pass, which sees the copy's position and box. With fewer than `minCopies(n)` copies the element doesn't fit there. That defaults to 1.
+
+The element settings, like `weight(...)` and the [limits](#limiting-elements), apply to the row, and the template settings to each copy.
+
+A shaft that goes down until Y -20, with rooms below it:
+
+```java
+pools.pool("shaft", pool -> pool
+        .repeated("shaft_segment", Repeat.of(Direction.DOWN, 64).filter(new PlacementFilters.HeightRange(-20, 320))));
+```
+
+The row attaches by the jigsaws of its first copy. Jigsaws that face a neighboring copy are left out, and the rest stay open on every copy. Above, the segment's top jigsaw attaches the shaft, and its bottom jigsaw, which points to the rooms, is only open on the last copy. A side jigsaw would be open on every copy.
+
+The foundation and processors apply to each copy. Vanilla's jigsaw structures and the templates of modular structures place `minCopies` copies.
 
 ## JSON
 
@@ -161,4 +180,22 @@ In a pool, a limited element is an `ametrin_structures:conditional` that wraps t
 
 `ametrin_structures:single_pool_element` has vanilla's fields, with optional `processors`, plus `foundation` and `process_foam`, which defaults to `true`. `ametrin_structures:conditional` takes `min_count`, `soft_min_count`, `max_count`, `min_depth`, `max_depth` and `filters`, all optional.
 
-Reference: [`JigsawSource`](../src/main/java/com/ametrin/structures/structure/jigsaw/JigsawSource.java), [`JigsawPools`](../src/main/java/com/ametrin/structures/structure/jigsaw/JigsawPools.java), [`ConditionalPoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/ConditionalPoolElement.java) and [`ExtendedSinglePoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedSinglePoolElement.java).
+A repeating element is an `ametrin_structures:repeated` that wraps the element, inside the conditional element if it's limited too:
+
+```json
+{
+  "element_type": "ametrin_structures:repeated",
+  "direction": "down",
+  "count": 64,
+  "filters": [{"type": "ametrin_structures:height_range", "min": -20}],
+  "element": {
+    "element_type": "ametrin_structures:single_pool_element",
+    "location": "examplemod:mine/shaft_segment",
+    "projection": "rigid"
+  }
+}
+```
+
+`count` is 1 to 256 or an int provider, and `min_count` defaults to 1. `filters` are optional.
+
+Reference: [`JigsawSource`](../src/main/java/com/ametrin/structures/structure/jigsaw/JigsawSource.java), [`JigsawPools`](../src/main/java/com/ametrin/structures/structure/jigsaw/JigsawPools.java), [`ConditionalPoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/ConditionalPoolElement.java), [`RepeatedPoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/RepeatedPoolElement.java) and [`ExtendedSinglePoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedSinglePoolElement.java).

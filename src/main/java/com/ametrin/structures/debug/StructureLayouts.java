@@ -4,6 +4,7 @@ import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedTemplateStructurePiece;
 import com.ametrin.structures.structure.StructureBuilder;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
+import com.ametrin.structures.structure.jigsaw.RepeatedPoolElement;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -40,6 +41,7 @@ final class StructureLayouts {
         return switch (element) {
             case SinglePoolElement single -> single.getTemplateLocation().toString();
             case ConditionalPoolElement counted -> name(counted.element());
+            case RepeatedPoolElement repeated -> name(repeated.element());
             default -> String.valueOf(BuiltInRegistries.STRUCTURE_POOL_ELEMENT.getKey(element.getType()));
         };
     }

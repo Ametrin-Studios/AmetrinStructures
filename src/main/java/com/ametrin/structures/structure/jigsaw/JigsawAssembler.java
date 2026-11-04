@@ -38,6 +38,7 @@ import java.util.function.Predicate;
 /// It never undoes pieces that another element needs for its soft minimum, except to reach a minimum, which may take others down to theirs.
 ///
 /// Pieces hold the element itself rather than its [ConditionalPoolElement], and are created with the structure's settings.
+/// A [RepeatedPoolElement]'s piece holds a copy with the number of copies that fit.
 final class JigsawAssembler {
     private static final int UNSET = Integer.MIN_VALUE;
 
@@ -402,6 +403,12 @@ final class JigsawAssembler {
         return !(element instanceof ConditionalPoolElement conditional) || conditional.allowsDepth(depth);
     }
 
+    // A repeated element attaches by its first copy.
+    private List<StructureTemplate.JigsawBlockInfo> attachingJigsaws(StructurePoolElement element, Rotation rotation, RandomSource random) {
+        var repeated = RepeatedPoolElement.unwrap(element);
+        return repeated != null ? repeated.attachingJigsaws(templates, BlockPos.ZERO, rotation, random) : Jigsaws.shuffled(element, templates, BlockPos.ZERO, rotation, random);
+    }
+
     private boolean isFull(StructurePoolElement element) {
         return element instanceof ConditionalPoolElement counted && counted.maxCount().filter(max -> count(counted) >= max).isPresent();
     }
@@ -476,9 +483,9 @@ final class JigsawAssembler {
 
     private record Deferred(Node node, StructureTemplate.JigsawBlockInfo jigsaw) {}
 
-    /// @param boxY   the bottom of the attached piece's box
-    /// @param deltaY how much higher the attached piece's box starts than the source's, when both are rigid
-    private record Placement(BlockPos position, BoundingBox box, int boxY, int deltaY) {}
+    /// @param y      the Y of the attached piece's position
+    /// @param deltaY how much higher the attached piece's position is than the source's box, when both are rigid
+    private record Placement(BlockPos position, BoundingBox box, int y, int deltaY) {}
 
     private static final class Visit {
         private final Node node;
@@ -543,7 +550,7 @@ final class JigsawAssembler {
             }
             int best = -1;
             for (var rotation : Rotation.values()) {
-                var candidates = Jigsaws.shuffled(wanted, templates, BlockPos.ZERO, rotation, listing);
+                var candidates = attachingJigsaws(wanted, rotation, listing);
                 int expand = expansion(wanted, rotation, candidates);
                 for (var candidate : candidates) {
                     if (!JigsawBlock.canAttach(jigsaw, candidate)) {
@@ -594,7 +601,7 @@ final class JigsawAssembler {
                     targets = null;
                 }
                 if (rotations != null && rotation < rotations.size()) {
-                    targets = Jigsaws.shuffled(current(), templates, BlockPos.ZERO, rotations.get(rotation++), random);
+                    targets = attachingJigsaws(current(), rotations.get(rotation++), random);
                     targetIndex = 0;
                     expandTo = expansion(current(), currentRotation(), targets);
                     continue;
@@ -627,8 +634,22 @@ final class JigsawAssembler {
             var targetElement = current();
             var targetRotation = currentRotation();
             var placement = placement(targetElement, targetRotation, targetJigsaw, expandTo);
+            if (!free.fits(placement.box)) {
+                return false;
+            }
+            var placed = targetElement;
+            var repeated = RepeatedPoolElement.unwrap(targetElement);
+            if (repeated != null) {
+                var fitting = repeat(repeated, placement.position, targetRotation);
+                if (fitting == null) {
+                    return false;
+                }
+                placed = fitting;
+                var box = BoundingBox.encapsulatingBoxes(List.of(placement.box, fitting.getBoundingBox(templates, placement.position, targetRotation))).orElseThrow();
+                placement = new Placement(placement.position, box, placement.y, placement.deltaY);
+            }
             // Filters on the terrain cost more, so they come last.
-            if (!free.fits(placement.box) || !passesFilters(targetElement, placement)) {
+            if (!passesFilters(targetElement, placement)) {
                 return false;
             }
 
@@ -637,14 +658,31 @@ final class JigsawAssembler {
             int targetLocalY = targetJigsaw.info().pos().getY();
             int deltaY = placement.deltaY;
             int sourceDelta = source.piece.getGroundLevelDelta();
-            int targetDelta = targetRigid ? sourceDelta - deltaY : targetElement.getGroundLevelDelta();
-            var piece = createPiece(context, targetElement, placement.position, targetDelta, targetRotation, placement.box);
-            int junctionY = sourceRigid ? sourceBoxY + localY : targetRigid ? placement.boxY + targetLocalY : baseHeight() + deltaY / 2;
+            // Ground levels go from the bottom of the box, which is below the position for a row of copies going down.
+            int targetDelta = targetRigid ? sourceDelta - (placement.box.minY() - sourceBoxY) : targetElement.getGroundLevelDelta();
+            var piece = createPiece(context, placed, placement.position, targetDelta, targetRotation, placement.box);
+            int junctionY = sourceRigid ? sourceBoxY + localY : targetRigid ? placement.y + targetLocalY : baseHeight() + deltaY / 2;
             var jigsawPos = jigsaw.info().pos();
             place(this, new Node(piece, targetElement, this, free, source.depth + 1),
                     new JigsawJunction(target.getX(), junctionY - localY + sourceDelta, target.getZ(), deltaY, targetProjection),
                     new JigsawJunction(jigsawPos.getX(), junctionY - targetLocalY + targetDelta, jigsawPos.getZ(), -deltaY, source.piece.getElement().getProjection()));
             return true;
+        }
+
+        // As many copies as fit and pass the filters, up to a drawn count, or none if that's below the minimum.
+        private @Nullable RepeatedPoolElement repeat(RepeatedPoolElement repeated, BlockPos position, Rotation rotation) {
+            int wanted = repeated.count().sample(random);
+            int copies = 0;
+            while (copies < wanted) {
+                var copy = repeated.copyPosition(templates, position, rotation, copies);
+                var box = repeated.element().getBoundingBox(templates, copy, rotation);
+                var filterContext = new PlacementFilter.Context(context.generation(), copy, box, context.terrain());
+                if (!free.fits(box) || !repeated.filters().stream().allMatch(filter -> filter.test(filterContext))) {
+                    break;
+                }
+                copies++;
+            }
+            return copies >= repeated.minCount() ? repeated.withCopies(copies) : null;
         }
 
         // Where `element` goes when it attaches here by `targetJigsaw`.
@@ -654,13 +692,13 @@ final class JigsawAssembler {
             var rawBox = element.getBoundingBox(templates, rawPosition, rotation);
             boolean targetRigid = element.getProjection() == StructureTemplatePool.Projection.RIGID;
             int deltaY = localY - targetLocal.getY() + direction.getStepY();
-            int boxY = sourceRigid && targetRigid ? sourceBoxY + deltaY : baseHeight() - targetLocal.getY();
-            int yOffset = boxY - rawBox.minY();
+            int y = sourceRigid && targetRigid ? sourceBoxY + deltaY : baseHeight() - targetLocal.getY();
+            int yOffset = y - rawPosition.getY();
             var moved = rawBox.moved(0, yOffset, 0);
             var box = expand > 0
                     ? new BoundingBox(moved.minX(), moved.minY(), moved.minZ(), moved.maxX(), Math.max(moved.maxY(), moved.minY() + Math.max(expand + 1, moved.getYSpan() - 1)), moved.maxZ())
                     : moved;
-            return new Placement(rawPosition.offset(0, yOffset, 0), box, boxY, deltaY);
+            return new Placement(rawPosition.offset(0, yOffset, 0), box, y, deltaY);
         }
 
         private boolean passesFilters(StructurePoolElement element, Placement placement) {

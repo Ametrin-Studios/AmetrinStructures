@@ -56,6 +56,13 @@ class ExampleStructuresTest {
         assertEquals("ametrin_structures:single_pool_element", wallEnds.get("element_type").getAsString());
         assertFalse(walls.has("process_foam"));
         assertFalse(wallEnds.get("process_foam").getAsBoolean());
+
+        // The limits go around the row, and the row around the template.
+        var row = element(registries, ops, "castle/walls", 3);
+        assertEquals("ametrin_structures:conditional", row.get("element_type").getAsString());
+        var repeated = row.getAsJsonObject("element");
+        assertEquals("ametrin_structures:repeated", repeated.get("element_type").getAsString());
+        assertEquals("ametrin_structures:single_pool_element", repeated.getAsJsonObject("element").get("element_type").getAsString());
     }
 
     private static String placementType(HolderLookup.Provider registries, RegistryOps<JsonElement> ops, String set) {
@@ -69,8 +76,12 @@ class ExampleStructuresTest {
     }
 
     private static JsonObject firstElement(HolderLookup.Provider registries, RegistryOps<JsonElement> ops, String pool) {
+        return element(registries, ops, pool, 0);
+    }
+
+    private static JsonObject element(HolderLookup.Provider registries, RegistryOps<JsonElement> ops, String pool, int index) {
         JsonElement json = encode(registries, ops, Registries.TEMPLATE_POOL, StructureTemplatePool.DIRECT_CODEC, pool);
-        return json.getAsJsonObject().getAsJsonArray("elements").get(0).getAsJsonObject().getAsJsonObject("element");
+        return json.getAsJsonObject().getAsJsonArray("elements").get(index).getAsJsonObject().getAsJsonObject("element");
     }
 
     private static <T> void assertType(

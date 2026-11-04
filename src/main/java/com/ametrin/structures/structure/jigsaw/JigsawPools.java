@@ -108,7 +108,23 @@ public final class JigsawPools {
 
         public Pool element(Identifier template, UnaryOperator<Element> configure) {
             var element = configure.apply(defaultElementSettings.apply(new Element()));
-            return add(element.weight, element.build(template));
+            return add(element.weight, element.build(template, UnaryOperator.identity()));
+        }
+
+        /// The template `name` placed as a row of copies, see [Repeat].
+        public Pool repeated(String name, Repeat repeat) {
+            return repeated(name, repeat, UnaryOperator.identity());
+        }
+
+        /// The template `name` placed as a row of copies, see [Repeat]. The element settings apply to the row, and its template settings to each copy.
+        public Pool repeated(String name, Repeat repeat, UnaryOperator<Element> configure) {
+            return repeated(id(name), repeat, configure);
+        }
+
+        /// `template` placed as a row of copies, see [Repeat]. The element settings apply to the row, and its template settings to each copy.
+        public Pool repeated(Identifier template, Repeat repeat, UnaryOperator<Element> configure) {
+            var element = configure.apply(defaultElementSettings.apply(new Element()));
+            return add(element.weight, element.build(template, repeat::wrap));
         }
 
         public Pool elements(List<String> names) {
@@ -202,8 +218,9 @@ public final class JigsawPools {
             return this;
         }
 
-        private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template) {
-            var element = element(template);
+        private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template, Function<StructurePoolElement, StructurePoolElement> around) {
+            var single = element(template);
+            Function<StructureTemplatePool.Projection, StructurePoolElement> element = projection -> around.apply(single.apply(projection));
             var min = minCount;
             var softMin = softMinCount.orElse(minCount);
             var max = maxCount;
