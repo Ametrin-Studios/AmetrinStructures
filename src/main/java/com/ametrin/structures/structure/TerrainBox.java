@@ -1,4 +1,4 @@
-package com.ametrin.structures.structure.modular;
+package com.ametrin.structures.structure;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -8,7 +8,7 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -41,26 +41,15 @@ public sealed interface TerrainBox {
         return new Local(new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ));
     }
 
-    /// The box in template coordinates, or empty for the whole template.
+    /// How a piece of `template` fits the terrain with this box. A local box's bottom is the ground.
     ///
     /// @param groundLevelDelta how far above the bottom of the template the ground lies
     @ApiStatus.Internal
-    Optional<BoundingBox> resolve(StructureTemplate template, int groundLevelDelta);
-
-    /// How far above the bottom of the box the ground lies. Only a local box moves it, and its bottom is the ground.
-    ///
-    /// @param groundLevelDelta how far above the bottom of the template the ground lies
-    @ApiStatus.Internal
-    default int groundLevelDelta(int groundLevelDelta) {
-        return this instanceof Local ? 0 : groundLevelDelta;
-    }
-
-    /// A box from [#resolve] placed like the template, so it follows the rotation, the mirror and any later move.
-    @ApiStatus.Internal
-    static BoundingBox place(BoundingBox local, StructurePlaceSettings settings, BlockPos position) {
-        return BoundingBox.fromCorners(
-                StructureTemplate.calculateRelativePosition(settings, new BlockPos(local.minX(), local.minY(), local.minZ())).offset(position),
-                StructureTemplate.calculateRelativePosition(settings, new BlockPos(local.maxX(), local.maxY(), local.maxZ())).offset(position));
+    default TerrainFit fit(TerrainAdjustment adaptation, StructureTemplate template, int groundLevelDelta) {
+        return switch (this) {
+            case Automatic automatic -> new TerrainFit(adaptation, automatic.box(template, groundLevelDelta), groundLevelDelta);
+            case Local(var box) -> new TerrainFit(adaptation, Optional.of(box), 0);
+        };
     }
 
     enum Automatic implements TerrainBox, StringRepresentable {
@@ -80,8 +69,7 @@ public sealed interface TerrainBox {
             this.name = name;
         }
 
-        @Override
-        public Optional<BoundingBox> resolve(StructureTemplate template, int groundLevelDelta) {
+        private Optional<BoundingBox> box(StructureTemplate template, int groundLevelDelta) {
             return this == FOOTPRINT ? footprint(template, groundLevelDelta) : Optional.empty();
         }
 
@@ -112,10 +100,5 @@ public sealed interface TerrainBox {
         }
     }
 
-    record Local(BoundingBox box) implements TerrainBox {
-        @Override
-        public Optional<BoundingBox> resolve(StructureTemplate template, int groundLevelDelta) {
-            return Optional.of(box);
-        }
-    }
+    record Local(BoundingBox box) implements TerrainBox {}
 }

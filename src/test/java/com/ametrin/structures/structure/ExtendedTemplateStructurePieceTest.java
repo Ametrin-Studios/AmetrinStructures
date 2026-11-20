@@ -1,6 +1,5 @@
 package com.ametrin.structures.structure;
 
-import com.ametrin.structures.structure.modular.TerrainBox;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;

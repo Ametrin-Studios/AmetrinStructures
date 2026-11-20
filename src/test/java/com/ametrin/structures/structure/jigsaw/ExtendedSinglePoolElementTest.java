@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure.jigsaw;
 
+import com.ametrin.structures.structure.TerrainBox;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Either;
@@ -42,7 +43,7 @@ class ExtendedSinglePoolElementTest {
     }
 
     private static ExtendedSinglePoolElement element(Holder<StructureProcessorList> processors) {
-        return new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors, StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
+        return new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors, StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.template());
     }
 
     private static JsonObject encode(MinecraftServer server, StructurePoolElement element) {

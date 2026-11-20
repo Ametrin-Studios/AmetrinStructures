@@ -156,6 +156,8 @@ tower.single(template -> template
 
 `TerrainBox.footprint()` only uses the blocks at and below ground level. `TerrainBox.of(minX, minY, minZ, maxX, maxY, maxZ)` takes a box in template coordinates, as the structure block shows them. The terrain meets the structure at the bottom of the box. With the default box, a negative Y offset buries the template's lower part.
 
+Rigid [jigsaw elements](jigsaw.md#declaring-pools) take a terrain box the same way.
+
 ## Filters
 
 Filters run in order once the structure has a start height, and the structure only generates where all of them pass. The spread report says which one failed.
@@ -241,7 +243,7 @@ The rest, like `biomes`, `step` and `terrain_adaptation`, are vanilla's structur
 
 A height anchor is a vanilla vertical anchor, like `{"absolute": 64}` or `{"above_bottom": 8}`, or a heightmap with an optional offset and mode, like `{"heightmap": "WORLD_SURFACE_WG", "offset": -24, "mode": "lowest_corner"}`. The modes are `origin`, `center`, `corners_mean`, `lowest_corner` and `highest_corner`.
 
-A template entry places a template, with optional `processors`, or any pool element under `element`. Both take an optional `offset` and `terrain_box`, which is `template` (default), `footprint` or `[minX, minY, minZ, maxX, maxY, maxZ]`. A template entry is also a piece source on its own. The other sources have a type:
+A template entry places a template, with optional `processors` and `terrain_box`, or any pool element under `element`. Both take an optional `offset`. A `terrain_box` is `template` (default), `footprint` or `[minX, minY, minZ, maxX, maxY, maxZ]`. Under `element`, an `ametrin_structures:single_pool_element` takes its own `terrain_box`. A template entry is also a piece source on its own. The other sources have a type:
 
 ```json
 {

@@ -5,11 +5,13 @@ import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.TerrainBox;
 import com.ametrin.structures.structure.filter.PlacementFilters;
 import com.ametrin.structures.structure.modular.HeightAnchor;
 import com.ametrin.structures.structure.modular.PieceSource;
 import com.ametrin.structures.structure.modular.PieceSources;
 import com.ametrin.structures.structure.modular.ModularStructure;
+import com.ametrin.structures.structure.modular.ModularStructurePiece;
 import com.ametrin.structures.structure.modular.StartHeight;
 import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.google.gson.JsonParser;
@@ -31,6 +33,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -298,23 +301,30 @@ class JigsawSourceTest {
     }
 
     @Test
-    void theStructuresSettingsReachTheStartPieceAndAreSavedWithIt(MinecraftServer server) {
+    void theSettingsReachTheStartPieceAndAreSavedWithIt(MinecraftServer server) {
         var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.of(1, 0, 1, 2, 1, 2));
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
         var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(element, 1))));
-        var structure = new ModularStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
+        var settings = new Structure.StructureSettings(HolderSet.empty(), Map.of(), GenerationStep.Decoration.SURFACE_STRUCTURES, TerrainAdjustment.BEARD_THIN);
+        var structure = new ModularStructure(settings, ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
                 StartHeight.at(HeightAnchor.absolute(64)), LiquidSettings.IGNORE_WATERLOGGING, Optional.of(Foundation.repeating()), Optional.empty());
         var generated = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server, 0)));
-        var placed = (PoolElementStructurePiece) generated.stub().getPiecesBuilder().build().pieces().getFirst();
+        var placed = assertInstanceOf(ModularStructurePiece.class, generated.stub().getPiecesBuilder().build().pieces().getFirst());
         assertEquals(Optional.of(Foundation.repeating()), assertInstanceOf(ExtendedSinglePoolElement.class, placed.getElement()).foundation());
+        assertEquals(TerrainAdjustment.BEARD_THIN, placed.getTerrainAdjustment());
+        var terrain = placed.getBeardifierBox();
+        assertEquals(List.of(2, 2, 2), List.of(terrain.getXSpan(), terrain.getYSpan(), terrain.getZSpan()));
+        assertEquals(placed.getPosition().getY(), terrain.minY());
+        assertEquals(0, placed.getBeardifierGroundLevelDelta());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
+        assertEquals(terrain, new ModularStructurePiece(context, placed.createTag(context)).getBeardifierBox());
 
         // A vanilla element without processors gets the structure's and keeps them when saved.
         var mossify = mossify(server);
         var piece = startPiece(server, StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID), Optional.of(mossify));
         assertSame(mossify, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
-        var reloaded = new PoolElementStructurePiece(context, piece.createTag(context));
+        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
         assertEquals(mossify.unwrapKey(), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
     }
 
@@ -322,7 +332,7 @@ class JigsawSourceTest {
     void anElementsOwnSettingsReplaceTheStructuresUnlessItInlinesThem(MinecraftServer server) {
         var own = Foundation.of(Blocks.STONE.defaultBlockState(), 4);
         var withFoundation = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own));
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own), TerrainBox.template());
         assertSame(withFoundation, StructureElements.withStructureSettings(withFoundation, Optional.empty(), Optional.of(Foundation.repeating())));
         var vanilla = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
         assertSame(vanilla, StructureElements.withStructureSettings(vanilla, Optional.empty(), Optional.of(Foundation.repeating())), "vanilla elements get no foundation");
@@ -339,7 +349,7 @@ class JigsawSourceTest {
         // An element type of its own decides what it takes.
         var replacement = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
         var deciding = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty()) {
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.template()) {
             @Override
             public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
                 return replacement;

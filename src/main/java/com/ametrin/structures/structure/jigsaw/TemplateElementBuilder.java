@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.TerrainBox;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
@@ -25,6 +26,7 @@ public abstract class TemplateElementBuilder<B extends TemplateElementBuilder<B>
     private Optional<LiquidSettings> liquidSettings = Optional.empty();
     private boolean processFoam = true;
     private Optional<Foundation> foundation = Optional.empty();
+    private TerrainBox terrainBox = TerrainBox.template();
 
     protected TemplateElementBuilder(HolderGetter<StructureProcessorList> processorsGetter) {
         this.processorsGetter = processorsGetter;
@@ -75,13 +77,20 @@ public abstract class TemplateElementBuilder<B extends TemplateElementBuilder<B>
         return self();
     }
 
+    /// What terrain adaptation fits the terrain to. Defaults to [TerrainBox#template()].
+    public B terrainBox(TerrainBox terrainBox) {
+        this.terrainBox = terrainBox;
+        return self();
+    }
+
     /// The element for `template` with the settings as they are now.
     protected Function<StructureTemplatePool.Projection, ExtendedSinglePoolElement> element(Identifier template) {
         var processors = this.processors != null ? this.processors : ExtendedSinglePoolElement.NO_PROCESSORS;
         var liquidSettings = this.liquidSettings;
         var processFoam = this.processFoam;
         var foundation = this.foundation;
-        return projection -> new ExtendedSinglePoolElement(Either.left(template), processors, projection, liquidSettings, processFoam, foundation);
+        var terrainBox = this.terrainBox;
+        return projection -> new ExtendedSinglePoolElement(Either.left(template), processors, projection, liquidSettings, processFoam, foundation, terrainBox);
     }
 
     @SuppressWarnings("unchecked")

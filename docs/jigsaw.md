@@ -71,7 +71,7 @@ modBus.addListener(GatherDataRegistryEntriesEvent.class, event -> {
 - `empty(weight)` adds an empty element, and `add(...)` any other element, like a feature or list element.
 - `defaultElementSettings(...)` sets what every element starts with, on a pool for its elements or on `JigsawPools` for the pools declared after it.
 
-An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)` and `noFoamProcessing()`.
+An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. The terrain box only applies to rigid elements in modular structures, see [overhangs](structures.md#overhangs).
 
 The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like modular structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
 
@@ -162,6 +162,6 @@ In a pool, a limited element is an `ametrin_structures:conditional` that wraps t
 }
 ```
 
-`ametrin_structures:single_pool_element` has vanilla's fields, with optional `processors`, plus `foundation` and `process_foam`, which defaults to `true`. `ametrin_structures:conditional` takes `min_count`, `soft_min_count`, `max_count`, `min_depth`, `max_depth` and `filters`, all optional.
+`ametrin_structures:single_pool_element` has vanilla's fields, with optional `processors`, plus `foundation`, `terrain_box` and `process_foam`, which defaults to `true`. `ametrin_structures:conditional` takes `min_count`, `soft_min_count`, `max_count`, `min_depth`, `max_depth` and `filters`, all optional.
 
 Reference: [`JigsawSource`](../src/main/java/com/ametrin/structures/structure/jigsaw/JigsawSource.java), [`JigsawPools`](../src/main/java/com/ametrin/structures/structure/jigsaw/JigsawPools.java), [`ConditionalPoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/ConditionalPoolElement.java) and [`ExtendedSinglePoolElement`](../src/main/java/com/ametrin/structures/structure/jigsaw/ExtendedSinglePoolElement.java).

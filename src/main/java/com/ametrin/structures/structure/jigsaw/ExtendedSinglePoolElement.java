@@ -4,6 +4,7 @@ import com.ametrin.structures.fixture.FixtureGeneration;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
 import com.ametrin.structures.registry.ASPoolElements;
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.TerrainBox;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -41,11 +42,13 @@ public class ExtendedSinglePoolElement extends SinglePoolElement implements Stru
                     projectionCodec(),
                     overrideLiquidSettingsCodec(),
                     Codec.BOOL.optionalFieldOf("process_foam", true).forGetter(element -> element.processFoam),
-                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(element -> element.foundation))
+                    Foundation.CODEC.optionalFieldOf("foundation").forGetter(element -> element.foundation),
+                    TerrainBox.CODEC.optionalFieldOf("terrain_box", TerrainBox.template()).forGetter(element -> element.terrainBox))
             .apply(instance, ExtendedSinglePoolElement::new));
 
     private final boolean processFoam;
     private final Optional<Foundation> foundation;
+    private final TerrainBox terrainBox;
 
     // Doesn't read a registered list's contents, since the registry may not be bound yet in datagen.
     private static boolean hasNone(Holder<StructureProcessorList> processors) {
@@ -58,10 +61,12 @@ public class ExtendedSinglePoolElement extends SinglePoolElement implements Stru
             StructureTemplatePool.Projection projection,
             Optional<LiquidSettings> overrideLiquidSettings,
             boolean processFoam,
-            Optional<Foundation> foundation) {
+            Optional<Foundation> foundation,
+            TerrainBox terrainBox) {
         super(template, processors, projection, overrideLiquidSettings);
         this.processFoam = processFoam;
         this.foundation = foundation;
+        this.terrainBox = terrainBox;
     }
 
     @Override
@@ -101,6 +106,10 @@ public class ExtendedSinglePoolElement extends SinglePoolElement implements Stru
         return processFoam;
     }
 
+    public TerrainBox terrainBox() {
+        return terrainBox;
+    }
+
     /// Empty when it has none and takes the structure's instead
     public Optional<Holder<StructureProcessorList>> ownProcessors() {
         return hasNone(processors) ? Optional.empty() : Optional.of(processors);
@@ -114,7 +123,7 @@ public class ExtendedSinglePoolElement extends SinglePoolElement implements Stru
         if (withProcessors == this.processors && withFoundation.equals(this.foundation)) {
             return this;
         }
-        return new ExtendedSinglePoolElement(template, withProcessors, getProjection(), overrideLiquidSettings, processFoam, withFoundation);
+        return new ExtendedSinglePoolElement(template, withProcessors, getProjection(), overrideLiquidSettings, processFoam, withFoundation, terrainBox);
     }
 
     @Override
