@@ -3,6 +3,7 @@ package com.ametrin.structures.registry;
 import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
+import com.ametrin.structures.structure.jigsaw.RepeatedPoolElement;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -15,4 +16,6 @@ public final class ASPoolElements {
             SINGLE = REGISTER.register("single_pool_element", () -> () -> ExtendedSinglePoolElement.CODEC);
     public static final DeferredHolder<StructurePoolElementType<?>, StructurePoolElementType<ConditionalPoolElement>>
             CONDITIONAL = REGISTER.register("conditional", () -> () -> ConditionalPoolElement.CODEC);
+    public static final DeferredHolder<StructurePoolElementType<?>, StructurePoolElementType<RepeatedPoolElement>>
+            REPEATED = REGISTER.register("repeated", () -> () -> RepeatedPoolElement.CODEC);
 }

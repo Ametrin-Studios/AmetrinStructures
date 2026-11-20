@@ -11,6 +11,7 @@ import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
+import com.ametrin.structures.structure.jigsaw.RepeatedPoolElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -33,6 +34,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BrushableBlock;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.StructureBlock;
 import net.minecraft.world.level.block.state.properties.StructureMode;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
@@ -175,7 +177,7 @@ final class StructureLoot {
         for (var piece : pieces.pieces()) {
             switch (piece) {
                 case TemplateStructurePiece template -> collector.collect(template.template(), template.placeSettings(), template.templatePosition());
-                case PoolElementStructurePiece pooled -> collector.collect(pooled.getElement(), pooled);
+                case PoolElementStructurePiece pooled -> collector.collect(pooled.getElement(), pooled.getPosition(), pooled.getRotation());
                 default -> collector.codePieces++;
             }
         }
@@ -223,14 +225,15 @@ final class StructureLoot {
         }
 
         // A list element places each of its elements at the same spot.
-        void collect(StructurePoolElement element, PoolElementStructurePiece piece) {
+        void collect(StructurePoolElement element, BlockPos position, Rotation rotation) {
             switch (element) {
                 case SinglePoolElement single -> collect(
                         level.getStructureTemplateManager().getOrCreate(single.getTemplateLocation()),
-                        new StructurePlaceSettings().setRotation(piece.getRotation()),
-                        piece.getPosition());
-                case ListPoolElement list -> list.getElements().forEach(child -> collect(child, piece));
-                case ConditionalPoolElement counted -> collect(counted.element(), piece);
+                        new StructurePlaceSettings().setRotation(rotation),
+                        position);
+                case ListPoolElement list -> list.getElements().forEach(child -> collect(child, position, rotation));
+                case ConditionalPoolElement counted -> collect(counted.element(), position, rotation);
+                case RepeatedPoolElement repeated -> repeated.copyPositions(level.getStructureTemplateManager(), position, rotation).forEach(copy -> collect(repeated.element(), copy, rotation));
                 case EmptyPoolElement _, FeaturePoolElement _ -> {}
                 default -> codePieces++;
             }
