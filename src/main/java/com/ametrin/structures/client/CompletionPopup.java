@@ -134,6 +134,9 @@ final class CompletionPopup {
                 break;
             }
         }
+        if (shownFor != null && shownFor != focused) {
+            shownFor.setSuggestion(null);
+        }
         if (focused == null) {
             shownFor = null;
             matches = List.of();
