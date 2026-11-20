@@ -4,6 +4,7 @@ import com.ametrin.structures.structure.ExtendedStructure;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.TerrainBox;
 import com.ametrin.structures.structure.filter.PlacementFilters;
 import com.ametrin.structures.structure.modular.HeightAnchor;
 import com.ametrin.structures.structure.modular.PieceSource;
@@ -393,7 +394,7 @@ class JigsawSourceTest {
     @Test
     void theStructuresSettingsReachTheStartPieceAndAreSavedWithIt(MinecraftServer server) {
         var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.template());
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
         var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(element, 1))));
         var structure = new ModularStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
@@ -415,7 +416,7 @@ class JigsawSourceTest {
     void anElementsOwnSettingsReplaceTheStructuresUnlessItInlinesThem(MinecraftServer server) {
         var own = Foundation.of(Blocks.STONE.defaultBlockState(), 4);
         var withFoundation = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own));
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.of(own), TerrainBox.template());
         assertSame(withFoundation, StructureElements.withStructureSettings(withFoundation, Optional.empty(), Optional.of(Foundation.repeating())));
         var vanilla = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
         assertSame(vanilla, StructureElements.withStructureSettings(vanilla, Optional.empty(), Optional.of(Foundation.repeating())), "vanilla elements get no foundation");
@@ -432,7 +433,7 @@ class JigsawSourceTest {
         // An element type of its own decides what it takes.
         var replacement = StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID);
         var deciding = new ExtendedSinglePoolElement(Either.left(TEMPLE), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty()) {
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.template()) {
             @Override
             public StructurePoolElement withStructureSettings(Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
                 return replacement;

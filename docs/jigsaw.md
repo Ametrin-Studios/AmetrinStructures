@@ -68,7 +68,7 @@ registries.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
 - `empty(weight)` adds an empty element, and `add(...)` any other element, like a feature or list element.
 - `defaultElementSettings(...)` sets what every element starts with, on a pool for its elements or on `JigsawPools` for the pools declared after it.
 
-An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)` and `noFoamProcessing()`.
+An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. Jigsaw layouts don't use the terrain box yet, only a modular structure's templates do, see [overhangs](structures.md#overhangs).
 
 The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like modular structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
 
@@ -178,7 +178,7 @@ In a pool, a limited element is an `ametrin_structures:conditional` that wraps t
 }
 ```
 
-`ametrin_structures:single_pool_element` has vanilla's fields, with optional `processors`, plus `foundation` and `process_foam`, which defaults to `true`. `ametrin_structures:conditional` takes `min_count`, `soft_min_count`, `max_count`, `min_depth`, `max_depth` and `filters`, all optional.
+`ametrin_structures:single_pool_element` has vanilla's fields, with optional `processors`, plus `foundation`, `terrain_box` and `process_foam`, which defaults to `true`. `ametrin_structures:conditional` takes `min_count`, `soft_min_count`, `max_count`, `min_depth`, `max_depth` and `filters`, all optional.
 
 A repeating element is an `ametrin_structures:repeated` that wraps the element, inside the conditional element if it's limited too:
 

@@ -7,7 +7,6 @@ import com.ametrin.structures.registry.ASSpawnerProfiles;
 import com.ametrin.structures.spawner.SpawnerAccess;
 import com.ametrin.structures.structure.modular.ModularStructurePiece;
 import com.ametrin.structures.structure.modular.TemplateEntry;
-import com.ametrin.structures.structure.modular.TerrainBox;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.FrontAndTop;
@@ -166,7 +165,7 @@ final class FixtureLayout {
             helper.setBlock(entry.pos(), Blocks.AIR);
         }
 
-        var piece = new ModularStructurePiece(templates, TemplateEntry.of(TEMPLATE).element(), origin, Rotation.NONE, LiquidSettings.IGNORE_WATERLOGGING, TerrainAdjustment.NONE, TerrainBox.template(), 0);
+        var piece = ModularStructurePiece.create(templates, TemplateEntry.of(TEMPLATE), origin, Rotation.NONE, TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
         piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), level.getRandom(), BoundingBox.infinite(), ChunkPos.containing(origin), origin);
     }
 }

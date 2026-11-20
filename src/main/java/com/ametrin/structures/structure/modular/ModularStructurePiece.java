@@ -2,6 +2,8 @@ package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.registry.ASPieceTypes;
 import com.ametrin.structures.structure.Foundation;
+import com.ametrin.structures.structure.TerrainFit;
+import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
 import com.ametrin.structures.structure.jigsaw.StructureElements;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -12,8 +14,8 @@ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
-import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
@@ -23,36 +25,33 @@ import net.neoforged.neoforge.common.world.PieceBeardifierModifier;
 import java.util.Optional;
 import java.util.function.Function;
 
-/// A pool element placed by a [TemplateEntry]. It fits the terrain to its [TerrainBox] with the structure's terrain adaptation.
+/// A pool element placed by a [TemplateEntry] or a jigsaw layout. A rigid element fits the terrain to its [TerrainBox] with the structure's terrain adaptation.
 /// Structures of your own can place template entries with it through [#create].
 public class ModularStructurePiece extends PoolElementStructurePiece implements PieceBeardifierModifier {
-    private static final String TERRAIN_ADAPTATION_KEY = "terrain_adaptation";
-    private static final String TERRAIN_BOX_KEY = "terrain_box";
+    private final TerrainFit terrain;
 
-    private final TerrainAdjustment terrainAdaptation;
-    // In the element's coordinates; empty for the whole piece.
-    private final Optional<BoundingBox> terrainBox;
-
-    /// @param groundLevelDelta how far above the bottom of the element the ground lies, the negated Y of the entry's offset
-    public ModularStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, Rotation rotation, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation, TerrainBox terrainBox, int groundLevelDelta) {
-        super(templates, element, position, terrainBox.groundLevelDelta(groundLevelDelta), rotation, element.getBoundingBox(templates, position, rotation), liquidSettings);
-        this.terrainAdaptation = terrainAdaptation;
-        this.terrainBox = element instanceof SinglePoolElement single
-                ? terrainBox.resolve(single.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
-                : terrainBox instanceof TerrainBox.Local(var local) ? Optional.of(local) : Optional.empty();
+    /// @param groundLevelDelta how far above the bottom of `box` the ground lies
+    public ModularStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation) {
+        var terrain = element instanceof ExtendedSinglePoolElement extended
+                ? extended.terrainBox().fit(terrainAdaptation, extended.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
+                : new TerrainFit(terrainAdaptation, Optional.empty(), groundLevelDelta);
+        // TODO NeoForge backport: keep the piece's own delta and return the terrain's from getBeardifierGroundLevelDelta, like on 26.3, so jigsaw layouts can create these pieces.
+        super(templates, element, position, terrain.groundLevelDelta(), rotation, box, liquidSettings);
+        this.terrain = terrain;
     }
 
     /// A piece for `entry` at its offset from `origin`, turned with `rotation`, like modular structures create them.
     /// Elements without processors or a foundation of their own take `processors` and `foundation`, see [com.ametrin.structures.structure.jigsaw.StructureSettingsElement].
     public static ModularStructurePiece create(StructureTemplateManager templates, TemplateEntry entry, BlockPos origin, Rotation rotation, TerrainAdjustment terrainAdaptation, LiquidSettings liquidSettings, Optional<Holder<StructureProcessorList>> processors, Optional<Foundation> foundation) {
         var element = StructureElements.withStructureSettings(entry.element(), processors, foundation);
-        return new ModularStructurePiece(templates, element, origin.offset(entry.offset().rotate(rotation)), rotation, liquidSettings, terrainAdaptation, entry.terrainBox(), -entry.offset().getY());
+        var position = origin.offset(entry.offset().rotate(rotation));
+        return new ModularStructurePiece(templates, element, position, -entry.offset().getY(), rotation, element.getBoundingBox(templates, position, rotation), liquidSettings, terrainAdaptation);
     }
 
     public ModularStructurePiece(StructurePieceSerializationContext context, CompoundTag tag) {
         super(context, tag);
-        this.terrainAdaptation = tag.read(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE);
-        this.terrainBox = tag.read(TERRAIN_BOX_KEY, BoundingBox.CODEC);
+        // Older pieces saved the terrain's delta as their ground level delta.
+        this.terrain = TerrainFit.read(tag, getGroundLevelDelta());
     }
 
     @Override
@@ -62,18 +61,17 @@ public class ModularStructurePiece extends PoolElementStructurePiece implements 
 
     @Override
     public BoundingBox getBeardifierBox() {
-        return terrainBox.map(local -> TerrainBox.place(local, new StructurePlaceSettings().setRotation(getRotation()), getPosition())).orElse(boundingBox);
+        return terrain.place(new StructurePlaceSettings().setRotation(getRotation()), getPosition(), boundingBox);
     }
 
     @Override
     public TerrainAdjustment getTerrainAdjustment() {
-        return terrainAdaptation;
+        return getElement().getProjection() == StructureTemplatePool.Projection.RIGID ? terrain.adaptation() : TerrainAdjustment.NONE;
     }
 
     @Override
     protected void addAdditionalSaveData(StructurePieceSerializationContext context, CompoundTag tag) {
         super.addAdditionalSaveData(context, tag);
-        tag.store(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC, terrainAdaptation);
-        terrainBox.ifPresent(box -> tag.store(TERRAIN_BOX_KEY, BoundingBox.CODEC, box));
+        terrain.write(tag);
     }
 }

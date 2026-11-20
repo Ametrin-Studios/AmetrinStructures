@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.modular;
 
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
+import com.ametrin.structures.structure.TerrainBox;
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
 import com.mojang.datafixers.util.Either;
 import com.google.gson.JsonParser;
@@ -113,11 +114,12 @@ class ModularStructurePieceTest {
     void anEntryIsATemplateOrAnElement(MinecraftServer server) {
         var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
         var templateJson = JsonParser.parseString("""
-                {"template": "minecraft:igloo/top", "offset": [0, -2, 0]}
+                {"template": "minecraft:igloo/top", "offset": [0, -2, 0], "terrain_box": "footprint"}
                 """);
-        var template = TemplateEntry.CODEC.parse(ops, templateJson).getOrThrow();
-        assertEquals(TEMPLATE, assertInstanceOf(ExtendedSinglePoolElement.class, template.element()).getTemplateLocation());
-        assertEquals(templateJson, TemplateEntry.CODEC.encodeStart(ops, template).getOrThrow());
+        var template = assertInstanceOf(ExtendedSinglePoolElement.class, TemplateEntry.CODEC.parse(ops, templateJson).getOrThrow().element());
+        assertEquals(TEMPLATE, template.getTemplateLocation());
+        assertEquals(TerrainBox.footprint(), template.terrainBox());
+        assertEquals(templateJson, TemplateEntry.CODEC.encodeStart(ops, new TemplateEntry(template, new BlockPos(0, -2, 0))).getOrThrow());
 
         var elementJson = JsonParser.parseString("""
                 {"element": {"element_type": "minecraft:empty_pool_element"}}
@@ -151,8 +153,8 @@ class ModularStructurePieceTest {
     private static ModularStructurePiece createPiece(
             MinecraftServer server, BlockPos offset, Rotation rotation, TerrainBox terrainBox,
             Optional<Holder<StructureProcessorList>> processors, Optional<Holder<StructureProcessorList>> structureProcessors) {
-        var element = new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors.orElse(ExtendedSinglePoolElement.NO_PROCESSORS), StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty());
-        return ModularStructurePiece.create(server.getStructureManager(), new TemplateEntry(element, offset, terrainBox), ORIGIN, rotation,
+        var element = new ExtendedSinglePoolElement(Either.left(TEMPLATE), processors.orElse(ExtendedSinglePoolElement.NO_PROCESSORS), StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), terrainBox);
+        return ModularStructurePiece.create(server.getStructureManager(), new TemplateEntry(element, offset), ORIGIN, rotation,
                 TerrainAdjustment.BEARD_THIN, LiquidSettings.IGNORE_WATERLOGGING, structureProcessors, Optional.empty());
     }
 

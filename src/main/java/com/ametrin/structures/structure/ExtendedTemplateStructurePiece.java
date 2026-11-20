@@ -2,7 +2,6 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.fixture.FixtureGeneration;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
-import com.ametrin.structures.structure.modular.TerrainBox;
 import com.mojang.serialization.DynamicOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -36,9 +35,8 @@ import java.util.function.Function;
 public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePiece implements PieceBeardifierModifier {
     private static final String LIQUID_SETTINGS_KEY = "liquid_settings";
     private static final String FOUNDATION_KEY = "foundation";
+    // Older pieces saved the terrain's delta under it.
     private static final String GROUND_LEVEL_DELTA_KEY = "ground_level_delta";
-    private static final String TERRAIN_ADAPTATION_KEY = "terrain_adaptation";
-    private static final String TERRAIN_BOX_KEY = "terrain_box";
     private static final String STRUCTURE_PROCESSORS_KEY = "structure_processors";
 
     // From the settings the piece was created with.
@@ -46,10 +44,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
     // Empty unless the piece runs them.
     private Optional<Holder<StructureProcessorList>> structureProcessors = Optional.empty();
     private Optional<Foundation> foundation = Optional.empty();
-    private final TerrainAdjustment terrainAdaptation;
-    // In template coordinates; empty for the whole template.
-    private final Optional<BoundingBox> terrainBox;
-    private final int groundLevelDelta;
+    private final TerrainFit terrain;
 
     /// @param groundLevelDelta how far above the bottom of the template the ground lies
     protected ExtendedTemplateStructurePiece(
@@ -65,9 +60,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         var ownProcessors = List.copyOf(settings.getProcessors());
         super(type, genDepth, manager, template, template.toString(), settings, position);
         this.ownProcessors = ownProcessors;
-        this.terrainAdaptation = terrainAdaptation;
-        this.terrainBox = terrainBox.resolve(this.template, groundLevelDelta);
-        this.groundLevelDelta = terrainBox.groundLevelDelta(groundLevelDelta);
+        this.terrain = terrainBox.fit(terrainAdaptation, this.template, groundLevelDelta);
         applySettings();
     }
 
@@ -80,9 +73,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         this.ownProcessors = List.copyOf(placeSettings.getProcessors());
         this.structureProcessors = tag.read(STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context));
         this.foundation = tag.read(FOUNDATION_KEY, Foundation.CODEC);
-        this.terrainAdaptation = tag.read(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE);
-        this.terrainBox = tag.read(TERRAIN_BOX_KEY, BoundingBox.CODEC);
-        this.groundLevelDelta = tag.getIntOr(GROUND_LEVEL_DELTA_KEY, 0);
+        this.terrain = TerrainFit.read(tag, tag.getIntOr(GROUND_LEVEL_DELTA_KEY, 0));
         applySettings();
     }
 
@@ -140,17 +131,17 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
 
     @Override
     public BoundingBox getBeardifierBox() {
-        return terrainBox.map(local -> TerrainBox.place(local, placeSettings, templatePosition)).orElse(boundingBox);
+        return terrain.place(placeSettings, templatePosition, boundingBox);
     }
 
     @Override
     public TerrainAdjustment getTerrainAdjustment() {
-        return terrainAdaptation;
+        return terrain.adaptation();
     }
 
     @Override
     public int getGroundLevelDelta() {
-        return groundLevelDelta;
+        return terrain.groundLevelDelta();
     }
 
     @Override
@@ -172,9 +163,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         super.addAdditionalSaveData(context, tag);
         tag.store(LIQUID_SETTINGS_KEY, LiquidSettings.CODEC, liquidSettings());
         foundation.ifPresent(value -> tag.store(FOUNDATION_KEY, Foundation.CODEC, value));
-        tag.store(TERRAIN_ADAPTATION_KEY, TerrainAdjustment.CODEC, terrainAdaptation);
-        terrainBox.ifPresent(box -> tag.store(TERRAIN_BOX_KEY, BoundingBox.CODEC, box));
-        tag.putInt(GROUND_LEVEL_DELTA_KEY, groundLevelDelta);
+        terrain.write(tag);
         structureProcessors.ifPresent(list -> tag.store(STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context), list));
     }
 
