@@ -36,6 +36,11 @@ public sealed interface TerrainBox {
         return Automatic.FOOTPRINT;
     }
 
+    /// None, the terrain stays as it is.
+    static TerrainBox none() {
+        return Automatic.NONE;
+    }
+
     /// In template coordinates, before rotation.
     static TerrainBox of(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
         return new Local(new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ));
@@ -47,6 +52,7 @@ public sealed interface TerrainBox {
     @ApiStatus.Internal
     default TerrainFit fit(TerrainAdjustment adaptation, StructureTemplate template, int groundLevelDelta) {
         return switch (this) {
+            case Automatic.NONE -> new TerrainFit(TerrainAdjustment.NONE, Optional.empty(), groundLevelDelta);
             case Automatic automatic -> new TerrainFit(adaptation, automatic.box(template, groundLevelDelta), groundLevelDelta);
             case Local(var box) -> new TerrainFit(adaptation, Optional.of(box), 0);
         };
@@ -54,7 +60,8 @@ public sealed interface TerrainBox {
 
     enum Automatic implements TerrainBox, StringRepresentable {
         TEMPLATE("template"),
-        FOOTPRINT("footprint");
+        FOOTPRINT("footprint"),
+        NONE("none");
 
         public static final Codec<Automatic> CODEC = StringRepresentable.fromEnum(Automatic::values);
 

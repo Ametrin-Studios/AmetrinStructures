@@ -21,6 +21,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSetting
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
@@ -57,6 +58,20 @@ class ModularStructurePieceTest {
         assertEquals(new BoundingBox(1, 61, 1, 2, 62, 2), piece.getBeardifierBox());
         assertEquals(0, piece.getBeardifierGroundLevelDelta());
         assertEquals(4, piece.getGroundLevelDelta());
+    }
+
+    @Test
+    void withoutATerrainBoxThePieceLeavesTheTerrainAlone(MinecraftServer server) {
+        var junction = new JigsawJunction(0, 64, 0, 0, StructureTemplatePool.Projection.RIGID);
+        var boxed = createPiece(server, BlockPos.ZERO);
+        boxed.addJunction(junction);
+        assertEquals(List.of(junction), boxed.getBeardifierJunctions());
+        var piece = createPiece(server, BlockPos.ZERO, Rotation.NONE, TerrainBox.none());
+        piece.addJunction(junction);
+        assertEquals(TerrainAdjustment.NONE, piece.getTerrainAdjustment());
+        assertEquals(List.of(), piece.getBeardifierJunctions());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureTemplateManager());
+        assertEquals(TerrainAdjustment.NONE, new ModularStructurePiece(context, piece.createTag(context)).getTerrainAdjustment());
     }
 
     @Test
@@ -130,6 +145,7 @@ class ModularStructurePieceTest {
 
         // A terrain box is a name or a box.
         assertEquals(TerrainBox.footprint(), parse("\"footprint\""));
+        assertEquals(TerrainBox.none(), parse("\"none\""));
         assertEquals(TerrainBox.of(0, 1, 2, 3, 4, 5), parse("[0, 1, 2, 3, 4, 5]"));
     }
 

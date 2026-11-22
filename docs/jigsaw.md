@@ -71,7 +71,7 @@ modBus.addListener(GatherDataRegistryEntriesEvent.class, event -> {
 - `empty(weight)` adds an empty element, and `add(...)` any other element, like a feature or list element.
 - `defaultElementSettings(...)` sets what every element starts with, on a pool for its elements or on `JigsawPools` for the pools declared after it.
 
-An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. The terrain box only applies to rigid elements in modular structures, see [overhangs](structures.md#overhangs).
+An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. The terrain box only applies to rigid elements in modular structures, see [overhangs](structures.md#overhangs). To disable the terrainBox on certain elements, enable it on the structure and set overwrite the piece to `TerrainBox.none()`.
 
 The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like modular structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
 

@@ -1,3 +1,6 @@
+## 0.4.1-beta
+- TerrainBox.none() to disable terrain adjustment for specific pieces
+
 ## 0.4.0-beta
 - simple structures are now modular structures: `ModularStructure`, `modular(...)`, `registerModular(...)`, `ametrin_structures:modular` and the piece type `modular_element`.
 - `extended_jigsaw` structures are removed, modular structures grow jigsaw layouts with the `ametrin_structures:jigsaw` piece source instead
