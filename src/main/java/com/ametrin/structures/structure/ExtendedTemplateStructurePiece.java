@@ -140,8 +140,14 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
     }
 
     @Override
-    public int getGroundLevelDelta() {
+    public int getBeardifierGroundLevelDelta() {
         return terrain.groundLevelDelta();
+    }
+
+    @SuppressWarnings("removal")
+    @Override
+    public int getGroundLevelDelta() {
+        return getBeardifierGroundLevelDelta();
     }
 
     @Override

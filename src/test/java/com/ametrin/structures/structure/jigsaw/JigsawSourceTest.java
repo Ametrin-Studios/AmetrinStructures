@@ -10,6 +10,7 @@ import com.ametrin.structures.structure.modular.HeightAnchor;
 import com.ametrin.structures.structure.modular.PieceSource;
 import com.ametrin.structures.structure.modular.PieceSources;
 import com.ametrin.structures.structure.modular.ModularStructure;
+import com.ametrin.structures.structure.modular.ModularStructurePiece;
 import com.ametrin.structures.structure.modular.StartHeight;
 import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.google.gson.JsonParser;
@@ -41,6 +42,7 @@ import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -392,23 +394,30 @@ class JigsawSourceTest {
     }
 
     @Test
-    void theStructuresSettingsReachTheStartPieceAndAreSavedWithIt(MinecraftServer server) {
+    void theSettingsReachTheStartPieceAndAreSavedWithIt(MinecraftServer server) {
         var element = new ExtendedSinglePoolElement(Either.left(Identifier.withDefaultNamespace("igloo/top")), Holder.direct(new StructureProcessorList(List.of())),
-                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.template());
+                StructureTemplatePool.Projection.RIGID, Optional.empty(), true, Optional.empty(), TerrainBox.of(1, 0, 1, 2, 1, 2));
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
         var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(pool("empty")), List.of(Pair.of(element, 1))));
-        var structure = new ModularStructure(new Structure.StructureSettings(HolderSet.empty()), ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
+        var settings = new Structure.StructureSettings(HolderSet.empty(), Map.of(), GenerationStep.Decoration.SURFACE_STRUCTURES, TerrainAdjustment.BEARD_THIN);
+        var structure = new ModularStructure(settings, ExtendedStructureSettings.DEFAULT, new JigsawSource.Builder(start).size(0).build(),
                 StartHeight.at(HeightAnchor.absolute(64)), LiquidSettings.IGNORE_WATERLOGGING, Optional.of(Foundation.repeating()), Optional.empty());
         var generated = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server, 0)));
-        var placed = (PoolElementStructurePiece) generated.stub().getPiecesBuilder().build().pieces().getFirst();
+        var placed = assertInstanceOf(ModularStructurePiece.class, generated.stub().getPiecesBuilder().build().pieces().getFirst());
         assertEquals(Optional.of(Foundation.repeating()), assertInstanceOf(ExtendedSinglePoolElement.class, placed.getElement()).foundation());
+        assertEquals(TerrainAdjustment.BEARD_THIN, placed.getTerrainAdjustment());
+        var terrain = placed.getBeardifierBox();
+        assertEquals(List.of(2, 2, 2), List.of(terrain.getXSpan(), terrain.getYSpan(), terrain.getZSpan()));
+        assertEquals(placed.getPosition().getY(), terrain.minY());
+        assertEquals(0, placed.getBeardifierGroundLevelDelta());
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
+        assertEquals(terrain, new ModularStructurePiece(context, placed.createTag(context)).getBeardifierBox());
 
         // A vanilla element without processors gets the structure's and keeps them when saved.
         var mossify = mossify(server);
         var piece = startPiece(server, StructurePoolElement.single(TEMPLE.toString()).apply(StructureTemplatePool.Projection.RIGID), Optional.of(mossify));
         assertSame(mossify, assertInstanceOf(SinglePoolElement.class, piece.getElement()).processors);
-        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
-        var reloaded = new PoolElementStructurePiece(context, piece.createTag(context));
+        var reloaded = new ModularStructurePiece(context, piece.createTag(context));
         assertEquals(mossify.unwrapKey(), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
     }
 

@@ -27,17 +27,17 @@ import java.util.function.Function;
 
 /// A pool element placed by a [TemplateEntry] or a jigsaw layout. A rigid element fits the terrain to its [TerrainBox] with the structure's terrain adaptation.
 /// Structures of your own can place template entries with it through [#create].
+// For the deprecated PieceBeardifierModifier#getGroundLevelDelta the piece inherits.
+@SuppressWarnings("removal")
 public class ModularStructurePiece extends PoolElementStructurePiece implements PieceBeardifierModifier {
     private final TerrainFit terrain;
 
     /// @param groundLevelDelta how far above the bottom of `box` the ground lies
     public ModularStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation) {
-        var terrain = element instanceof ExtendedSinglePoolElement extended
+        super(templates, element, position, groundLevelDelta, rotation, box, liquidSettings);
+        this.terrain = element instanceof ExtendedSinglePoolElement extended
                 ? extended.terrainBox().fit(terrainAdaptation, extended.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
                 : new TerrainFit(terrainAdaptation, Optional.empty(), groundLevelDelta);
-        // TODO NeoForge backport: keep the piece's own delta and return the terrain's from getBeardifierGroundLevelDelta, like on 26.3, so jigsaw layouts can create these pieces.
-        super(templates, element, position, terrain.groundLevelDelta(), rotation, box, liquidSettings);
-        this.terrain = terrain;
     }
 
     /// A piece for `entry` at its offset from `origin`, turned with `rotation`, like modular structures create them.
@@ -67,6 +67,11 @@ public class ModularStructurePiece extends PoolElementStructurePiece implements 
     @Override
     public TerrainAdjustment getTerrainAdjustment() {
         return getElement().getProjection() == StructureTemplatePool.Projection.RIGID ? terrain.adaptation() : TerrainAdjustment.NONE;
+    }
+
+    @Override
+    public int getBeardifierGroundLevelDelta() {
+        return terrain.groundLevelDelta();
     }
 
     @Override

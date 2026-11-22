@@ -68,7 +68,7 @@ registries.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
 - `empty(weight)` adds an empty element, and `add(...)` any other element, like a feature or list element.
 - `defaultElementSettings(...)` sets what every element starts with, on a pool for its elements or on `JigsawPools` for the pools declared after it.
 
-An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. Jigsaw layouts don't use the terrain box yet, only a modular structure's templates do, see [overhangs](structures.md#overhangs).
+An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. The terrain box only applies to rigid elements in modular structures, see [overhangs](structures.md#overhangs).
 
 The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like modular structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
 
@@ -114,7 +114,7 @@ pools.pool("shaft", pool -> pool
 
 The row attaches by the jigsaws of its first copy. Jigsaws that face a neighboring copy are left out, and the rest stay open on every copy. Above, the segment's top jigsaw attaches the shaft, and its bottom jigsaw, which points to the rooms, is only open on the last copy. A side jigsaw would be open on every copy.
 
-The foundation and processors apply to each copy. Vanilla's jigsaw structures and the templates of modular structures place `minCopies` copies.
+The foundation and processors apply to each copy. The terrain box doesn't, a row fits the terrain to its whole box. Vanilla's jigsaw structures and the templates of modular structures place `minCopies` copies.
 
 ## JSON
 

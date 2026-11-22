@@ -1,6 +1,7 @@
 package com.ametrin.structures.structure.jigsaw;
 
 import com.ametrin.structures.structure.filter.PlacementFilter;
+import com.ametrin.structures.structure.modular.ModularStructurePiece;
 import com.ametrin.structures.structure.modular.PieceSource;
 import com.ametrin.structures.util.ASLog;
 import net.minecraft.core.BlockPos;
@@ -87,7 +88,7 @@ final class JigsawAssembler {
     static PoolElementStructurePiece createPiece(PieceSource.Context context, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box) {
         var inner = element instanceof ConditionalPoolElement counted ? counted.element() : element;
         var placed = StructureElements.withStructureSettings(inner, context.processors(), context.foundation());
-        return new PoolElementStructurePiece(context.generation().structureTemplateManager(), placed, position, groundLevelDelta, rotation, box, context.liquidSettings());
+        return new ModularStructurePiece(context.generation().structureTemplateManager(), placed, position, groundLevelDelta, rotation, box, context.liquidSettings(), context.terrainAdaptation());
     }
 
     /// The space pieces can take: the box `maxDistance` around the center, within the world's height and `padding`, without the start piece.

@@ -46,17 +46,18 @@ class ModularStructurePieceTest {
     @Test
     void theGroundStaysAtTheStartHeightWhetherTheTemplateIsSunkOrRaised(MinecraftServer server) {
         var sunk = createPiece(server, new BlockPos(0, -4, 0));
-        assertEquals(4, sunk.getGroundLevelDelta());
-        assertEquals(ORIGIN.getY(), sunk.getBeardifierBox().minY() + sunk.getGroundLevelDelta());
+        assertEquals(4, sunk.getBeardifierGroundLevelDelta());
+        assertEquals(ORIGIN.getY(), sunk.getBeardifierBox().minY() + sunk.getBeardifierGroundLevelDelta());
         var raised = createPiece(server, new BlockPos(0, 3, 0));
-        assertEquals(ORIGIN.getY(), raised.getBeardifierBox().minY() + raised.getGroundLevelDelta());
+        assertEquals(ORIGIN.getY(), raised.getBeardifierBox().minY() + raised.getBeardifierGroundLevelDelta());
     }
 
     @Test
     void aLocalTerrainBoxIsPlacedLikeTheTemplate(MinecraftServer server) {
         var piece = createPiece(server, new BlockPos(0, -4, 0), Rotation.NONE, TerrainBox.of(1, 1, 1, 2, 2, 2));
         assertEquals(new BoundingBox(1, 61, 1, 2, 62, 2), piece.getBeardifierBox());
-        assertEquals(0, piece.getGroundLevelDelta());
+        assertEquals(0, piece.getBeardifierGroundLevelDelta());
+        assertEquals(4, piece.getGroundLevelDelta());
     }
 
     @Test
@@ -77,7 +78,7 @@ class ModularStructurePieceTest {
         assertTrue(bounds.minZ() <= footprint.minZ() && footprint.maxZ() <= bounds.maxZ());
         assertEquals(bounds.minY(), footprint.minY());
         assertEquals(bounds.maxY(), footprint.maxY());
-        assertEquals(ORIGIN.getY(), footprint.minY() + piece.getGroundLevelDelta());
+        assertEquals(ORIGIN.getY(), footprint.minY() + piece.getBeardifierGroundLevelDelta());
     }
 
     @Test
@@ -85,12 +86,12 @@ class ModularStructurePieceTest {
         var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(), server.getStructureManager());
         var sunk = createPiece(server, new BlockPos(0, -4, 0));
         var reloadedSunk = new ModularStructurePiece(context, sunk.createTag(context));
-        assertEquals(4, reloadedSunk.getGroundLevelDelta());
+        assertEquals(4, reloadedSunk.getBeardifierGroundLevelDelta());
         assertEquals(TerrainAdjustment.BEARD_THIN, reloadedSunk.getTerrainAdjustment());
         var boxed = createPiece(server, new BlockPos(0, -4, 0), Rotation.CLOCKWISE_180, TerrainBox.of(1, 2, 1, 2, 3, 2));
         var reloadedBoxed = new ModularStructurePiece(context, boxed.createTag(context));
         assertEquals(boxed.getBeardifierBox(), reloadedBoxed.getBeardifierBox());
-        assertEquals(boxed.getGroundLevelDelta(), reloadedBoxed.getGroundLevelDelta());
+        assertEquals(boxed.getBeardifierGroundLevelDelta(), reloadedBoxed.getBeardifierGroundLevelDelta());
 
         // By id, not inline.
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
