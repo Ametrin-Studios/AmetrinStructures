@@ -14,6 +14,7 @@ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
+import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProc
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.neoforged.neoforge.common.world.PieceBeardifierModifier;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -72,6 +74,12 @@ public class ModularStructurePiece extends PoolElementStructurePiece implements 
     @Override
     public int getBeardifierGroundLevelDelta() {
         return terrain.groundLevelDelta();
+    }
+
+    // Terrain-matching pieces keep theirs, so paths blend into the terrain.
+    @Override
+    public List<JigsawJunction> getBeardifierJunctions() {
+        return terrain.adaptation() == TerrainAdjustment.NONE ? List.of() : getJunctions();
     }
 
     @Override
