@@ -1,5 +1,6 @@
 ## 0.4.1-beta
 - TerrainBox.none() to disable terrain adjustment for specific pieces
+- the start piece of a jigsaw layout now stands on the start height instead of sinking one block. Set y offset to -1 on the jigsaw to keep the old behavior.
 
 ## 0.4.0-beta
 - simple structures are now modular structures: `ModularStructure`, `modular(...)`, `registerModular(...)`, `ametrin_structures:modular` and the piece type `modular_element`.
