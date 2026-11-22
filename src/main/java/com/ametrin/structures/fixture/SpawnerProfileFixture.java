@@ -26,7 +26,7 @@ public record SpawnerProfileFixture(ResourceKey<SpawnerProfile> profile, boolean
 
     @Override
     public void apply(FixtureContext context) {
-        var attachment = new SpawnerProfileAttachment(profile.identifier());
+        var attachment = new SpawnerProfileAttachment(profile.location());
         Fixtures.placeSpawner(context, minecart, (holder, spawner) -> {
             holder.setData(ASAttachments.SPAWNER_PROFILE, attachment);
             // Apply it now too, since a freshly generated block entity isn't loaded again.

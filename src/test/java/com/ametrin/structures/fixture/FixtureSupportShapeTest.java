@@ -34,7 +34,7 @@ class FixtureSupportShapeTest {
 
     // The shape only reads the marker's block entity and state.
     private static BlockGetter level(BlockState state, FixtureBlockEntity marker) {
-        return (BlockGetter) Proxy.newProxyInstance(BlockGetter.class.getClassLoader(), new Class<?>[]{BlockGetter.class}, (_, method, _) -> switch (method.getName()) {
+        return (BlockGetter) Proxy.newProxyInstance(BlockGetter.class.getClassLoader(), new Class<?>[]{BlockGetter.class}, (proxy, method, args) -> switch (method.getName()) {
             case "getBlockEntity" -> marker;
             case "getBlockState" -> state;
             case "getFluidState" -> state.getFluidState();

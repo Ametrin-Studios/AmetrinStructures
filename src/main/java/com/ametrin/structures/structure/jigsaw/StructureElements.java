@@ -26,8 +26,8 @@ public final class StructureElements {
         }
         if (element.getClass() == ListPoolElement.class) {
             var list = (ListPoolElement) element;
-            var children = list.getElements().stream().map(child -> withStructureSettings(child, processors, foundation)).toList();
-            return children.equals(list.getElements()) ? list : new ListPoolElement(children, list.getProjection());
+            var children = list.elements.stream().map(child -> withStructureSettings(child, processors, foundation)).toList();
+            return children.equals(list.elements) ? list : new ListPoolElement(children, list.getProjection());
         }
         if (!(element instanceof SinglePoolElement single)) {
             return element;

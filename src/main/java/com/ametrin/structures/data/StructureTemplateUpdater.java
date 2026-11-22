@@ -3,6 +3,7 @@ package com.ametrin.structures.data;
 import com.ametrin.structures.util.ASLog;
 import com.google.common.hash.Hashing;
 import net.minecraft.SharedConstants;
+import net.minecraft.Util;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
@@ -11,7 +12,6 @@ import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.util.Util;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
@@ -57,7 +57,7 @@ public final class StructureTemplateUpdater implements DataProvider {
             ASLog.warn("{} has no source folders; give the data run an --input folder", getName());
             return CompletableFuture.completedFuture(null);
         }
-        var executor = Util.backgroundExecutor().forName("StructureTemplateUpdater");
+        var executor = Util.backgroundExecutor();
         return CompletableFuture.supplyAsync(this::templates, executor)
                 .thenCompose(templates -> CompletableFuture.allOf(templates.stream()
                         .map(template -> CompletableFuture.runAsync(() -> update(template, output), executor))
@@ -92,7 +92,7 @@ public final class StructureTemplateUpdater implements DataProvider {
         try {
             var tag = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
             int version = NbtUtils.getDataVersion(tag, UNVERSIONED);
-            if (version >= SharedConstants.getCurrentVersion().dataVersion().version()) {
+            if (version >= SharedConstants.getCurrentVersion().getDataVersion().getVersion()) {
                 return;
             }
             var bytes = new ByteArrayOutputStream();
@@ -108,7 +108,7 @@ public final class StructureTemplateUpdater implements DataProvider {
     // Load and save the template like vanilla's StructureUpdater. That rebuilds the palette and stamps the current version.
     private static CompoundTag update(CompoundTag tag, int version) {
         var template = new StructureTemplate();
-        template.load(BuiltInRegistries.BLOCK, DataFixTypes.STRUCTURE.updateToCurrentVersion(DataFixers.getDataFixer(), tag, version));
+        template.load(BuiltInRegistries.BLOCK.asLookup(), DataFixTypes.STRUCTURE.updateToCurrentVersion(DataFixers.getDataFixer(), tag, version));
         return template.save(new CompoundTag());
     }
 

@@ -1,13 +1,14 @@
 {
   "required": true,
   "package": "com.ametrin.structures.mixin",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChunkGeneratorStructureStateAccessor",
     "ChunkMapMixin",
     "LakeFeatureMixin",
     "MinecartSpawnerMixin",
-    "SpawnerBlockEntityMixin"
+    "SpawnerBlockEntityMixin",
+    "StructureTemplateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

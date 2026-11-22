@@ -9,7 +9,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
@@ -53,7 +53,7 @@ class RetainExistingProcessorTest {
 
     // The processor only reads the block at the position.
     private static LevelReader level(BlockState world) {
-        return (LevelReader) Proxy.newProxyInstance(LevelReader.class.getClassLoader(), new Class<?>[]{LevelReader.class}, (_, method, _) -> {
+        return (LevelReader) Proxy.newProxyInstance(LevelReader.class.getClassLoader(), new Class<?>[]{LevelReader.class}, (proxy, method, args) -> {
             if (method.getName().equals("getBlockState")) {
                 return world;
             }

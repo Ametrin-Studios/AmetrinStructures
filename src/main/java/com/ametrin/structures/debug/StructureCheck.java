@@ -4,11 +4,13 @@ import com.ametrin.structures.fixture.*;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
+import com.ametrin.structures.structure.jigsaw.JigsawBlockInfo;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
 import com.ametrin.structures.structure.jigsaw.RepeatedPoolElement;
+import com.ametrin.structures.structure.modular.ModularStructure;
 import com.ametrin.structures.structure.modular.PieceSource;
 import com.ametrin.structures.structure.modular.PieceSources;
-import com.ametrin.structures.structure.modular.ModularStructure;
+import com.ametrin.structures.util.ASNbt;
 import com.ametrin.structures.util.RegistryConditionContext;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
@@ -21,9 +23,9 @@ import net.minecraft.data.worldgen.Pools;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.RandomizableContainer;
@@ -34,14 +36,13 @@ import net.minecraft.world.level.levelgen.structure.pools.ListPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.world.level.levelgen.structure.pools.alias.DirectPoolAlias;
+import net.minecraft.world.level.levelgen.structure.pools.alias.Direct;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasBinding;
-import net.minecraft.world.level.levelgen.structure.pools.alias.RandomGroupPoolAlias;
-import net.minecraft.world.level.levelgen.structure.pools.alias.RandomPoolAlias;
+import net.minecraft.world.level.levelgen.structure.pools.alias.Random;
+import net.minecraft.world.level.levelgen.structure.pools.alias.RandomGroup;
 import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
-import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
@@ -73,7 +74,7 @@ public final class StructureCheck {
         private Keys() {}
     }
 
-    public record Problem(Subject subject, Identifier id, Component message) {
+    public record Problem(Subject subject, ResourceLocation id, Component message) {
         public enum Subject {
             STRUCTURE,
             TEMPLATE,
@@ -97,7 +98,7 @@ public final class StructureCheck {
     private final RandomSource random = RandomSource.create(0);
 
     private final Set<Problem> problems = new LinkedHashSet<>();
-    private final Map<Identifier, Optional<StructureTemplate>> checkedTemplates = new HashMap<>();
+    private final Map<ResourceLocation, Optional<StructureTemplate>> checkedTemplates = new HashMap<>();
     private final Set<ResourceKey<FixturePreset>> checkedPresets = new HashSet<>();
 
     /// @param lootRegistries holds the loot tables, which `registries` doesn't
@@ -111,15 +112,15 @@ public final class StructureCheck {
     }
 
     static Report run(MinecraftServer server, Predicate<Holder.Reference<Structure>> structures) {
-        var check = new StructureCheck(server.getStructureManager(), server.registryAccess(), server.reloadableRegistries().lookup());
-        var checked = new LinkedHashMap<Identifier, Structure>();
+        var check = new StructureCheck(server.getStructureManager(), server.registryAccess(), server.reloadableRegistries().get());
+        var checked = new LinkedHashMap<ResourceLocation, Structure>();
         server.registryAccess().lookupOrThrow(Registries.STRUCTURE).listElements()
                 .filter(structures)
-                .forEach(structure -> checked.put(structure.key().identifier(), structure.value()));
+                .forEach(structure -> checked.put(structure.key().location(), structure.value()));
         return check.check(checked);
     }
 
-    Report check(Map<Identifier, Structure> structures) {
+    Report check(Map<ResourceLocation, Structure> structures) {
         int checked = 0;
         var skipped = new TreeMap<String, Integer>();
         for (var entry : structures.entrySet()) {
@@ -136,7 +137,7 @@ public final class StructureCheck {
     }
 
     /// @return false for a type it can't look into
-    private boolean check(Identifier id, Structure structure) {
+    private boolean check(ResourceLocation id, Structure structure) {
         switch (structure) {
             case ModularStructure modular -> {
                 modular.pieces().templates().forEach(entry -> templatesExist(id, entry.element()));
@@ -144,7 +145,7 @@ public final class StructureCheck {
             }
             // Vanilla's start jigsaw name has no getter.
             case JigsawStructure jigsaw ->
-                    checkJigsaw(id, jigsaw.getStartPool(), Optional.empty(), jigsaw.getPoolAliases(), false);
+                    checkJigsaw(id, jigsaw.startPool, Optional.empty(), jigsaw.poolAliases, false);
             default -> {
                 return false;
             }
@@ -157,13 +158,13 @@ public final class StructureCheck {
         return switch (source) {
             case JigsawSource jigsaw -> Stream.of(jigsaw);
             case PieceSources.CompoundSource compound -> compound.sources().stream().flatMap(StructureCheck::jigsawSources);
-            case PieceSources.WeightedSource weighted -> weighted.sources().unwrap().stream().flatMap(entry -> jigsawSources(entry.value()));
+            case PieceSources.WeightedSource weighted -> weighted.sources().unwrap().stream().flatMap(entry -> jigsawSources(entry.data()));
             default -> Stream.empty();
         };
     }
 
     /// Checks the template's contents the first time it's requested. A missing template is reported for `structure`.
-    private Optional<StructureTemplate> template(Identifier structure, Identifier id) {
+    private Optional<StructureTemplate> template(ResourceLocation structure, ResourceLocation id) {
         var template = checkedTemplates.get(id);
         if (template == null) {
             // Once something asked for a missing template, the manager holds an empty one in its place.
@@ -177,7 +178,7 @@ public final class StructureCheck {
         return template;
     }
 
-    private void checkContents(Identifier id, StructureTemplate template) {
+    private void checkContents(ResourceLocation id, StructureTemplate template) {
         for (var palette : template.palettes) {
             for (var block : palette.blocks()) {
                 var nbt = block.nbt();
@@ -186,20 +187,20 @@ public final class StructureCheck {
                 }
                 var at = Component.translatable(Keys.AT, block.pos().toShortString());
                 if (block.state().is(ASBlocks.FIXTURE.get())) {
-                    nbt.read(FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElseGet(List::of)
+                    ASNbt.read(nbt, FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElseGet(List::of)
                             .forEach(alternative -> checkFixture(Problem.Subject.TEMPLATE, id, at, alternative));
-                    nbt.read(FixtureBlockEntity.OFFSET_KEY, Vec3.CODEC)
+                    ASNbt.read(nbt, FixtureBlockEntity.OFFSET_KEY, Vec3.CODEC)
                             .filter(offset -> !FixtureBlockEntity.isValidOffset(offset))
                             .ifPresent(offset -> problem(Problem.Subject.TEMPLATE, id, Keys.FIXTURE_OFFSET, at, offset.toString(), FixtureBlockEntity.MAX_OFFSET));
                 }
-                nbt.read(RandomizableContainer.LOOT_TABLE_TAG, LootTable.KEY_CODEC)
+                ASNbt.read(nbt, RandomizableContainer.LOOT_TABLE_TAG, ResourceKey.codec(Registries.LOOT_TABLE))
                         .filter(table -> !exists(table))
-                        .ifPresent(table -> problem(Problem.Subject.TEMPLATE, id, Keys.MISSING_LOOT_TABLE, at, table.identifier().toString()));
+                        .ifPresent(table -> problem(Problem.Subject.TEMPLATE, id, Keys.MISSING_LOOT_TABLE, at, table.location().toString()));
             }
         }
     }
 
-    private void checkFixture(Problem.Subject subject, Identifier id, Component where, WeightedFixture alternative) {
+    private void checkFixture(Problem.Subject subject, ResourceLocation id, Component where, WeightedFixture alternative) {
         if (alternative.neverPasses(conditions)) {
             return;
         }
@@ -210,13 +211,13 @@ public final class StructureCheck {
         }
         fixture.references()
                 .filter(key -> !exists(key))
-                .forEach(key -> problem(subject, id, Keys.MISSING_REFERENCE, where, key.registry().toString(), key.identifier().toString()));
+                .forEach(key -> problem(subject, id, Keys.MISSING_REFERENCE, where, key.registry().toString(), key.location().toString()));
         if (fixture instanceof PresetFixture(var key) && checkedPresets.add(key)) {
             registries.lookupOrThrow(ASRegistries.FIXTURE_PRESET).get(key).ifPresent(preset -> {
                 var alternatives = preset.value().fixtures();
                 for (int i = 0; i < alternatives.size(); i++) {
                     var position = Component.translatable(Keys.ALTERNATIVE, i + 1);
-                    checkFixture(Problem.Subject.FIXTURE_PRESET, key.identifier(), position, alternatives.get(i));
+                    checkFixture(Problem.Subject.FIXTURE_PRESET, key.location(), position, alternatives.get(i));
                 }
             });
         }
@@ -230,7 +231,7 @@ public final class StructureCheck {
         return registries.lookup(key.registryKey()).flatMap(lookup -> lookup.get(key)).isPresent();
     }
 
-    private record Connector(StructureTemplate.JigsawBlockInfo jigsaw, String template) {
+    private record Connector(JigsawBlockInfo jigsaw, String template) {
         Component at() {
             return Component.translatable(Keys.AT, jigsaw.info().pos().toShortString());
         }
@@ -242,7 +243,7 @@ public final class StructureCheck {
     private record Link(Connector source, Holder<StructureTemplatePool> target) {}
 
     /// @param followsConditions false for vanilla's layout, which places [ConditionalPoolElement]s like the element inside them
-    private void checkJigsaw(Identifier structure, Holder<StructureTemplatePool> startPool, Optional<Identifier> startJigsawName, List<PoolAliasBinding> poolAliases, boolean followsConditions) {
+    private void checkJigsaw(ResourceLocation structure, Holder<StructureTemplatePool> startPool, Optional<ResourceLocation> startJigsawName, List<PoolAliasBinding> poolAliases, boolean followsConditions) {
         // Follows every jigsaw from the start pool, as generation could, and checks that each can connect.
         var aliases = new HashMap<ResourceKey<StructureTemplatePool>, Set<ResourceKey<StructureTemplatePool>>>();
         poolAliases.forEach(binding -> collectAliases(binding, aliases));
@@ -263,7 +264,7 @@ public final class StructureCheck {
                 continue;
             }
             if (!followsConditions) {
-                pool.value().getTemplates().stream()
+                pool.value().rawTemplates.stream()
                         .map(Pair::getFirst)
                         .filter(StructureCheck::isConditional)
                         .forEach(element -> problem(Problem.Subject.STRUCTURE, structure, Keys.IGNORED_CONDITIONS, poolName(pool), elementName(element)));
@@ -278,9 +279,9 @@ public final class StructureCheck {
                 for (var key : aliases.getOrDefault(named, Set.of(named))) {
                     var target = pools.get(key);
                     if (target.isEmpty()) {
-                        problem(Problem.Subject.STRUCTURE, structure, Keys.MISSING_POOL, connector.at(), connector.template(), key.identifier().toString());
+                        problem(Problem.Subject.STRUCTURE, structure, Keys.MISSING_POOL, connector.at(), connector.template(), key.location().toString());
                     } else if (isEmpty(target.get())) {
-                        problem(Problem.Subject.STRUCTURE, structure, Keys.EMPTY_POOL, connector.at(), connector.template(), key.identifier().toString());
+                        problem(Problem.Subject.STRUCTURE, structure, Keys.EMPTY_POOL, connector.at(), connector.template(), key.location().toString());
                     } else if (!target.get().is(Pools.EMPTY)) {
                         queue.add(target.get());
                         links.add(new Link(connector, target.get()));
@@ -305,13 +306,13 @@ public final class StructureCheck {
     }
 
     /// The jigsaws in the link's target pool, or its fallback, that the source names.
-    private Stream<Connector> candidates(Identifier structure, Link link, Map<Holder<StructureTemplatePool>, PoolJigsaws> jigsaws) {
+    private Stream<Connector> candidates(ResourceLocation structure, Link link, Map<Holder<StructureTemplatePool>, PoolJigsaws> jigsaws) {
         return Stream.of(link.target(), link.target().value().getFallback())
                 .flatMap(pool -> jigsaws(structure, pool, jigsaws).connectors().stream())
                 .filter(candidate -> candidate.jigsaw().name().equals(link.source().jigsaw().target()));
     }
 
-    private void checkConnection(Identifier structure, Link link, Map<Holder<StructureTemplatePool>, PoolJigsaws> jigsaws) {
+    private void checkConnection(ResourceLocation structure, Link link, Map<Holder<StructureTemplatePool>, PoolJigsaws> jigsaws) {
         var source = link.source();
         var named = candidates(structure, link, jigsaws).toList();
         var targetName = source.jigsaw().target().toString();
@@ -326,20 +327,20 @@ public final class StructureCheck {
     }
 
     // Pieces only rotate around the vertical axis. A sideways jigsaw can connect to any other sideways one, but an upward one only to a downward one.
-    static boolean canFace(StructureTemplate.JigsawBlockInfo source, StructureTemplate.JigsawBlockInfo target) {
+    static boolean canFace(JigsawBlockInfo source, JigsawBlockInfo target) {
         var from = JigsawBlock.getFrontFacing(source.info().state());
         var to = JigsawBlock.getFrontFacing(target.info().state());
         return from.getAxis().isHorizontal() ? to.getAxis().isHorizontal() : to == from.getOpposite();
     }
 
-    private PoolJigsaws jigsaws(Identifier structure, Holder<StructureTemplatePool> pool, Map<Holder<StructureTemplatePool>, PoolJigsaws> cache) {
+    private PoolJigsaws jigsaws(ResourceLocation structure, Holder<StructureTemplatePool> pool, Map<Holder<StructureTemplatePool>, PoolJigsaws> cache) {
         var cached = cache.get(pool);
         if (cached != null) {
             return cached;
         }
         var connectors = new ArrayList<Connector>();
         var complete = true;
-        for (var entry : pool.value().getTemplates()) {
+        for (var entry : pool.value().rawTemplates) {
             var element = entry.getFirst();
             if (!templatesExist(structure, element)) {
                 complete = false;
@@ -347,21 +348,21 @@ public final class StructureCheck {
             }
             var name = elementName(element);
             element.getShuffledJigsawBlocks(templates, BlockPos.ZERO, Rotation.NONE, random)
-                    .forEach(jigsaw -> connectors.add(new Connector(jigsaw, name)));
+                    .forEach(jigsaw -> connectors.add(new Connector(JigsawBlockInfo.of(jigsaw), name)));
         }
         var jigsaws = new PoolJigsaws(List.copyOf(connectors), complete);
         cache.put(pool, jigsaws);
         return jigsaws;
     }
 
-    private boolean templatesExist(Identifier structure, StructurePoolElement element) {
+    private boolean templatesExist(ResourceLocation structure, StructurePoolElement element) {
         return switch (element) {
-            case SinglePoolElement single -> template(structure, single.getTemplateLocation()).isPresent();
+            case SinglePoolElement single -> template(structure, single.template.orThrow()).isPresent();
             case ConditionalPoolElement counted -> templatesExist(structure, counted.element());
             case RepeatedPoolElement repeated -> templatesExist(structure, repeated.element());
             case ListPoolElement list -> {
                 var all = true;
-                for (var child : list.getElements()) {
+                for (var child : list.elements) {
                     all &= templatesExist(structure, child);
                 }
                 yield all;
@@ -372,17 +373,17 @@ public final class StructureCheck {
 
     private static String elementName(StructurePoolElement element) {
         return switch (element) {
-            case SinglePoolElement single -> single.getTemplateLocation().toString();
+            case SinglePoolElement single -> single.template.orThrow().toString();
             case ConditionalPoolElement counted -> elementName(counted.element());
             case RepeatedPoolElement repeated -> elementName(repeated.element());
             // A list element's jigsaws are its first element's.
-            case ListPoolElement list when !list.getElements().isEmpty() -> elementName(list.getElements().getFirst());
+            case ListPoolElement list when !list.elements.isEmpty() -> elementName(list.elements.getFirst());
             default -> element.toString();
         };
     }
 
     private static boolean isConditional(StructurePoolElement element) {
-        return element instanceof ConditionalPoolElement || element instanceof ListPoolElement list && list.getElements().stream().anyMatch(StructureCheck::isConditional);
+        return element instanceof ConditionalPoolElement || element instanceof ListPoolElement list && list.elements.stream().anyMatch(StructureCheck::isConditional);
     }
 
     // minecraft:empty is meant to be empty.
@@ -391,25 +392,25 @@ public final class StructureCheck {
     }
 
     private static String poolName(Holder<StructureTemplatePool> pool) {
-        return pool.unwrapKey().map(key -> key.identifier().toString()).orElse("<inline>");
+        return pool.unwrapKey().map(key -> key.location().toString()).orElse("<inline>");
     }
 
     /// Every pool each alias can stand for.
     static void collectAliases(PoolAliasBinding binding, Map<ResourceKey<StructureTemplatePool>, Set<ResourceKey<StructureTemplatePool>>> aliases) {
         switch (binding) {
-            case DirectPoolAlias(var alias, var target) ->
-                    aliases.computeIfAbsent(alias, _ -> new HashSet<>()).add(target);
-            case RandomPoolAlias(var alias, var targets) ->
-                    targets.unwrap().forEach(target -> aliases.computeIfAbsent(alias, _ -> new HashSet<>()).add(target.value()));
-            case RandomGroupPoolAlias(var groups) ->
-                    groups.unwrap().forEach(group -> group.value().forEach(member -> collectAliases(member, aliases)));
+            case Direct(var alias, var target) ->
+                    aliases.computeIfAbsent(alias, key -> new HashSet<>()).add(target);
+            case Random(var alias, var targets) ->
+                    targets.unwrap().forEach(target -> aliases.computeIfAbsent(alias, key -> new HashSet<>()).add(target.data()));
+            case RandomGroup(var groups) ->
+                    groups.unwrap().forEach(group -> group.data().forEach(member -> collectAliases(member, aliases)));
             // Other binding types only show one of their choices.
             default ->
-                    binding.forEachResolved(RandomSource.create(0), (alias, target) -> aliases.computeIfAbsent(alias, _ -> new HashSet<>()).add(target));
+                    binding.forEachResolved(RandomSource.create(0), (alias, target) -> aliases.computeIfAbsent(alias, key -> new HashSet<>()).add(target));
         }
     }
 
-    private void problem(Problem.Subject subject, Identifier id, String key, Object... arguments) {
+    private void problem(Problem.Subject subject, ResourceLocation id, String key, Object... arguments) {
         problems.add(new Problem(subject, id, Component.translatable(key, arguments)));
     }
 }

@@ -10,7 +10,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -36,10 +36,9 @@ public class ScatteredGridPlacement extends ExtendedSpreadPlacement {
     private final int randomOffset;
 
     public ScatteredGridPlacement(Vec3i locateOffset, float probability, int salt, Optional<TagExclusionZone> exclusionZone, int minChunksFromCenter, int spacing, Optional<GridOffset> gridOffset, int randomOffset) {
-        randomOffset = Mth.clamp(randomOffset, 0, spacing - 1);
-        super(locateOffset, probability, salt, exclusionZone, minChunksFromCenter, spacing, spacing - 1 - randomOffset);
+        super(locateOffset, probability, salt, exclusionZone, minChunksFromCenter, spacing, spacing - 1 - Mth.clamp(randomOffset, 0, spacing - 1));
         this.gridOffset = gridOffset;
-        this.randomOffset = randomOffset;
+        this.randomOffset = Mth.clamp(randomOffset, 0, spacing - 1);
     }
 
     @Override
@@ -70,7 +69,7 @@ public class ScatteredGridPlacement extends ExtendedSpreadPlacement {
     public ChunkPos getPotentialStructureChunk(long seed, int x, int z) {
         var shift = gridOffset(seed);
         var inGrid = super.getPotentialStructureChunk(seed, x - shift.x(), z - shift.z());
-        return new ChunkPos(inGrid.x() + shift.x(), inGrid.z() + shift.z());
+        return new ChunkPos(inGrid.x + shift.x(), inGrid.z + shift.z());
     }
 
     @Override

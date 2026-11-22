@@ -3,16 +3,18 @@ package com.ametrin.structures.foam;
 import com.ametrin.structures.registry.ASBlockEntities;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.registry.ASDataComponents;
+import com.ametrin.structures.util.ASNbt;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayDeque;
@@ -76,21 +78,21 @@ public class FoamSpreaderBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
-        stack = input.read(STACK_KEY, ItemStack.CODEC).orElse(ItemStack.EMPTY);
-        input.read(FRONTIER_KEY, Codec.LONG_STREAM).ifPresent(positions -> {
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        stack = ASNbt.read(tag, STACK_KEY, ItemStack.CODEC, registries.createSerializationContext(NbtOps.INSTANCE)).orElse(ItemStack.EMPTY);
+        ASNbt.read(tag, FRONTIER_KEY, Codec.LONG_STREAM).ifPresent(positions -> {
             frontier.clear();
             positions.mapToObj(BlockPos::of).forEach(frontier::add);
         });
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         if (!stack.isEmpty()) {
-            output.store(STACK_KEY, ItemStack.CODEC, stack);
+            ASNbt.store(tag, STACK_KEY, ItemStack.CODEC, registries.createSerializationContext(NbtOps.INSTANCE), stack);
         }
-        output.store(FRONTIER_KEY, Codec.LONG_STREAM, frontier.stream().mapToLong(BlockPos::asLong));
+        ASNbt.store(tag, FRONTIER_KEY, Codec.LONG_STREAM, frontier.stream().mapToLong(BlockPos::asLong));
     }
 }

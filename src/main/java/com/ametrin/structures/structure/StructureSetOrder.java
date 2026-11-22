@@ -16,7 +16,7 @@ public final class StructureSetOrder {
         // Keep in sync with ChunkGenerator#createStructures.
         var options = new ArrayList<>(set.structures());
         var random = new WorldgenRandom(new LegacyRandomSource(0L));
-        random.setLargeFeatureSeed(levelSeed, chunk.x(), chunk.z());
+        random.setLargeFeatureSeed(levelSeed, chunk.x, chunk.z);
         int total = options.stream().mapToInt(StructureSet.StructureSelectionEntry::weight).sum();
 
         var order = new ArrayList<StructureSet.StructureSelectionEntry>(options.size());

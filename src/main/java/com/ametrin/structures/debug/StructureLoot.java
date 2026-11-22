@@ -6,28 +6,31 @@ import com.ametrin.structures.fixture.FillContainerFixture;
 import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.FixtureCondition;
 import com.ametrin.structures.fixture.FixtureGeneration;
+import com.ametrin.structures.fixture.Fixtures;
 import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASBlocks;
+import com.ametrin.structures.spawner.EntityDataBuilder;
 import com.ametrin.structures.structure.StructureSetOrder;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
 import com.ametrin.structures.structure.jigsaw.RepeatedPoolElement;
+import com.ametrin.structures.util.ASNbt;
+import com.ametrin.structures.util.ItemStackTemplate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.RandomizableContainer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EquipmentUser;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.ChunkPos;
@@ -83,15 +86,15 @@ final class StructureLoot {
         }
 
         boolean holdsAnything() {
-            return equipment.isPresent() || !items.isEmpty() || data.contains("equipment") || data.contains("Item");
+            return equipment.isPresent() || !items.isEmpty() || EntityDataBuilder.EQUIPMENT_KEYS.stream().anyMatch(data::contains) || data.contains("Item");
         }
 
         /// What breaking it drops, with the equipment table rolled with `random`.
         List<ItemStack> drops(ServerLevel level, RandomSource random) {
             if (ITEM_FRAMES.contains(type)) {
-                return data.read("Item", ItemStack.CODEC, level.registryAccess().createSerializationContext(NbtOps.INSTANCE)).stream().toList();
+                return ASNbt.read(data, "Item", ItemStack.CODEC, level.registryAccess().createSerializationContext(NbtOps.INSTANCE)).stream().toList();
             }
-            if (!(EntityType.loadEntityRecursive(type, data.copy(), level, EntitySpawnReason.STRUCTURE, entity -> entity) instanceof ArmorStand stand)) {
+            if (!(EntityType.loadEntityRecursive(Fixtures.withId(type, data), level, entity -> entity) instanceof ArmorStand stand)) {
                 return List.of();
             }
             stand.setPos(Vec3.atBottomCenterOf(pos));
@@ -227,13 +230,14 @@ final class StructureLoot {
         void collect(StructurePoolElement element, BlockPos position, Rotation rotation) {
             switch (element) {
                 case SinglePoolElement single -> collect(
-                        level.getStructureManager().getOrCreate(single.getTemplateLocation()),
+                        level.getStructureManager().getOrCreate(single.template.orThrow()),
                         new StructurePlaceSettings().setRotation(rotation),
                         position);
-                case ListPoolElement list -> list.getElements().forEach(child -> collect(child, position, rotation));
+                case ListPoolElement list -> list.elements.forEach(child -> collect(child, position, rotation));
                 case ConditionalPoolElement counted -> collect(counted.element(), position, rotation);
                 case RepeatedPoolElement repeated -> repeated.copyPositions(level.getStructureManager(), position, rotation).forEach(copy -> collect(repeated.element(), copy, rotation));
-                case EmptyPoolElement _, FeaturePoolElement _ -> {}
+                case EmptyPoolElement empty -> {}
+                case FeaturePoolElement feature -> {}
                 default -> codePieces++;
             }
         }
@@ -246,7 +250,7 @@ final class StructureLoot {
             }
             for (var entity : template.entityInfoList) {
                 var pos = StructureTemplate.calculateRelativePosition(settings, entity.blockPos).offset(origin);
-                entity.nbt.read("id", BuiltInRegistries.ENTITY_TYPE.byNameCodec())
+                ASNbt.read(entity.nbt, "id", BuiltInRegistries.ENTITY_TYPE.byNameCodec())
                         .filter(Display::accepts)
                         .map(type -> new Display(type, entity.nbt, Optional.empty(), Map.of(), pos))
                         .filter(Display::holdsAnything)
@@ -261,9 +265,9 @@ final class StructureLoot {
                 return;
             } else if (block.state().is(ASBlocks.FIXTURE)) {
                 var ops = level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
-                markers.add(new Marker(block.nbt().read(FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElse(List.of()), pos));
+                markers.add(new Marker(ASNbt.read(block.nbt(), FixtureBlockEntity.FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElse(List.of()), pos));
             } else {
-                block.nbt().read(RandomizableContainer.LOOT_TABLE_TAG, LootTable.KEY_CODEC).ifPresent(table -> containers.add(new Container(table, pos)));
+                ASNbt.read(block.nbt(), RandomizableContainer.LOOT_TABLE_TAG, ResourceKey.codec(Registries.LOOT_TABLE)).ifPresent(table -> containers.add(new Container(table, pos)));
             }
         }
     }

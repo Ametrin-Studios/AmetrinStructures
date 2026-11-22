@@ -2,8 +2,9 @@ package com.ametrin.structures.network;
 
 import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.FixtureGeneration;
-import net.minecraft.resources.Identifier;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -24,19 +25,19 @@ public final class ServerPayloadHandlers {
             return;
         }
         if (payload.registry().equals(ASPayloads.RequestRegistryKeys.STRUCTURE_TEMPLATES)) {
-            List<Identifier> templates = player.level().getServer().getStructureManager().listTemplates().sorted().toList();
+            List<ResourceLocation> templates = player.level().getServer().getStructureManager().listTemplates().sorted().toList();
             NetworkHelper.sendTo(player, new ASPayloads.SendRegistryKeys(payload.registry(), templates));
             return;
         }
         var key = ResourceKey.createRegistryKey(payload.registry());
         // Loot tables, predicates and item modifiers are not in the level's registries: they reload with
         // /reload and live in the server's reloadable registries instead.
-        var keys = Stream.of(
+        var keys = Stream.<HolderLookup.Provider>of(
                         player.level().registryAccess(),
-                        player.level().getServer().reloadableRegistries().lookup())
+                        player.server.reloadableRegistries().get())
                 .flatMap(registries -> registries.lookup(key).stream())
                 .findFirst()
-                .map(lookup -> lookup.listElementIds().map(ResourceKey::identifier).toList())
+                .map(lookup -> lookup.listElementIds().map(ResourceKey::location).toList())
                 .orElseGet(List::of);
         NetworkHelper.sendTo(player, new ASPayloads.SendRegistryKeys(payload.registry(), keys));
     }
@@ -46,7 +47,7 @@ public final class ServerPayloadHandlers {
         if (!(context.player() instanceof ServerPlayer player) || !player.canUseGameMasterBlocks()) {
             return;
         }
-        var level = player.level();
+        var level = player.serverLevel();
         if (!level.isLoaded(payload.pos()) || !(level.getBlockEntity(payload.pos()) instanceof FixtureBlockEntity marker)) {
             return;
         }

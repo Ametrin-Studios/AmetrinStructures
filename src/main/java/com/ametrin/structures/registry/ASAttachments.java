@@ -14,6 +14,6 @@ public final class ASAttachments {
     // Not synced, since clients can't resolve profiles. The server sends them the applied result.
     public static final Supplier<AttachmentType<SpawnerProfileAttachment>> SPAWNER_PROFILE = REGISTER.register("spawner_profile",
             () -> AttachmentType.builder(() -> SpawnerProfileAttachment.DEFAULT)
-                    .serialize(SpawnerProfileAttachment.CODEC)
+                    .serialize(SpawnerProfileAttachment.CODEC.codec())
                     .build());
 }

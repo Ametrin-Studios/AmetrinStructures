@@ -1,13 +1,12 @@
 package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASBlockEntities;
+import com.ametrin.structures.util.ASNbt;
 import com.ametrin.structures.util.PositionHelper;
-import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -18,8 +17,6 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.util.ExtraCodecs;
-import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -29,21 +26,15 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
 
 @ApiStatus.Internal
 public class FixtureBlockEntity extends BlockEntity {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final String FIXTURES_KEY = "fixtures";
     public static final String CUSTOM_NAME_KEY = "CustomName";
     public static final String USE_GRAVITY_KEY = "use_gravity";
@@ -56,7 +47,7 @@ public class FixtureBlockEntity extends BlockEntity {
     public static final Codec<Vec3> OFFSET_CODEC = Vec3.CODEC.validate(offset -> isValidOffset(offset)
             ? DataResult.success(offset)
             : DataResult.error(() -> "offset " + offset + " is more than " + MAX_OFFSET + " blocks along an axis"));
-    private static final Codec<List<Tag>> DATA_CODEC = ExtraCodecs.NBT.listOf();
+    private static final Codec<List<Tag>> DATA_CODEC = ASNbt.TAG_CODEC.listOf();
 
     // The alternatives exactly as stored, saved back unchanged. Re-encoding a decoded alternative drops
     // values that equal the default, so an explicitly set value would change if the default changes.
@@ -165,19 +156,15 @@ public class FixtureBlockEntity extends BlockEntity {
 
     public ItemStack toItemStack(HolderLookup.Provider registries) {
         ItemStack stack = new ItemStack(getBlockState().getBlock());
-        try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(problemPath(), LOGGER)) {
-            var output = TagValueOutput.createWithContext(reporter, registries);
-            // Like vanilla's pick block with data, so a picked marker and its copy stack.
-            saveCustomOnly(output);
-            removeComponentsFromTag(output);
-            BlockItem.setBlockEntityData(stack, getType(), output);
-            stack.applyComponents(collectComponents());
-        }
+        // Like vanilla's pick block with data, so a picked marker and its copy stack.
+        var tag = saveCustomOnly(registries);
+        removeComponentsFromTag(tag);
+        BlockItem.setBlockEntityData(stack, getType(), tag);
+        stack.applyComponents(collectComponents());
         return stack;
     }
 
-    // The offset turns with the structure like any other template position.
-    @Override
+    // The offset turns with the structure like any other template position. StructureTemplateMixin calls this.
     public void applyStructureRotation(Mirror mirror, Rotation rotation) {
         if (mirror != Mirror.NONE || rotation != Rotation.NONE) {
             offset = PositionHelper.transform(offset, mirror, rotation);
@@ -186,29 +173,31 @@ public class FixtureBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
-        this.fixtureData = input.read(FIXTURES_KEY, DATA_CODEC).orElseGet(List::of);
-        this.fixtures = input.read(FIXTURES_KEY, WeightedFixture.LIST_CODEC).orElseGet(List::of);
-        this.customName = input.read(CUSTOM_NAME_KEY, ComponentSerialization.CODEC).orElse(null);
-        this.useGravity = input.getBooleanOr(USE_GRAVITY_KEY, false);
-        this.markPostProcessing = input.getBooleanOr(MARK_POST_PROCESSING_KEY, false);
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        var ops = registries.createSerializationContext(NbtOps.INSTANCE);
+        this.fixtureData = ASNbt.read(tag, FIXTURES_KEY, DATA_CODEC, ops).orElseGet(List::of);
+        this.fixtures = ASNbt.read(tag, FIXTURES_KEY, WeightedFixture.LIST_CODEC, ops).orElseGet(List::of);
+        this.customName = ASNbt.read(tag, CUSTOM_NAME_KEY, ComponentSerialization.CODEC, ops).orElse(null);
+        this.useGravity = tag.getBoolean(USE_GRAVITY_KEY);
+        this.markPostProcessing = tag.getBoolean(MARK_POST_PROCESSING_KEY);
         // An offset out of range is ignored. The structure check reports it.
-        this.offset = input.read(OFFSET_KEY, OFFSET_CODEC).orElse(Vec3.ZERO);
-        this.becomes = input.read(BECOMES_KEY, BlockState.CODEC);
+        this.offset = ASNbt.read(tag, OFFSET_KEY, OFFSET_CODEC, ops).orElse(Vec3.ZERO);
+        this.becomes = ASNbt.read(tag, BECOMES_KEY, BlockState.CODEC, ops);
     }
 
     @Override
-    protected void saveAdditional(ValueOutput output) {
-        super.saveAdditional(output);
-        output.store(FIXTURES_KEY, DATA_CODEC, fixtureData);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        var ops = registries.createSerializationContext(NbtOps.INSTANCE);
+        ASNbt.store(tag, FIXTURES_KEY, DATA_CODEC, ops, fixtureData);
         if (customName != null) {
-            output.store(CUSTOM_NAME_KEY, ComponentSerialization.CODEC, customName);
+            ASNbt.store(tag, CUSTOM_NAME_KEY, ComponentSerialization.CODEC, ops, customName);
         }
-        output.putBoolean(USE_GRAVITY_KEY, useGravity);
-        output.putBoolean(MARK_POST_PROCESSING_KEY, markPostProcessing);
-        output.store(OFFSET_KEY, Vec3.CODEC, offset);
-        becomes.ifPresent(state -> output.store(BECOMES_KEY, BlockState.CODEC, state));
+        tag.putBoolean(USE_GRAVITY_KEY, useGravity);
+        tag.putBoolean(MARK_POST_PROCESSING_KEY, markPostProcessing);
+        ASNbt.store(tag, OFFSET_KEY, Vec3.CODEC, ops, offset);
+        becomes.ifPresent(state -> ASNbt.store(tag, BECOMES_KEY, BlockState.CODEC, ops, state));
     }
 
     @Override
@@ -220,12 +209,12 @@ public class FixtureBlockEntity extends BlockEntity {
     // The name is stored as the item's name component instead.
     @Override
     @SuppressWarnings("deprecation")
-    public void removeComponentsFromTag(ValueOutput output) {
-        output.discard(CUSTOM_NAME_KEY);
+    public void removeComponentsFromTag(CompoundTag tag) {
+        tag.remove(CUSTOM_NAME_KEY);
     }
 
     @Override
-    protected void applyImplicitComponents(DataComponentGetter components) {
+    protected void applyImplicitComponents(DataComponentInput components) {
         super.applyImplicitComponents(components);
         var name = components.get(DataComponents.CUSTOM_NAME);
         if (name != null) {

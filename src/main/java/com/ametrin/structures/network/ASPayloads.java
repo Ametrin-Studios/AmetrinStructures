@@ -1,6 +1,7 @@
 package com.ametrin.structures.network;
 
 import com.ametrin.structures.AmetrinStructures;
+import com.ametrin.structures.util.ASNbt;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.netty.buffer.ByteBuf;
@@ -13,9 +14,8 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.util.ExtraCodecs;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -34,14 +34,14 @@ public final class ASPayloads {
     /// Client to server: which keys does this registry hold?
     ///
     /// The authoring GUI asks the server rather than reading client-side registries, because the server may have datapacks the client does not.
-    public record RequestRegistryKeys(Identifier registry) implements CustomPacketPayload {
+    public record RequestRegistryKeys(ResourceLocation registry) implements CustomPacketPayload {
         public static final Type<RequestRegistryKeys> TYPE =
                 new Type<>(AmetrinStructures.locate("request_registry_keys"));
 
         /// Not a registry: asks for the structure template ids the server can load
-        public static final Identifier STRUCTURE_TEMPLATES = AmetrinStructures.locate("structure_template");
+        public static final ResourceLocation STRUCTURE_TEMPLATES = AmetrinStructures.locate("structure_template");
 
-        public static final StreamCodec<ByteBuf, RequestRegistryKeys> STREAM_CODEC = Identifier.STREAM_CODEC.map(RequestRegistryKeys::new, RequestRegistryKeys::registry);
+        public static final StreamCodec<ByteBuf, RequestRegistryKeys> STREAM_CODEC = ResourceLocation.STREAM_CODEC.map(RequestRegistryKeys::new, RequestRegistryKeys::registry);
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -50,14 +50,14 @@ public final class ASPayloads {
     }
 
     /// Server to client: the answer to [RequestRegistryKeys].
-    public record SendRegistryKeys(Identifier registry, List<Identifier> keys) implements CustomPacketPayload {
+    public record SendRegistryKeys(ResourceLocation registry, List<ResourceLocation> keys) implements CustomPacketPayload {
         public static final Type<SendRegistryKeys> TYPE = new Type<>(AmetrinStructures.locate("send_registry_keys"));
 
         public static final StreamCodec<ByteBuf, SendRegistryKeys> STREAM_CODEC =
                 StreamCodec.composite(
-                        Identifier.STREAM_CODEC,
+                        ResourceLocation.STREAM_CODEC,
                         SendRegistryKeys::registry,
-                        Identifier.STREAM_CODEC.apply(ByteBufCodecs.list()),
+                        ResourceLocation.STREAM_CODEC.apply(ByteBufCodecs.list()),
                         SendRegistryKeys::keys,
                         SendRegistryKeys::new);
 
@@ -97,7 +97,7 @@ public final class ASPayloads {
 
         public static final Codec<UpdateFixture> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         BlockPos.CODEC.fieldOf("pos").forGetter(UpdateFixture::pos),
-                        ExtraCodecs.NBT.listOf().fieldOf("fixtures").forGetter(UpdateFixture::fixtures),
+                        ASNbt.TAG_CODEC.listOf().fieldOf("fixtures").forGetter(UpdateFixture::fixtures),
                         ComponentSerialization.CODEC
                                 .optionalFieldOf("custom_name")
                                 .forGetter(UpdateFixture::customName),
@@ -122,7 +122,7 @@ public final class ASPayloads {
     /// @param report     the structure, structure tag or structure set reported on
     /// @param replaceAll whether to drop every earlier spread waypoint first, so rejected spots are not mixed up with another report's
     public record SpreadWaypoints(
-            Identifier report,
+            ResourceLocation report,
             ResourceKey<Level> dimension,
             int color,
             boolean replaceAll,
@@ -133,7 +133,7 @@ public final class ASPayloads {
         public static final Type<SpreadWaypoints> TYPE = new Type<>(AmetrinStructures.locate("spread_waypoints"));
 
         public static final StreamCodec<ByteBuf, SpreadWaypoints> STREAM_CODEC = StreamCodec.composite(
-                Identifier.STREAM_CODEC, SpreadWaypoints::report,
+                ResourceLocation.STREAM_CODEC, SpreadWaypoints::report,
                 ResourceKey.streamCodec(Registries.DIMENSION), SpreadWaypoints::dimension,
                 ByteBufCodecs.VAR_INT, SpreadWaypoints::color,
                 ByteBufCodecs.BOOL, SpreadWaypoints::replaceAll,
@@ -142,10 +142,10 @@ public final class ASPayloads {
                 SpreadWaypoints::new);
 
         /// @param structure the structure that generates at `position`
-        public record FoundSpot(BlockPos position, Identifier structure) {
+        public record FoundSpot(BlockPos position, ResourceLocation structure) {
             public static final StreamCodec<ByteBuf, FoundSpot> STREAM_CODEC = StreamCodec.composite(
                     BlockPos.STREAM_CODEC, FoundSpot::position,
-                    Identifier.STREAM_CODEC, FoundSpot::structure,
+                    ResourceLocation.STREAM_CODEC, FoundSpot::structure,
                     FoundSpot::new);
         }
 

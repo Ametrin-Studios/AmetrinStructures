@@ -62,8 +62,8 @@ final class StructureCandidates<T> implements Iterator<StructureCandidates.Candi
 
     /// The chunks from `inner` to `outer` chunks away from the center along an axis.
     private void scanRing(int inner, int outer) {
-        int x = center.x();
-        int z = center.z();
+        int x = center.x;
+        int z = center.z;
         if (inner == 0) {
             scan(x - outer, z - outer, x + outer, z + outer);
             return;
@@ -93,14 +93,14 @@ final class StructureCandidates<T> implements Iterator<StructureCandidates.Candi
                 for (int x = minX; x < maxX + spacing; x += spacing) {
                     for (int z = minZ; z < maxZ + spacing; z += spacing) {
                         var chunk = spread.getPotentialStructureChunk(state.getLevelSeed(), x, z);
-                        if (isInside(chunk, minX, minZ, maxX, maxZ) && spread.isStructureChunk(state, chunk.x(), chunk.z())) {
+                        if (isInside(chunk, minX, minZ, maxX, maxZ) && spread.isStructureChunk(state, chunk.x, chunk.z)) {
                             into.accept(chunk);
                         }
                     }
                 }
             }
             case ConcentricRingsStructurePlacement rings -> Objects.requireNonNullElse(state.getRingPositionsFor(rings), List.<ChunkPos>of()).stream()
-                    .filter(chunk -> isInside(chunk, minX, minZ, maxX, maxZ) && rings.isStructureChunk(state, chunk.x(), chunk.z()))
+                    .filter(chunk -> isInside(chunk, minX, minZ, maxX, maxZ) && rings.isStructureChunk(state, chunk.x, chunk.z))
                     .forEach(into);
             default -> {
                 for (int x = minX; x <= maxX; x++) {
@@ -115,6 +115,6 @@ final class StructureCandidates<T> implements Iterator<StructureCandidates.Candi
     }
 
     private static boolean isInside(ChunkPos chunk, int minX, int minZ, int maxX, int maxZ) {
-        return chunk.x() >= minX && chunk.x() <= maxX && chunk.z() >= minZ && chunk.z() <= maxZ;
+        return chunk.x >= minX && chunk.x <= maxX && chunk.z >= minZ && chunk.z <= maxZ;
     }
 }

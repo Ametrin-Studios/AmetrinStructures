@@ -7,12 +7,16 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.WorldGenLevel;
 import net.neoforged.neoforge.common.conditions.ICondition;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /// Each kind is a record registered as a [FixtureConditionType]. The built-in ones are in [FixtureConditions].
 ///
@@ -38,13 +42,13 @@ public interface FixtureCondition {
     record Context(WorldGenLevel level, BlockPos pos) implements ICondition.IContext {
         // NeoForge's conditions see the world's tags.
         @Override
-        public <T> boolean isTagLoaded(TagKey<T> key) {
-            return new RegistryConditionContext(level.registryAccess()).isTagLoaded(key);
+        public <T> Collection<Holder<T>> getTag(TagKey<T> key) {
+            return new RegistryConditionContext(level.registryAccess()).getTag(key);
         }
 
         @Override
-        public <T> Collection<Holder<T>> getTag(TagKey<T> key) {
-            return new RegistryConditionContext(level.registryAccess()).getTag(key);
+        public <T> Map<ResourceLocation, Collection<Holder<T>>> getAllTags(ResourceKey<? extends Registry<T>> registry) {
+            return new RegistryConditionContext(level.registryAccess()).getAllTags(registry);
         }
     }
 }

@@ -3,11 +3,11 @@ package com.ametrin.structures.foam;
 import com.ametrin.structures.registry.ASRegistries;
 import com.ametrin.structures.util.ASCodecs;
 import com.mojang.serialization.Codec;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.Util;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +25,7 @@ public interface FoamSpreadBehavior {
         return FoamDescriptions.of(ASRegistries.FOAM_SPREAD_BEHAVIOR_TYPES.getKey(type()), FoamSpreadBehavior::descriptionKey);
     }
 
-    static String descriptionKey(Identifier type) {
+    static String descriptionKey(ResourceLocation type) {
         return Util.makeDescriptionId("foam_spread_behavior", type);
     }
 

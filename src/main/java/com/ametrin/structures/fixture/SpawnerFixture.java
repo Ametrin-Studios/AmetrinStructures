@@ -83,7 +83,7 @@ public record SpawnerFixture(
                 // The spawner draws its delay between the two, so the maximum can't be lower.
                 .maxSpawnDelay(Math.max(minSpawnDelay, maxSpawnDelay))
                 .build();
-        Fixtures.placeSpawner(context, minecart, (_, spawner) -> {
+        Fixtures.placeSpawner(context, minecart, (holder, spawner) -> {
             SpawnerAccess.applyWithSpawnDelay(spawner, profile);
             if (spawned != null) {
                 // No level here. The spawner would read the block back from the server level to notify clients.

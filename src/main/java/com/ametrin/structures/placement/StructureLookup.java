@@ -22,7 +22,7 @@ public final class StructureLookup {
     /// Whether a piece of a structure in `tag` intersects `box`. `box` may only span chunks the level can access.
     public static boolean intersectsTaggedStructure(WorldGenLevel level, BoundingBox box, TagKey<Structure> tag) {
         var manager = structureManager(level);
-        var structures = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+        var structures = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         for (int chunkX = SectionPos.blockToSectionCoord(box.minX()); chunkX <= SectionPos.blockToSectionCoord(box.maxX()); chunkX++) {
             for (int chunkZ = SectionPos.blockToSectionCoord(box.minZ()); chunkZ <= SectionPos.blockToSectionCoord(box.maxZ()); chunkZ++) {
                 for (var start : manager.startsForStructure(new ChunkPos(chunkX, chunkZ), structure -> structures.wrapAsHolder(structure).is(tag))) {
@@ -55,7 +55,7 @@ public final class StructureLookup {
         if (pieceGranularity) {
             return manager.getStructureWithPieceAt(pos, matches).isValid();
         }
-        var structures = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+        var structures = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         return manager.getAllStructuresAt(pos).keySet().stream()
                 .anyMatch(structure -> matches.test(structures.wrapAsHolder(structure))
                         && manager.getStructureAt(pos, structure).isValid());

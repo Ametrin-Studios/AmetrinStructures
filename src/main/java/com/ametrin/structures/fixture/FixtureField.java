@@ -40,7 +40,7 @@ public final class FixtureField<C> {
     }
 
     public static <T> FixtureField<T> required(String key, FieldType<T> type) {
-        return new FixtureField<>(key, type, Presence.REQUIRED, type.codec().fieldOf(key), _ -> Optional.empty());
+        return new FixtureField<>(key, type, Presence.REQUIRED, type.codec().fieldOf(key), ignored -> Optional.empty());
     }
 
     public static <T> FixtureField<T> withDefault(String key, FieldType<T> type, T defaultValue) {
@@ -49,7 +49,7 @@ public final class FixtureField<C> {
     }
 
     public static <T> FixtureField<Optional<T>> optional(String key, FieldType<T> type) {
-        return new FixtureField<>(key, type, Presence.OPTIONAL, type.codec().optionalFieldOf(key), _ -> Optional.empty());
+        return new FixtureField<>(key, type, Presence.OPTIONAL, type.codec().optionalFieldOf(key), ignored -> Optional.empty());
     }
 
     public <R> RecordCodecBuilder<R, C> forGetter(Function<R, C> getter) {

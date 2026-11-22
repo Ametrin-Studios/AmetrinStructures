@@ -4,15 +4,15 @@ import com.ametrin.structures.util.ASLog;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Util;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -46,7 +46,7 @@ public final class CheckCommand {
                 .then(Commands.argument("namespace", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                                 context.getSource().registryAccess().lookupOrThrow(Registries.STRUCTURE).listElementIds()
-                                        .map(key -> key.identifier().getNamespace())
+                                        .map(key -> key.location().getNamespace())
                                         .distinct(),
                                 builder))
                         .executes(context -> check(context.getSource(), StringArgumentType.getString(context, "namespace"))));
@@ -54,8 +54,8 @@ public final class CheckCommand {
 
     private static int check(CommandSourceStack source, @Nullable String namespace) {
         Predicate<Holder.Reference<Structure>> structures = namespace == null
-                ? _ -> true
-                : structure -> structure.key().identifier().getNamespace().equals(namespace);
+                ? ignored -> true
+                : structure -> structure.key().location().getNamespace().equals(namespace);
         var count = source.registryAccess().lookupOrThrow(Registries.STRUCTURE).listElements().filter(structures).count();
         if (count == 0) {
             source.sendFailure(Component.translatable(Keys.NONE, String.valueOf(namespace)));

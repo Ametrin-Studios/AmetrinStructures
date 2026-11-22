@@ -25,7 +25,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /// A marker an author places inside a template.
 /// When the structure generates, the marker performs an action and removes itself.
@@ -133,7 +133,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state) {
+    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return !state.getValue(WATERLOGGED);
     }
 

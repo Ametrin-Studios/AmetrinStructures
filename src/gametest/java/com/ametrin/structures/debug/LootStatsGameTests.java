@@ -4,9 +4,11 @@ import com.ametrin.structures.fixture.EntityFixture;
 import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.LootContainerFixture;
 import com.ametrin.structures.fixture.WeightedFixture;
+import com.ametrin.structures.gametest.ASGameTests;
 import com.ametrin.structures.registry.ASBlocks;
 import com.ametrin.structures.structure.modular.ModularStructurePiece;
 import com.ametrin.structures.structure.modular.TemplateEntry;
+import com.ametrin.structures.util.ItemStackTemplate;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -15,12 +17,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.TagParser;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
@@ -81,24 +82,24 @@ public final class LootStatsGameTests {
 
     private static void findsContents(GameTestHelper helper) {
         var level = helper.getLevel();
-        var chest = new BlockPos(0, 1, 0);
+        var chest = ASGameTests.STRUCTURE_ORIGIN.offset(0, 1, 0);
         helper.setBlock(chest, Blocks.CHEST);
-        helper.getBlockEntity(chest, ChestBlockEntity.class).setLootTable(BuiltInLootTables.SIMPLE_DUNGEON);
-        var chestMarker = new BlockPos(2, 1, 2);
+        helper.<ChestBlockEntity>getBlockEntity(chest).setLootTable(BuiltInLootTables.SIMPLE_DUNGEON);
+        var chestMarker = ASGameTests.STRUCTURE_ORIGIN.offset(2, 1, 2);
         marker(helper, chestMarker, new WeightedFixture(1, LootContainerFixture.chest(BuiltInLootTables.DESERT_PYRAMID)));
-        var standMarker = new BlockPos(2, 1, 0);
+        var standMarker = ASGameTests.STRUCTURE_ORIGIN.offset(2, 1, 0);
         var stand = new EntityFixture(BuiltInRegistries.ENTITY_TYPE.getResourceKey(EntityType.ARMOR_STAND).orElseThrow(), Optional.empty(), Optional.empty(), 0, Optional.empty(),
                 Map.of(EquipmentSlot.MAINHAND, new ItemStackTemplate(Items.STICK)));
         marker(helper, standMarker, new WeightedFixture(1, stand));
-        helper.setBlock(new BlockPos(0, 1, 2), Blocks.STRUCTURE_BLOCK.defaultBlockState().setValue(StructureBlock.MODE, StructureMode.DATA));
+        helper.setBlock(ASGameTests.STRUCTURE_ORIGIN.offset(0, 1, 2), Blocks.STRUCTURE_BLOCK.defaultBlockState().setValue(StructureBlock.MODE, StructureMode.DATA));
 
-        var origin = helper.absolutePos(BlockPos.ZERO);
-        var id = Identifier.fromNamespaceAndPath("ametrin_structures_test", "loot_stats_captured");
+        var origin = helper.absolutePos(ASGameTests.STRUCTURE_ORIGIN);
+        var id = ResourceLocation.fromNamespaceAndPath("ametrin_structures_test", "loot_stats_captured");
         var template = level.getStructureManager().getOrCreate(id);
-        template.fillFromWorld(level, origin, new Vec3i(3, 2, 3), false, List.of());
+        template.fillFromWorld(level, origin, new Vec3i(3, 2, 3), false, null);
         // An empty frame holds nothing, so it isn't counted.
         for (var entity : List.of(
-                "{id: \"minecraft:armor_stand\", equipment: {head: {id: \"minecraft:diamond_helmet\"}}}",
+                "{id: \"minecraft:armor_stand\", ArmorItems: [{}, {}, {}, {id: \"minecraft:diamond_helmet\", count: 1}]}",
                 "{id: \"minecraft:item_frame\", Item: {id: \"minecraft:emerald\"}}",
                 "{id: \"minecraft:glow_item_frame\"}")) {
             template.entityInfoList.add(new StructureTemplate.StructureEntityInfo(new Vec3(1.5, 1, 1.5), new BlockPos(1, 1, 1), nbt(entity)));
@@ -135,7 +136,7 @@ public final class LootStatsGameTests {
 
     private static CompoundTag nbt(String snbt) {
         try {
-            return TagParser.parseCompoundFully(snbt);
+            return TagParser.parseTag(snbt);
         } catch (CommandSyntaxException exception) {
             throw new IllegalArgumentException(exception);
         }
@@ -145,7 +146,7 @@ public final class LootStatsGameTests {
         var level = helper.getLevel();
         helper.setBlock(pos, ASBlocks.FIXTURE.get());
         var data = WeightedFixture.MAP_CODEC.codec().encodeStart(level.registryAccess().createSerializationContext(NbtOps.INSTANCE), fixture).getOrThrow();
-        helper.getBlockEntity(pos, FixtureBlockEntity.class).setFixtureData(List.of(data), level.registryAccess());
+        helper.<FixtureBlockEntity>getBlockEntity(pos).setFixtureData(List.of(data), level.registryAccess());
     }
 
     private static LootParams params(GameTestHelper helper, float luck) {

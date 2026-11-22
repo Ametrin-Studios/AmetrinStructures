@@ -3,6 +3,7 @@ package com.ametrin.structures.data;
 import net.minecraft.SharedConstants;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.nbt.*;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -31,15 +32,15 @@ class StructureTemplateUpdaterTest {
         new StructureTemplateUpdater(List.of(source)).run(CachedOutput.NO_CACHE).join();
 
         var updated = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
-        assertEquals(SharedConstants.getCurrentVersion().dataVersion().version(), NbtUtils.getDataVersion(updated));
-        assertEquals("minecraft:short_grass", updated.getListOrEmpty("palette").getCompoundOrEmpty(0).getStringOr("Name", ""));
+        assertEquals(SharedConstants.getCurrentVersion().getDataVersion().getVersion(), NbtUtils.getDataVersion(updated, -1));
+        assertEquals("minecraft:short_grass", updated.getList("palette", Tag.TAG_COMPOUND).getCompound(0).getString("Name"));
     }
 
     @Test
     void currentTemplatesAreLeftAlone(MinecraftServer server, @TempDir Path source) throws IOException {
         var file = source.resolve("data/examplemod/structure/hut.nbt");
         Files.createDirectories(file.getParent());
-        NbtIo.writeCompressed(template(SharedConstants.getCurrentVersion().dataVersion().version(), "minecraft:stone"), file);
+        NbtIo.writeCompressed(template(SharedConstants.getCurrentVersion().getDataVersion().getVersion(), "minecraft:stone"), file);
         var before = Files.readAllBytes(file);
 
         new StructureTemplateUpdater(List.of(source)).run(CachedOutput.NO_CACHE).join();

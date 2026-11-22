@@ -3,13 +3,10 @@ package com.ametrin.structures.spawner;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.util.random.Weighted;
-import net.minecraft.util.random.WeightedList;
+import net.minecraft.util.random.SimpleWeightedRandomList;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.SpawnData;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /// A spawner placed with a profile applies it every time it loads, so changing the profile updates spawners already generated.
 /// Without spawn potentials the spawner keeps the entity it has.
@@ -30,7 +27,7 @@ public record SpawnerProfile(
         int maxNearbyEntities,
         int requiredPlayerRange,
         int spawnRange,
-        WeightedList<SpawnData> spawnPotentials) {
+        SimpleWeightedRandomList<SpawnData> spawnPotentials) {
     /// Vanilla's values, keeping the spawner's entity.
     public static final SpawnerProfile DEFAULT = builder().build();
 
@@ -45,7 +42,7 @@ public record SpawnerProfile(
                             POSITIVE_SHORT.optionalFieldOf("max_nearby_entities", DEFAULT.maxNearbyEntities).forGetter(SpawnerProfile::maxNearbyEntities),
                             POSITIVE_SHORT.optionalFieldOf("required_player_range", DEFAULT.requiredPlayerRange).forGetter(SpawnerProfile::requiredPlayerRange),
                             POSITIVE_SHORT.optionalFieldOf("spawn_range", DEFAULT.spawnRange).forGetter(SpawnerProfile::spawnRange),
-                            SpawnData.LIST_CODEC.optionalFieldOf("spawn_potentials", WeightedList.of()).forGetter(SpawnerProfile::spawnPotentials))
+                            SpawnData.LIST_CODEC.optionalFieldOf("spawn_potentials", SimpleWeightedRandomList.empty()).forGetter(SpawnerProfile::spawnPotentials))
                     .apply(instance, SpawnerProfile::new))
             .validate(SpawnerProfile::validate);
 
@@ -67,7 +64,7 @@ public record SpawnerProfile(
         private int maxNearbyEntities = 6;
         private int requiredPlayerRange = 16;
         private int spawnRange = 4;
-        private final List<Weighted<SpawnData>> spawnPotentials = new ArrayList<>();
+        private final SimpleWeightedRandomList.Builder<SpawnData> spawnPotentials = SimpleWeightedRandomList.builder();
 
         private Builder() {}
 
@@ -119,14 +116,14 @@ public record SpawnerProfile(
         }
 
         public Builder add(SpawnData data, int weight) {
-            spawnPotentials.add(new Weighted<>(data, weight));
+            spawnPotentials.add(data, weight);
             return this;
         }
 
         public SpawnerProfile build() {
             return new SpawnerProfile(
                     spawnDelay, minSpawnDelay, maxSpawnDelay, spawnCount, maxNearbyEntities, requiredPlayerRange,
-                    spawnRange, WeightedList.of(List.copyOf(spawnPotentials)));
+                    spawnRange, spawnPotentials.build());
         }
     }
 }

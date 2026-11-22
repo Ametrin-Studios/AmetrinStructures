@@ -14,8 +14,8 @@ import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.ProcessorLists;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.valueproviders.UniformInt;
@@ -40,8 +40,8 @@ final class ExampleStructures {
     /// One per mod. It declares the structures and structure sets.
     static final StructureBootstrap STRUCTURES = new StructureBootstrap(MODID);
 
-    static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath(MODID, path);
+    static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MODID, path);
     }
 
     // One template on dry, level ground. Needs no Structure subclass, structure type or piece type.
@@ -116,7 +116,7 @@ final class ExampleStructures {
     // Any structure type, here vanilla's igloo in snowy taigas and groves.
     static final StructureSetKeys IGLOO = STRUCTURES.registerSet("igloo", set -> set
             .evenSpreadPlacement(24, 0.5F)
-            .structure((settings, _, _) -> new IglooStructure(settings), igloo -> igloo.biomes(Biomes.SNOWY_TAIGA, Biomes.GROVE)));
+            .structure((settings, extendedSettings, context) -> new IglooStructure(settings), igloo -> igloo.biomes(Biomes.SNOWY_TAIGA, Biomes.GROVE)));
 
     static final class CastlePools {
         static final ResourceKey<StructureTemplatePool> START = JigsawPools.key(MODID, "castle/start");
@@ -154,7 +154,7 @@ final class ExampleStructures {
     }
 
     /// Writes the structures, structure sets and pools as JSON.
-    static void gatherData(GatherDataEvent.Client event) {
+    static void gatherData(GatherDataEvent event) {
         event.createDatapackRegistryObjects(registries());
     }
 }

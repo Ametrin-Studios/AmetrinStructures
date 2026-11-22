@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceKeyArgument;
@@ -13,7 +14,6 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Util;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -54,7 +54,7 @@ public final class GalleryCommand {
     private static int gallery(CommandContext<CommandSourceStack> command, int count) throws CommandSyntaxException {
         var source = command.getSource();
         var structure = ResourceKeyArgument.getStructure(command, "structure");
-        var name = structure.key().identifier().toString();
+        var name = structure.key().location().toString();
         var level = source.getLevel();
         var here = BlockPos.containing(source.getPosition());
         var random = level.getRandom().fork();
@@ -62,7 +62,7 @@ public final class GalleryCommand {
         CompletableFuture.supplyAsync(() -> {
                     var layouts = new ArrayList<PiecesContainer>();
                     for (int i = 0; i < count * TRIES_PER_LAYOUT && layouts.size() < count; i++) {
-                        StructureLayouts.layOut(level, structure.value(), ChunkPos.containing(here), random.nextLong()).ifPresent(layouts::add);
+                        StructureLayouts.layOut(level, structure.value(), new ChunkPos(here), random.nextLong()).ifPresent(layouts::add);
                     }
                     return layouts;
                 }, Util.backgroundExecutor())
@@ -75,7 +75,7 @@ public final class GalleryCommand {
                     source.sendSuccess(() -> Component.translatable(Keys.PLACED, layouts.size(), name, columns), true);
                 }, source.getServer())
                 // Covers both laying out and placing, so an exception while placing isn't lost.
-                .whenCompleteAsync((_, error) -> {
+                .whenCompleteAsync((result, error) -> {
                     if (error != null) {
                         ASLog.error("gallery failed", error);
                         source.sendFailure(Component.translatable(Keys.FAILED, error.toString()));
@@ -105,14 +105,14 @@ public final class GalleryCommand {
             int dz = corner.getZ() + i / columns * cellZ - box.minZ();
             pieces.pieces().forEach(piece -> piece.move(dx, dy, dz));
             var moved = pieces.calculateBoundingBox();
-            var start = new StructureStart(structure, ChunkPos.containing(moved.getCenter()), 0, pieces);
+            var start = new StructureStart(structure, new ChunkPos(moved.getCenter()), 0, pieces);
             var min = new ChunkPos(SectionPos.blockToSectionCoord(moved.minX()), SectionPos.blockToSectionCoord(moved.minZ()));
             var max = new ChunkPos(SectionPos.blockToSectionCoord(moved.maxX()), SectionPos.blockToSectionCoord(moved.maxZ()));
             // Placed blocks react to their neighbors, and some, like a carved pumpkin looking for a golem, fail on a neighbor in an unloaded chunk.
             // So every chunk is loaded first, with one around them.
-            ChunkPos.rangeClosed(new ChunkPos(min.x() - 1, min.z() - 1), new ChunkPos(max.x() + 1, max.z() + 1)).forEach(chunk -> level.getChunk(chunk.x(), chunk.z()));
+            ChunkPos.rangeClosed(new ChunkPos(min.x - 1, min.z - 1), new ChunkPos(max.x + 1, max.z + 1)).forEach(chunk -> level.getChunk(chunk.x, chunk.z));
             ChunkPos.rangeClosed(min, max).forEach(chunk -> {
-                var chunkBox = new BoundingBox(chunk.getMinBlockX(), level.getMinY(), chunk.getMinBlockZ(), chunk.getMaxBlockX(), level.getMaxY() + 1, chunk.getMaxBlockZ());
+                var chunkBox = new BoundingBox(chunk.getMinBlockX(), level.getMinBuildHeight(), chunk.getMinBlockZ(), chunk.getMaxBlockX(), level.getMaxBuildHeight(), chunk.getMaxBlockZ());
                 start.placeInChunk(level, level.structureManager(), generator, level.getRandom(), chunkBox, chunk);
             });
         }

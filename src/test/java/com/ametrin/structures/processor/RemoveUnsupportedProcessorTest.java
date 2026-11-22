@@ -19,27 +19,27 @@ import static org.junit.jupiter.api.Assertions.*;
 class RemoveUnsupportedProcessorTest {
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
     private static final BlockState STONE = Blocks.STONE.defaultBlockState();
-    private static final BlockState RESIN = Blocks.RESIN_CLUMP.defaultBlockState()
+    private static final BlockState LICHEN = Blocks.GLOW_LICHEN.defaultBlockState()
             .setValue(MultifaceBlock.getFaceProperty(Direction.NORTH), true)
             .setValue(MultifaceBlock.getFaceProperty(Direction.UP), true);
 
     @Test
     void sidesOnTheTemplatesBlocksStayAndOthersGo() {
-        var result = process(AIR, info(BlockPos.ZERO, RESIN), info(BlockPos.ZERO.north(), STONE));
-        var resin = result.getFirst().state();
-        assertTrue(MultifaceBlock.hasFace(resin, Direction.NORTH));
-        assertFalse(MultifaceBlock.hasFace(resin, Direction.UP));
+        var result = process(AIR, info(BlockPos.ZERO, LICHEN), info(BlockPos.ZERO.north(), STONE));
+        var lichen = result.getFirst().state();
+        assertTrue(MultifaceBlock.hasFace(lichen, Direction.NORTH));
+        assertFalse(MultifaceBlock.hasFace(lichen, Direction.UP));
     }
 
     @Test
     void theWorldSupportsWhereTheTemplatePlacesNothing() {
-        var resin = process(STONE, info(BlockPos.ZERO, RESIN)).getFirst().state();
-        assertEquals(RESIN, resin);
+        var lichen = process(STONE, info(BlockPos.ZERO, LICHEN)).getFirst().state();
+        assertEquals(LICHEN, lichen);
     }
 
     @Test
     void templateAirDoesNotSupportEvenOverSolidWorld() {
-        var result = process(STONE, info(BlockPos.ZERO, RESIN), info(BlockPos.ZERO.north(), AIR), info(BlockPos.ZERO.above(), AIR));
+        var result = process(STONE, info(BlockPos.ZERO, LICHEN), info(BlockPos.ZERO.north(), AIR), info(BlockPos.ZERO.above(), AIR));
         assertEquals(List.of(AIR, AIR, AIR), result.stream().map(StructureTemplate.StructureBlockInfo::state).toList(), "a block without sides becomes air");
     }
 
@@ -54,7 +54,7 @@ class RemoveUnsupportedProcessorTest {
 
     // Every position outside the template holds `world`.
     private static ServerLevelAccessor level(BlockState world) {
-        return (ServerLevelAccessor) Proxy.newProxyInstance(ServerLevelAccessor.class.getClassLoader(), new Class<?>[]{ServerLevelAccessor.class}, (_, method, _) -> {
+        return (ServerLevelAccessor) Proxy.newProxyInstance(ServerLevelAccessor.class.getClassLoader(), new Class<?>[]{ServerLevelAccessor.class}, (proxy, method, args) -> {
             if (method.getName().equals("getBlockState")) {
                 return world;
             }

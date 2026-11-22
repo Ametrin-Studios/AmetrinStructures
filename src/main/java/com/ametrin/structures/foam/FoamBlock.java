@@ -5,10 +5,11 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -21,8 +22,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.EntityCollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
-import org.jspecify.annotations.Nullable;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -74,14 +75,14 @@ public class FoamBlock extends Block {
     }
 
     @Override
-    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (!stack.is(ASTags.Items.FOAM_DISSOLVER) || !player.getAbilities().instabuild) {
-            return InteractionResult.PASS;
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (!level.isClientSide()) {
             dissolve(level, pos);
         }
-        return InteractionResult.SUCCESS;
+        return ItemInteractionResult.sidedSuccess(level.isClientSide());
     }
 
     @Override
@@ -92,7 +93,7 @@ public class FoamBlock extends Block {
         return super.playerWillDestroy(level, pos, state, player);
     }
 
-    public static void fillOpening(BreakBlockEvent event) {
+    public static void fillOpening(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)
                 || !event.getPlayer().getAbilities().instabuild
                 || isFoam(event.getState())) {
@@ -105,7 +106,7 @@ public class FoamBlock extends Block {
         }
         var server = level.getServer();
         // The block is still there while the event runs, so this waits for the break to finish.
-        server.schedule(server.wrapRunnable(() -> {
+        server.tell(new TickTask(server.getTickCount(), () -> {
             if (level.isEmptyBlock(pos)) {
                 level.setBlock(pos, foam.defaultBlockState(), Block.UPDATE_ALL);
             }
@@ -159,7 +160,7 @@ public class FoamBlock extends Block {
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state) {
+    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return true;
     }
 

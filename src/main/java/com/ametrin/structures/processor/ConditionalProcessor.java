@@ -19,7 +19,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
 import net.neoforged.neoforge.common.conditions.ICondition;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -44,7 +44,7 @@ public final class ConditionalProcessor extends StructureProcessor {
     }
 
     public static ConditionalProcessor of(List<ICondition> conditions, ResourceKey<StructureProcessorList> processors) {
-        return new ConditionalProcessor(conditions, new Dynamic<JsonElement>(JsonOps.INSTANCE, JsonOps.INSTANCE.createString(processors.identifier().toString())));
+        return new ConditionalProcessor(conditions, new Dynamic<JsonElement>(JsonOps.INSTANCE, JsonOps.INSTANCE.createString(processors.location().toString())));
     }
 
     /// Only for processors of mods that are always there. Use the processor list overload otherwise.

@@ -1,8 +1,6 @@
 package com.ametrin.structures;
 
 import com.ametrin.structures.client.*;
-import com.ametrin.structures.client.compat.SpreadWaypointsClient;
-import com.ametrin.structures.network.ASPayloads;
 import com.ametrin.structures.registry.ASBlockEntities;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.api.distmarker.Dist;
@@ -15,7 +13,6 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
-import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlersEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -32,19 +29,10 @@ public class AmetrinStructuresClient {
         private ModBus() {}
 
         @SubscribeEvent
-        static void registerPayloadHandlers(RegisterClientPayloadHandlersEvent event) {
-            event.register(
-                    ASPayloads.SendRegistryKeys.TYPE,
-                    (payload, context) -> RegistryKeyCache.accept(payload.registry(), payload.keys()));
-            event.register(ASPayloads.SpreadWaypoints.TYPE, (payload, context) -> SpreadWaypointsClient.show(payload));
-            event.register(ASPayloads.ClearSpreadWaypoints.TYPE, (payload, context) -> SpreadWaypointsClient.clear());
-        }
-
-        @SubscribeEvent
         static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerBlockEntityRenderer(ASBlockEntities.FIXTURE.get(), FixtureRenderer::new);
             if (ASClientConfig.STRUCTURE_BLOCK_NAME_TAGS.getAsBoolean()) {
-                event.registerBlockEntityRenderer(BlockEntityType.STRUCTURE_BLOCK, _ -> new StructureBlockRenderer());
+                event.registerBlockEntityRenderer(BlockEntityType.STRUCTURE_BLOCK, StructureBlockRenderer::new);
             }
             if (ASClientConfig.JIGSAW_NAME_TAGS.getAsBoolean()) {
                 event.registerBlockEntityRenderer(BlockEntityType.JIGSAW, JigsawRenderer::new);

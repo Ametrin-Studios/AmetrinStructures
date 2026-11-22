@@ -14,14 +14,14 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ASBlocks {
     public static final DeferredRegister.Blocks REGISTER = DeferredRegister.createBlocks(AmetrinStructures.MOD_ID);
 
-    public static final DeferredBlock<FoamBlock> FOAM = REGISTER.registerBlock("foam", FoamBlock::new, ASBlocks::foamProperties);
+    public static final DeferredBlock<FoamBlock> FOAM = REGISTER.registerBlock("foam", FoamBlock::new, foamProperties());
 
-    public static final DeferredBlock<FoamSpreaderBlock> FOAM_SPREADER = REGISTER.registerBlock("foam_spreader", FoamSpreaderBlock::new, ASBlocks::foamProperties);
+    public static final DeferredBlock<FoamSpreaderBlock> FOAM_SPREADER = REGISTER.registerBlock("foam_spreader", FoamSpreaderBlock::new, foamProperties());
 
     public static final DeferredBlock<FixtureBlock> FIXTURE = REGISTER.registerBlock(
             "fixture",
             FixtureBlock::new,
-            properties -> properties
+            BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(-1.0F, 3600000.0F)
                     .noLootTable()
@@ -29,18 +29,18 @@ public final class ASBlocks {
                     .dynamicShape() // The support shape follows the block entity's becomes state, so it can't be cached per state.
                     .pushReaction(PushReaction.BLOCK));
 
-    private static BlockBehaviour.Properties foamProperties(BlockBehaviour.Properties properties) {
-        return properties
+    private static BlockBehaviour.Properties foamProperties() {
+        return BlockBehaviour.Properties.of()
                 .mapColor(MapColor.NONE)
                 .pushReaction(PushReaction.DESTROY)
-                .noCollision()
+                .noCollission()
                 .strength(0.0F)
                 .noLootTable()
                 .noOcclusion()
                 .sound(SoundType.BAMBOO)
-                .isValidSpawn((_, _, _, _) -> false)
-                .isSuffocating((_, _, _) -> false)
-                .isViewBlocking((_, _, _) -> false)
-                .isRedstoneConductor((_, _, _) -> false);
+                .isValidSpawn((state, level, pos, entityType) -> false)
+                .isSuffocating((state, level, pos) -> false)
+                .isViewBlocking((state, level, pos) -> false)
+                .isRedstoneConductor((state, level, pos) -> false);
     }
 }

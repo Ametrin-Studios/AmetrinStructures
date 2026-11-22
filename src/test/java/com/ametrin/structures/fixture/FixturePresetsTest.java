@@ -5,8 +5,8 @@ import com.ametrin.structures.spawner.EntityDataBuilder;
 import com.ametrin.structures.util.RegistryConditionContext;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
@@ -103,7 +103,7 @@ class FixturePresetsTest {
                 .build().fixtures().getFirst();
         assertEquals(2, alternative.weight());
         var entity = assertInstanceOf(EntityFixture.class, alternative.fixture());
-        assertEquals(Identifier.withDefaultNamespace("zombie"), entity.entity().identifier());
+        assertEquals(ResourceLocation.withDefaultNamespace("zombie"), entity.entity().location());
         assertTrue(entity.nbt().orElseThrow().toString().contains("minecraft:chicken"));
         assertFalse(entity.nbt().orElseThrow().contains("id"));
     }
@@ -146,8 +146,8 @@ class FixturePresetsTest {
         }
     }
 
-    private static Optional<WeightedFixture> resolve(WeightedFixture fixture, Map<Identifier, FixturePreset> presets) {
-        return FixturePresets.resolve(fixture, id -> Optional.ofNullable(presets.get(id)), _ -> true, RandomSource.create(0));
+    private static Optional<WeightedFixture> resolve(WeightedFixture fixture, Map<ResourceLocation, FixturePreset> presets) {
+        return FixturePresets.resolve(fixture, id -> Optional.ofNullable(presets.get(id)), ignored -> true, RandomSource.create(0));
     }
 
     private static WeightedFixture preset(String path) {
@@ -158,7 +158,7 @@ class FixturePresetsTest {
         return ResourceKey.create(ASRegistries.FIXTURE_PRESET, id(path));
     }
 
-    private static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath("test", path);
+    private static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath("test", path);
     }
 }

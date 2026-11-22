@@ -3,7 +3,7 @@ package com.ametrin.structures.spawner;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BaseSpawner;
 import net.minecraft.world.level.SpawnData;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public final class SpawnerAccess {
     /// Applies everything but the countdown to the next spawn, which the spawner saves and keeps across loads.
@@ -19,8 +19,8 @@ public final class SpawnerAccess {
             // Clients only get the next spawn, not the potentials. If it's empty, the spawner shows no entity and
             // no particles until it spawns. Keep it as long as the profile still has it, which also keeps it
             // stable across loads.
-            if (spawner.nextSpawnData == null || !profile.spawnPotentials().contains(spawner.nextSpawnData)) {
-                spawner.nextSpawnData = profile.spawnPotentials().getRandomOrThrow(RandomSource.create());
+            if (spawner.nextSpawnData == null || profile.spawnPotentials().unwrap().stream().noneMatch(entry -> entry.data().equals(spawner.nextSpawnData))) {
+                spawner.nextSpawnData = profile.spawnPotentials().getRandomValue(RandomSource.create()).orElseThrow();
             }
         }
     }

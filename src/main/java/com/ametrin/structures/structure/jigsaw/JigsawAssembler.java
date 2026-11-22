@@ -21,11 +21,9 @@ import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
-import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.apache.commons.lang3.mutable.MutableObject;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Function;
@@ -91,12 +89,12 @@ final class JigsawAssembler {
     }
 
     /// The space pieces can take: the box `maxDistance` around the center, within the world's height and `padding`, without the start piece.
-    static Space freeSpace(BoundingBox start, int centerY, JigsawStructure.MaxDistance maxDistance, LevelHeightAccessor heightAccessor, DimensionPadding padding) {
+    static Space freeSpace(BoundingBox start, int centerY, MaxDistance maxDistance, LevelHeightAccessor heightAccessor, DimensionPadding padding) {
         int centerX = (start.maxX() + start.minX()) / 2;
         int centerZ = (start.maxZ() + start.minZ()) / 2;
         int horizontal = maxDistance.horizontal();
-        int minY = Math.max(centerY - maxDistance.vertical(), heightAccessor.getMinY() + padding.bottom());
-        int maxY = Math.min(centerY + maxDistance.vertical(), heightAccessor.getMaxY() - padding.top());
+        int minY = Math.max(centerY - maxDistance.vertical(), heightAccessor.getMinBuildHeight() + padding.bottom());
+        int maxY = Math.min(centerY + maxDistance.vertical(), heightAccessor.getMaxBuildHeight() - 1 - padding.top());
         var bounds = minY <= maxY ? new BoundingBox(centerX - horizontal, minY, centerZ - horizontal, centerX + horizontal, maxY, centerZ + horizontal) : null;
         return new Space(bounds, List.of(start));
     }
@@ -185,7 +183,7 @@ final class JigsawAssembler {
     }
 
     // Whether the jigsaw's pool can lead to an element below its soft minimum. Jigsaws that point to an unknown pool don't wait.
-    private boolean leadsToMissing(StructureTemplate.JigsawBlockInfo jigsaw) {
+    private boolean leadsToMissing(JigsawBlockInfo jigsaw) {
         var pool = pools.apply(aliases.lookup(jigsaw.pool()));
         if (pool.isEmpty()) {
             return true;
@@ -203,7 +201,7 @@ final class JigsawAssembler {
     }
 
     /// For each element with a soft minimum that the jigsaws can lead to, the pools that lead to it: through their elements, their fallback and the pools their elements' jigsaws point to.
-    private Map<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools(List<StructureTemplate.JigsawBlockInfo> jigsaws) {
+    private Map<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>> leadingPools(List<JigsawBlockInfo> jigsaws) {
         var parents = new HashMap<Holder<StructureTemplatePool>, Set<Holder<StructureTemplatePool>>>();
         var containing = new HashMap<ConditionalPoolElement, Set<Holder<StructureTemplatePool>>>();
         var visited = new HashSet<Holder<StructureTemplatePool>>();
@@ -216,15 +214,15 @@ final class JigsawAssembler {
             }
             var children = new ArrayList<Holder<StructureTemplatePool>>();
             children.add(pool.value().getFallback());
-            for (var entry : pool.value().getTemplates()) {
+            for (var entry : pool.value().rawTemplates) {
                 var element = entry.getFirst();
                 if (element instanceof ConditionalPoolElement counted && counted.softMinCount() > 0) {
-                    containing.computeIfAbsent(counted, _ -> new HashSet<>()).add(pool);
+                    containing.computeIfAbsent(counted, key -> new HashSet<>()).add(pool);
                 }
                 Jigsaws.pools(element, templates, listing).forEach(key -> pools.apply(aliases.lookup(key)).ifPresent(children::add));
             }
             for (var child : children) {
-                parents.computeIfAbsent(child, _ -> new HashSet<>()).add(pool);
+                parents.computeIfAbsent(child, key -> new HashSet<>()).add(pool);
                 queue.add(child);
             }
         }
@@ -251,23 +249,23 @@ final class JigsawAssembler {
         undo.add(() -> visit = previous);
     }
 
-    private void decide(Node source, StructureTemplate.JigsawBlockInfo jigsaw) {
+    private void decide(Node source, JigsawBlockInfo jigsaw) {
         var decision = createDecision(source, jigsaw);
         if (decision != null) {
-            decision.placeNext(_ -> true, false);
+            decision.placeNext(ignored -> true, false);
         }
     }
 
-    private @Nullable Decision createDecision(Node source, StructureTemplate.JigsawBlockInfo jigsaw) {
+    private @Nullable Decision createDecision(Node source, JigsawBlockInfo jigsaw) {
         var poolKey = aliases.lookup(jigsaw.pool());
         var pool = pools.apply(poolKey);
         if (pool.isEmpty() || pool.get().value().size() == 0 && !pool.get().is(Pools.EMPTY)) {
-            ASLog.warn("Empty or non-existent pool: {}", poolKey.identifier());
+            ASLog.warn("Empty or non-existent pool: {}", poolKey.location());
             return null;
         }
         var fallback = pool.get().value().getFallback();
         if (fallback.value().size() == 0 && !fallback.is(Pools.EMPTY)) {
-            ASLog.warn("Empty or non-existent fallback pool: {}", fallback.unwrapKey().map(key -> key.identifier().toString()).orElse("<unregistered>"));
+            ASLog.warn("Empty or non-existent fallback pool: {}", fallback.unwrapKey().map(key -> key.location().toString()).orElse("<unregistered>"));
             return null;
         }
 
@@ -275,7 +273,7 @@ final class JigsawAssembler {
         var target = jigsaw.info().pos().relative(direction);
         Space free;
         if (source.piece.getBoundingBox().isInside(target)) {
-            free = source.inside.get();
+            free = source.inside.getValue();
             if (free == null) {
                 free = new Space(source.piece.getBoundingBox(), blocked);
                 source.inside.setValue(free);
@@ -340,7 +338,7 @@ final class JigsawAssembler {
         undo.add(() -> attachedEarly.remove(attached));
         var again = Objects.requireNonNull(createDecision(best.source, best.jigsaw));
         var placedMissing = again.placeNext(element -> element == missing, true);
-        blocker.placeNext(_ -> true, false);
+        blocker.placeNext(ignored -> true, false);
         return placedMissing;
     }
 
@@ -362,7 +360,7 @@ final class JigsawAssembler {
         // The later decisions it tried were undone and get decided again, but this one stays decided, so it starts over with all of its candidates.
         if (earliest != null) {
             earliest.restart();
-            earliest.placeNext(_ -> true, false);
+            earliest.placeNext(ignored -> true, false);
         }
         return false;
     }
@@ -404,7 +402,7 @@ final class JigsawAssembler {
     }
 
     // A repeated element attaches by its first copy.
-    private List<StructureTemplate.JigsawBlockInfo> attachingJigsaws(StructurePoolElement element, Rotation rotation, RandomSource random) {
+    private List<JigsawBlockInfo> attachingJigsaws(StructurePoolElement element, Rotation rotation, RandomSource random) {
         var repeated = RepeatedPoolElement.unwrap(element);
         return repeated != null ? repeated.attachingJigsaws(templates, BlockPos.ZERO, rotation, random) : Jigsaws.shuffled(element, templates, BlockPos.ZERO, rotation, random);
     }
@@ -432,7 +430,7 @@ final class JigsawAssembler {
             undo.add(() -> counts.merge(counted, -1, Integer::sum));
         }
         if (node.depth <= maxDepth) {
-            var pieces = queue.computeIfAbsent(decision.jigsaw.placementPriority(), _ -> new ArrayDeque<>());
+            var pieces = queue.computeIfAbsent(decision.jigsaw.placementPriority(), key -> new ArrayDeque<>());
             pieces.addLast(node);
             undo.add(pieces::removeLast);
         }
@@ -481,7 +479,7 @@ final class JigsawAssembler {
         }
     }
 
-    private record Deferred(Node node, StructureTemplate.JigsawBlockInfo jigsaw) {}
+    private record Deferred(Node node, JigsawBlockInfo jigsaw) {}
 
     /// @param y      the Y of the attached piece's position
     /// @param deltaY how much higher the attached piece's position is than the source's box, when both are rigid
@@ -489,10 +487,10 @@ final class JigsawAssembler {
 
     private static final class Visit {
         private final Node node;
-        private final List<StructureTemplate.JigsawBlockInfo> jigsaws;
+        private final List<JigsawBlockInfo> jigsaws;
         private int next;
 
-        private Visit(Node node, List<StructureTemplate.JigsawBlockInfo> jigsaws) {
+        private Visit(Node node, List<JigsawBlockInfo> jigsaws) {
             this.node = node;
             this.jigsaws = jigsaws;
         }
@@ -502,7 +500,7 @@ final class JigsawAssembler {
     /// Its position among them isn't undone, so going back to it continues with the next candidate.
     private final class Decision {
         private final Node source;
-        private final StructureTemplate.JigsawBlockInfo jigsaw;
+        private final JigsawBlockInfo jigsaw;
         private final Direction direction;
         private final BlockPos target;
         private final Space free;
@@ -517,11 +515,11 @@ final class JigsawAssembler {
         private int element = -1;
         private @Nullable List<Rotation> rotations;
         private int rotation;
-        private @Nullable List<StructureTemplate.JigsawBlockInfo> targets;
+        private @Nullable List<JigsawBlockInfo> targets;
         private int targetIndex;
         private int expandTo;
 
-        private Decision(Node source, StructureTemplate.JigsawBlockInfo jigsaw, Direction direction, BlockPos target, Space free, List<StructurePoolElement> elements) {
+        private Decision(Node source, JigsawBlockInfo jigsaw, Direction direction, BlockPos target, Space free, List<StructurePoolElement> elements) {
             this.source = source;
             this.jigsaw = jigsaw;
             this.direction = direction;
@@ -553,7 +551,7 @@ final class JigsawAssembler {
                 var candidates = attachingJigsaws(wanted, rotation, listing);
                 int expand = expansion(wanted, rotation, candidates);
                 for (var candidate : candidates) {
-                    if (!JigsawBlock.canAttach(jigsaw, candidate)) {
+                    if (!JigsawBlock.canAttach(jigsaw.info(), candidate.info())) {
                         continue;
                     }
                     var placement = placement(wanted, rotation, candidate, expand);
@@ -594,7 +592,7 @@ final class JigsawAssembler {
                 if (targets != null) {
                     while (targetIndex < targets.size()) {
                         var candidate = targets.get(targetIndex++);
-                        if (JigsawBlock.canAttach(jigsaw, candidate) && tryPlace(candidate)) {
+                        if (JigsawBlock.canAttach(jigsaw.info(), candidate.info()) && tryPlace(candidate)) {
                             return true;
                         }
                     }
@@ -630,7 +628,7 @@ final class JigsawAssembler {
             return Objects.requireNonNull(rotations).get(rotation - 1);
         }
 
-        private boolean tryPlace(StructureTemplate.JigsawBlockInfo targetJigsaw) {
+        private boolean tryPlace(JigsawBlockInfo targetJigsaw) {
             var targetElement = current();
             var targetRotation = currentRotation();
             var placement = placement(targetElement, targetRotation, targetJigsaw, expandTo);
@@ -686,7 +684,7 @@ final class JigsawAssembler {
         }
 
         // Where `element` goes when it attaches here by `targetJigsaw`.
-        private Placement placement(StructurePoolElement element, Rotation rotation, StructureTemplate.JigsawBlockInfo targetJigsaw, int expand) {
+        private Placement placement(StructurePoolElement element, Rotation rotation, JigsawBlockInfo targetJigsaw, int expand) {
             var targetLocal = targetJigsaw.info().pos();
             var rawPosition = target.subtract(targetLocal);
             var rawBox = element.getBoundingBox(templates, rawPosition, rotation);
@@ -714,7 +712,7 @@ final class JigsawAssembler {
         }
 
         // Flat pieces reserve room above them for the tallest piece their inward jigsaws can attach, so village streets can have houses inside their box.
-        private int expansion(StructurePoolElement element, Rotation rotation, List<StructureTemplate.JigsawBlockInfo> jigsaws) {
+        private int expansion(StructurePoolElement element, Rotation rotation, List<JigsawBlockInfo> jigsaws) {
             int expand = 0;
             var box = element.getBoundingBox(templates, BlockPos.ZERO, rotation);
             if (expansionHack && box.getYSpan() <= 16) {

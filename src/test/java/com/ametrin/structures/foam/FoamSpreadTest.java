@@ -7,7 +7,6 @@ import com.ametrin.structures.registry.ASItems;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -87,7 +86,7 @@ class FoamSpreadTest {
 
     private static List<Component> tooltip(FoamSpread spread) {
         List<Component> lines = new ArrayList<>();
-        spread.addToTooltip(Item.TooltipContext.EMPTY, lines::add, TooltipFlag.NORMAL, DataComponentMap.EMPTY);
+        spread.addToTooltip(Item.TooltipContext.EMPTY, lines::add, TooltipFlag.NORMAL);
         return lines;
     }
 

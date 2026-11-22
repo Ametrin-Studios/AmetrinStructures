@@ -49,8 +49,8 @@ public final class ChatReport {
     static void send(CommandSourceStack source, MutableComponent summary, List<Component> extraLines, List<Component> lines, String tsv, String moreCommand) {
         var copy = Component.translatable(Keys.COPY).withStyle(style -> style
                 .withColor(ChatFormatting.GREEN)
-                .withClickEvent(new ClickEvent.CopyToClipboard(tsv))
-                .withHoverEvent(new HoverEvent.ShowText(Component.translatable(Keys.COPY_HOVER))));
+                .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, tsv))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable(Keys.COPY_HOVER))));
         source.sendSuccess(() -> summary.append(" ").append(copy), false);
         extraLines.forEach(line -> source.sendSuccess(() -> line, false));
         lines.stream().limit(SHOWN_LINES).forEach(line -> source.sendSuccess(() -> line, false));
@@ -59,7 +59,7 @@ public final class ChatReport {
             HIDDEN_LINES.put(report, List.copyOf(lines.subList(SHOWN_LINES, lines.size())));
             source.sendSuccess(() -> Component.translatable(Keys.MORE, lines.size() - SHOWN_LINES).withStyle(style -> style
                     .withColor(ChatFormatting.GREEN)
-                    .withClickEvent(new ClickEvent.RunCommand(moreCommand + " more " + report))), false);
+                    .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, moreCommand + " more " + report))), false);
         }
     }
 

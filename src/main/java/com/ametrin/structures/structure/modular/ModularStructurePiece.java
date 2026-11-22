@@ -32,12 +32,19 @@ public class ModularStructurePiece extends PoolElementStructurePiece implements 
 
     /// @param groundLevelDelta how far above the bottom of `box` the ground lies
     public ModularStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, int groundLevelDelta, Rotation rotation, BoundingBox box, LiquidSettings liquidSettings, TerrainAdjustment terrainAdaptation) {
-        var terrain = element instanceof ExtendedSinglePoolElement extended
-                ? extended.terrainBox().fit(terrainAdaptation, extended.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
-                : new TerrainFit(terrainAdaptation, Optional.empty(), groundLevelDelta);
-        // TODO NeoForge backport: keep the piece's own delta and return the terrain's from getBeardifierGroundLevelDelta, like on 26.3, so jigsaw layouts can create these pieces.
+        this(templates, element, position, rotation, box, liquidSettings, fit(templates, element, groundLevelDelta, terrainAdaptation));
+    }
+
+    private ModularStructurePiece(StructureTemplateManager templates, StructurePoolElement element, BlockPos position, Rotation rotation, BoundingBox box, LiquidSettings liquidSettings, TerrainFit terrain) {
+        // The beardifier reads the piece's delta, which has to be the terrain's since NeoForge 21.1 has no separate getter for it. So jigsaw layouts can't create these pieces.
         super(templates, element, position, terrain.groundLevelDelta(), rotation, box, liquidSettings);
         this.terrain = terrain;
+    }
+
+    private static TerrainFit fit(StructureTemplateManager templates, StructurePoolElement element, int groundLevelDelta, TerrainAdjustment terrainAdaptation) {
+        return element instanceof ExtendedSinglePoolElement extended
+                ? extended.terrainBox().fit(terrainAdaptation, extended.template.map(templates::getOrCreate, Function.identity()), groundLevelDelta)
+                : new TerrainFit(terrainAdaptation, Optional.empty(), groundLevelDelta);
     }
 
     /// A piece for `entry` at its offset from `origin`, turned with `rotation`, like modular structures create them.

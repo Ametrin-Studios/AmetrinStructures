@@ -2,8 +2,8 @@ package com.ametrin.structures.foam;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.Nullable;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
@@ -12,7 +12,7 @@ import java.util.function.Function;
 final class FoamDescriptions {
     private FoamDescriptions() {}
 
-    static MutableComponent of(@Nullable Identifier type, Function<Identifier, String> key, Object... arguments) {
+    static MutableComponent of(@Nullable ResourceLocation type, Function<ResourceLocation, String> key, Object... arguments) {
         if (type == null) {
             return Component.literal("unregistered type");
         }

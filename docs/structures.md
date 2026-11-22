@@ -77,7 +77,7 @@ Biomes keep most structures in the right dimension. When a dimension reuses vani
 Or with a `DataMapProvider`:
 
 ```java
-static final ResourceKey<Level> EXAMPLE_DIMENSION = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("examplemod", "example_dimension"));
+static final ResourceKey<Level> EXAMPLE_DIMENSION = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("examplemod", "example_dimension"));
 
 @Override
 protected void gather(HolderLookup.Provider provider) {

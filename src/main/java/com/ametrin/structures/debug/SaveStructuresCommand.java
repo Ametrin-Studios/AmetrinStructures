@@ -39,9 +39,9 @@ public final class SaveStructuresCommand {
         var center = BlockPos.containing(source.getPosition());
         var structureBlocks = new ArrayList<StructureBlockEntity>();
         // Only loaded chunks. A structure block in an unloaded chunk has nothing loaded to save anyway.
-        ChunkPos.rangeClosed(ChunkPos.containing(center.offset(-radius, 0, -radius)), ChunkPos.containing(center.offset(radius, 0, radius)))
-                .filter(chunk -> level.hasChunk(chunk.x(), chunk.z()))
-                .flatMap(chunk -> level.getChunk(chunk.x(), chunk.z()).getBlockEntities().values().stream())
+        ChunkPos.rangeClosed(new ChunkPos(center.offset(-radius, 0, -radius)), new ChunkPos(center.offset(radius, 0, radius)))
+                .filter(chunk -> level.hasChunk(chunk.x, chunk.z))
+                .flatMap(chunk -> level.getChunk(chunk.x, chunk.z).getBlockEntities().values().stream())
                 .forEach(blockEntity -> {
                     if (blockEntity instanceof StructureBlockEntity structureBlock
                             && structureBlock.getMode() == StructureMode.SAVE

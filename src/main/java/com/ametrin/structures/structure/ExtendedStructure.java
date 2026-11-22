@@ -15,7 +15,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -92,7 +92,7 @@ public abstract class ExtendedStructure extends Structure {
     private List<StructureSet> containingSets(RegistryAccess registries) {
         var cached = containingSets;
         if (cached == null || cached.registries() != registries) {
-            var sets = registries.lookupOrThrow(Registries.STRUCTURE_SET).stream()
+            var sets = registries.registryOrThrow(Registries.STRUCTURE_SET).stream()
                     .filter(set -> set.structures().stream().anyMatch(entry -> entry.structure().value() == this))
                     .toList();
             cached = new ContainingSets(registries, sets);

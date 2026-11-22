@@ -10,14 +10,14 @@ import net.minecraft.client.gui.screens.inventory.StructureBlockEditScreen;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,8 +32,8 @@ public final class VanillaScreenCompletions {
 
     private static final List<CompletedBox> BOXES = List.of(
             new CompletedBox(StructureBlockEditScreen.class, "structure_block.structure_name", () -> keys(ASPayloads.RequestRegistryKeys.STRUCTURE_TEMPLATES)),
-            new CompletedBox(JigsawBlockEditScreen.class, "jigsaw_block.pool", () -> keys(Registries.TEMPLATE_POOL.identifier())),
-            new CompletedBox(JigsawBlockEditScreen.class, "jigsaw_block.final_state", () -> Completer.blockState(blocks(), _ -> true)));
+            new CompletedBox(JigsawBlockEditScreen.class, "jigsaw_block.pool", () -> keys(Registries.TEMPLATE_POOL.location())),
+            new CompletedBox(JigsawBlockEditScreen.class, "jigsaw_block.final_state", () -> Completer.blockState(blocks(), ignored -> true)));
 
     private static @Nullable Screen screen;
     private static @Nullable CompletionPopup completions;
@@ -64,9 +64,9 @@ public final class VanillaScreenCompletions {
         }
     }
 
-    private static Completer keys(Identifier registry) {
+    private static Completer keys(ResourceLocation registry) {
         RegistryKeyCache.refresh();
-        return Completer.filtering(() -> RegistryKeyCache.get(registry).stream().map(Identifier::toString).toList());
+        return Completer.filtering(() -> RegistryKeyCache.get(registry).stream().map(ResourceLocation::toString).toList());
     }
 
     private static HolderLookup<Block> blocks() {
@@ -77,14 +77,14 @@ public final class VanillaScreenCompletions {
     static void onRender(ScreenEvent.Render.Post event) {
         var popup = popupFor(event.getScreen());
         if (popup != null) {
-            popup.extractRenderState(event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
+            popup.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
         }
     }
 
     @SubscribeEvent
     static void onKeyPressed(ScreenEvent.KeyPressed.Pre event) {
         var popup = popupFor(event.getScreen());
-        if (popup != null && popup.keyPressed(event.getKeyEvent())) {
+        if (popup != null && popup.keyPressed(event.getKeyCode())) {
             event.setCanceled(true);
         }
     }
@@ -92,7 +92,7 @@ public final class VanillaScreenCompletions {
     @SubscribeEvent
     static void onMouseClicked(ScreenEvent.MouseButtonPressed.Pre event) {
         var popup = popupFor(event.getScreen());
-        if (popup != null && popup.mouseClicked(event.getMouseButtonEvent())) {
+        if (popup != null && popup.mouseClicked(event.getMouseX(), event.getMouseY())) {
             event.setCanceled(true);
         }
     }

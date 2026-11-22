@@ -10,7 +10,7 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 public record FixtureContext(
         BlockState markerState,
@@ -40,7 +40,7 @@ public record FixtureContext(
         for (var direction : Direction.values()) {
             neighborPos.setWithOffset(actionBlockPos, direction);
             var neighbor = level.getBlockState(neighborPos);
-            var updated = neighbor.updateShape(level, level, neighborPos, direction.getOpposite(), actionBlockPos, placed, random);
+            var updated = neighbor.updateShape(direction.getOpposite(), placed, level, neighborPos, actionBlockPos);
             if (updated != neighbor) {
                 level.setBlock(neighborPos, updated, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
             }

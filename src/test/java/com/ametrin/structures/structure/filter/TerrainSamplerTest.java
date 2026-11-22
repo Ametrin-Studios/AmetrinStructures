@@ -47,11 +47,11 @@ class TerrainSamplerTest {
                 registries,
                 new NoiseBasedChunkGenerator(new FixedBiomeSource(plains), settings),
                 new FixedBiomeSource(plains),
-                RandomState.create(registries, NoiseGeneratorSettings.OVERWORLD, 0),
+                RandomState.create(registries.asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 0,
                 new ChunkPos(0, 0),
                 LevelHeightAccessor.create(-64, 384),
-                _ -> true);
+                ignored -> true);
     }
 }

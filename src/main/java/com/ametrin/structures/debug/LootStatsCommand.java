@@ -6,21 +6,21 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.commands.arguments.IdentifierArgument;
-import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.ResourceOrIdArgument;
+import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.util.Util;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -32,7 +32,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -82,7 +82,7 @@ public final class LootStatsCommand {
 
     static LiteralArgumentBuilder<CommandSourceStack> lootStats(CommandBuildContext context) {
         return Commands.literal("loot_stats")
-                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("table")
                         .then(Commands.argument("loot_table", ResourceOrIdArgument.lootTable(context))
                                 .executes(command -> table(command, DEFAULT_SAMPLES))
@@ -97,7 +97,7 @@ public final class LootStatsCommand {
                                                 .executes(command -> structure(command,
                                                         IntegerArgumentType.getInteger(command, "radius"), IntegerArgumentType.getInteger(command, "layouts")))))))
                 .then(Commands.literal("template")
-                        .then(Commands.argument("template", IdentifierArgument.id())
+                        .then(Commands.argument("template", ResourceLocationArgument.id())
                                 .suggests((command, builder) -> SharedSuggestionProvider.suggestResource(command.getSource().getServer().getStructureManager().listTemplates(), builder))
                                 .executes(command -> template(command, DEFAULT_TEMPLATE_SAMPLES))
                                 .then(Commands.argument("samples", IntegerArgumentType.integer(1, MAX_SAMPLES))
@@ -116,7 +116,7 @@ public final class LootStatsCommand {
 
     /// Rolls `table` `samples` times. Uses `random` instead of the table's random sequence, which would advance the world's.
     static Stats sample(LootTable table, LootParams params, int samples, RandomSource random) {
-        return sample(samples, _ -> table.getRandomItems(params, random));
+        return sample(samples, ignored -> table.getRandomItems(params, random));
     }
 
     /// @param roll the items of one sample
@@ -136,7 +136,7 @@ public final class LootStatsCommand {
     /// Sums each key's counts over `samples`, where a sample without the key counts as 0.
     static <K> Map<K, Counts> count(List<Map<K, Integer>> samples) {
         var tallies = new HashMap<K, Tally>();
-        samples.forEach(sample -> sample.forEach((key, count) -> tallies.computeIfAbsent(key, _ -> new Tally()).add(count)));
+        samples.forEach(sample -> sample.forEach((key, count) -> tallies.computeIfAbsent(key, ignored -> new Tally()).add(count)));
         var counts = new HashMap<K, Counts>();
         tallies.forEach((key, tally) -> counts.put(key, new Counts(tally.total, tally.samplesWith, tally.samplesWith < samples.size() ? 0 : tally.min, tally.max)));
         return counts;
@@ -163,7 +163,7 @@ public final class LootStatsCommand {
         var params = chestParams(source, BlockPos.containing(source.getPosition()), player);
         var stats = sample(table.value(), params, samples, source.getLevel().getRandom().fork());
 
-        var name = table.unwrapKey().map(key -> key.identifier().toString()).orElse("inline");
+        var name = table.unwrapKey().map(key -> key.location().toString()).orElse("inline");
         var summary = Component.translatable(Keys.SUMMARY, name, samples, format(luck(player)), percent(stats.empty(), samples));
         sendReport(source, summary, List.of(), stats, "chest", Keys.RANGE_CHEST, "");
         return stats.items().size();
@@ -180,7 +180,7 @@ public final class LootStatsCommand {
         }
         var name = structures.asPrintable();
         var random = level.getRandom().fork();
-        var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
+        var center = new ChunkPos(BlockPos.containing(source.getPosition()));
         source.sendSuccess(() -> Component.translatable(Keys.STRUCTURE_STARTED, count, name, radius), false);
         // Laying out structures far away can take a while.
         CompletableFuture.supplyAsync(() -> StructureLoot.layouts(level, structures, center, radius, count, random), Util.backgroundExecutor())
@@ -199,11 +199,11 @@ public final class LootStatsCommand {
 
     private static int template(CommandContext<CommandSourceStack> command, int samples) throws CommandSyntaxException {
         var source = command.getSource();
-        var id = IdentifierArgument.getId(command, "template");
+        var id = ResourceLocationArgument.getId(command, "template");
         var template = source.getServer().getStructureManager().get(id).orElseThrow(() -> UNKNOWN_TEMPLATE.create(id));
         var collected = StructureLoot.template(source.getLevel(), template, BlockPos.containing(source.getPosition()));
         var random = source.getLevel().getRandom().fork();
-        var contents = IntStream.range(0, samples).mapToObj(_ -> collected.draw(random)).toList();
+        var contents = IntStream.range(0, samples).mapToObj(ignored -> collected.draw(random)).toList();
         var luck = format(luck(player(source)));
         contentsReport(source, stats -> Component.translatable(Keys.TEMPLATE_SUMMARY, id.toString(), samples, luck, percent(stats.empty(), samples)),
                 List.of(), contents, "template", Keys.RANGE_TEMPLATE, random);
@@ -216,7 +216,7 @@ public final class LootStatsCommand {
         var extraLines = new ArrayList<Component>();
         if (structures.unwrap().right().isPresent()) {
             var mix = layouts.stream()
-                    .collect(Collectors.groupingBy(layout -> layout.structure().unwrapKey().map(key -> key.identifier().toString()).orElse("?"), Collectors.counting()))
+                    .collect(Collectors.groupingBy(layout -> layout.structure().unwrapKey().map(key -> key.location().toString()).orElse("?"), Collectors.counting()))
                     .entrySet().stream()
                     .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                     .map(entry -> entry.getKey() + " " + entry.getValue())
@@ -248,9 +248,9 @@ public final class LootStatsCommand {
         // A display without an equipment table is listed by its entity type.
         var sources = count(contents.stream().map(sample -> {
             var perSource = new HashMap<String, Integer>();
-            sample.containers().forEach(container -> perSource.merge(container.lootTable().identifier().toString(), 1, Integer::sum));
+            sample.containers().forEach(container -> perSource.merge(container.lootTable().location().toString(), 1, Integer::sum));
             sample.displays().forEach(display -> perSource.merge(
-                    display.equipment().map(table -> table.identifier().toString()).orElseGet(() -> BuiltInRegistries.ENTITY_TYPE.getKey(display.type()).toString()),
+                    display.equipment().map(table -> table.location().toString()).orElseGet(() -> BuiltInRegistries.ENTITY_TYPE.getKey(display.type()).toString()),
                     1, Integer::sum));
             return (Map<String, Integer>) perSource;
         }).toList());
@@ -259,7 +259,7 @@ public final class LootStatsCommand {
         var sortedSources = sortedByTotal(sources);
         var sourceBreakdown = breakdown("loot source\tper " + per + "\tshare of " + per + "s", sortedSources, contents.size());
         lines.add(Component.translatable(Keys.SOURCES, sortedSources.size())
-                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(sourceBreakdown.hover()))));
+                .withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, sourceBreakdown.hover()))));
         double codePieces = contents.stream().mapToInt(StructureLoot.Contents::codePieces).average().orElse(0);
         if (codePieces > 0) {
             lines.add(Component.translatable(Keys.CODE_PIECES, format(codePieces), per));
@@ -301,11 +301,12 @@ public final class LootStatsCommand {
             var counts = entry.getValue();
             tsv.append(id).append('\t').append(average(counts, stats.samples())).append('\t').append(percent(counts.samplesWith(), stats.samples()))
                     .append('\t').append(counts.min()).append('\t').append(counts.max()).append('\n');
-            var name = entry.getKey().getDefaultInstance().getStyledHoverName();
+            var stack = entry.getKey().getDefaultInstance();
+            var name = Component.empty().append(stack.getHoverName()).withStyle(stack.getRarity().getStyleModifier());
             var details = Component.empty().append(name)
                     .append(Component.literal("\n" + id).withStyle(ChatFormatting.DARK_GRAY))
                     .append("\n").append(Component.translatable(rangeKey, counts.min(), counts.max()));
-            lines.add(ChatReport.line(counts, stats.samples(), name).withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
+            lines.add(ChatReport.line(counts, stats.samples(), name).withStyle(style -> style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, details))));
         }
         tsv.append(extraTsv);
         ChatReport.send(source, summary, extraLines, lines, tsv.toString(), "/ametrin loot_stats");

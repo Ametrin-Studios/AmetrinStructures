@@ -8,9 +8,9 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.ProcessorLists;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
@@ -25,11 +25,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EphemeralTestServerProvider.class)
 class ExtendedSinglePoolElementTest {
-    private static final Identifier TEMPLATE = Identifier.withDefaultNamespace("igloo/top");
+    private static final ResourceLocation TEMPLATE = ResourceLocation.withDefaultNamespace("igloo/top");
 
     @Test
     void processorsAreOnlyWrittenWhenThereAreSome(MinecraftServer server) {
-        var empty = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty")));
+        var empty = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ResourceKey.create(Registries.PROCESSOR_LIST, ResourceLocation.withDefaultNamespace("empty")));
         assertFalse(encode(server, element(empty)).has("processors"));
         assertFalse(encode(server, element(ExtendedSinglePoolElement.NO_PROCESSORS)).has("processors"));
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);

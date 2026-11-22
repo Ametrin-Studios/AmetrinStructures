@@ -15,7 +15,7 @@ class FixtureTypeTest {
     @Test
     void aReservedKeyOrAFieldMissingFromTheCodecIsRejected() {
         var reserved = FixtureField.withDefault(Fixture.TYPE_KEY, FieldType.bool(), false);
-        var codec = RecordCodecBuilder.<EmptyFixture>mapCodec(instance -> instance.group(reserved.forGetter(_ -> false)).apply(instance, _ -> new EmptyFixture()));
+        var codec = RecordCodecBuilder.<EmptyFixture>mapCodec(instance -> instance.group(reserved.forGetter(ignored -> false)).apply(instance, ignored -> new EmptyFixture()));
         assertThrows(IllegalArgumentException.class, () -> new FixtureType(codec, List.of(reserved)));
         var missing = FixtureField.withDefault("hanging", FieldType.bool(), false);
         assertThrows(IllegalArgumentException.class, () -> new FixtureType(EmptyFixture.CODEC, List.of(missing)));

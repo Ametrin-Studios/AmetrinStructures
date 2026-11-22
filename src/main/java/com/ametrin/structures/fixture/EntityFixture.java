@@ -2,6 +2,8 @@ package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASFixtures;
 import com.ametrin.structures.spawner.EntityDataBuilder;
+import com.ametrin.structures.util.ASNbt;
+import com.ametrin.structures.util.ItemStackTemplate;
 import com.mojang.serialization.*;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -11,13 +13,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /// An entity facing the marker's front. Item frames and paintings hang on the block behind it.
@@ -35,7 +37,7 @@ public record EntityFixture(
     public static final FixtureField<ResourceKey<EntityType<?>>> ENTITY = FixtureField.required("entity", FieldType.registryKey(Registries.ENTITY_TYPE));
     public static final FixtureField<Optional<CompoundTag>> NBT = FixtureField.optional("nbt", FieldType.nbt());
     public static final FixtureField<Optional<ResourceKey<LootTable>>> EQUIPMENT = FixtureField.optional("equipment", FieldType.registryKey(Registries.LOOT_TABLE));
-    public static final FixtureField<Float> EQUIPMENT_DROP_CHANCE = FixtureField.withDefault("equipment_drop_chance", FieldType.number(0.0F, 1.0F), DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE);
+    public static final FixtureField<Float> EQUIPMENT_DROP_CHANCE = FixtureField.withDefault("equipment_drop_chance", FieldType.number(0.0F, 1.0F), Mob.DEFAULT_EQUIPMENT_DROP_CHANCE);
     public static final FixtureField<Optional<ResourceKey<LootTable>>> DEATH_LOOT_TABLE = FixtureField.optional("death_loot_table", FieldType.registryKey(Registries.LOOT_TABLE));
     public static final Map<EquipmentSlot, FixtureField<Optional<ItemStackTemplate>>> SLOTS = slotFields();
     public static final List<FixtureField<?>> FIELDS = Stream.concat(
@@ -61,15 +63,15 @@ public record EntityFixture(
     /// The death loot table and the equipment go into their own fields, so they don't turn off the entity's randomization.
     public static EntityFixture of(EntityDataBuilder entity) {
         var extraData = entity.build();
-        var deathLootTable = extraData.read(EntityDataBuilder.DEATH_LOOT_TABLE_KEY, LootTable.KEY_CODEC);
+        var deathLootTable = ASNbt.read(extraData, EntityDataBuilder.DEATH_LOOT_TABLE_KEY, ResourceKey.codec(Registries.LOOT_TABLE));
         extraData.remove("id");
         extraData.remove(EntityDataBuilder.DEATH_LOOT_TABLE_KEY);
-        extraData.remove("equipment");
+        EntityDataBuilder.EQUIPMENT_KEYS.forEach(extraData::remove);
         return new EntityFixture(
                 BuiltInRegistries.ENTITY_TYPE.getResourceKey(entity.type()).orElseThrow(),
                 extraData.isEmpty() ? Optional.empty() : Optional.of(extraData),
                 Optional.empty(),
-                DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE,
+                Mob.DEFAULT_EQUIPMENT_DROP_CHANCE,
                 deathLootTable,
                 entity.equipment());
     }
@@ -91,10 +93,10 @@ public record EntityFixture(
         Fixtures.spawnEntity(type.get(), nbt.orElse(null), context, spawned -> {
             if (spawned instanceof Mob mob) {
                 // Set directly rather than through the extra data, so it keeps the entity's own randomization.
-                deathLootTable.ifPresent(table -> mob.lootTable = Optional.of(table));
+                deathLootTable.ifPresent(table -> mob.lootTable = table);
             }
             if (spawned instanceof LivingEntity living) {
-                equipment.ifPresent(table -> equip(living, new EquipmentTable(table, equipmentDropChance)));
+                equipment.ifPresent(table -> equip(living, new EquipmentTable(table, Arrays.stream(EquipmentSlot.values()).collect(Collectors.toMap(slot -> slot, slot -> equipmentDropChance)))));
                 items.forEach((slot, item) -> living.setItemSlot(slot, item.create()));
             }
         });

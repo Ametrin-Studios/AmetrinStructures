@@ -38,7 +38,7 @@ public final class StructureSetKeys {
     public ResourceKey<Structure> structure(String suffix) {
         var structure = declared.get(suffix);
         if (structure == null) {
-            throw new IllegalArgumentException("structure set " + key.identifier() + " has no structure " + describe(suffix) + "; known: " + declared.keySet());
+            throw new IllegalArgumentException("structure set " + key.location() + " has no structure " + describe(suffix) + "; known: " + declared.keySet());
         }
         return structure;
     }
@@ -46,7 +46,7 @@ public final class StructureSetKeys {
     /// @throws IllegalStateException when the set has several structures
     public ResourceKey<Structure> structure() {
         if (structures.size() != 1) {
-            throw new IllegalStateException("structure set " + key.identifier() + " has " + structures.size() + " structures, so one must be picked; known: " + structures);
+            throw new IllegalStateException("structure set " + key.location() + " has " + structures.size() + " structures, so one must be picked; known: " + structures);
         }
         return structures.getFirst();
     }
@@ -75,6 +75,6 @@ public final class StructureSetKeys {
 
     @Override
     public String toString() {
-        return key.identifier().toString();
+        return key.location().toString();
     }
 }

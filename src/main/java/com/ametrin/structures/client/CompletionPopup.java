@@ -3,11 +3,10 @@ package com.ametrin.structures.client;
 import com.ametrin.structures.client.Completer.Completion;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -59,20 +58,20 @@ final class CompletionPopup {
         matches = List.of();
     }
 
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(int keyCode) {
         EditBox box = refresh();
         if (box == null || matches.isEmpty()) {
             return false;
         }
-        if (event.isUp() || event.isDown()) {
-            select(selected + (event.isUp() ? -1 : 1));
+        if (keyCode == GLFW.GLFW_KEY_UP || keyCode == GLFW.GLFW_KEY_DOWN) {
+            select(selected + (keyCode == GLFW.GLFW_KEY_UP ? -1 : 1));
             return true;
         }
-        if (event.isCycleFocus()) {
+        if (keyCode == GLFW.GLFW_KEY_TAB) {
             accept(box, matches.get(selected));
             return true;
         }
-        if (event.isEscape()) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             dismissedValue = box.getValue();
             box.setSuggestion(null);
             matches = List.of();
@@ -81,9 +80,9 @@ final class CompletionPopup {
         return false;
     }
 
-    public boolean mouseClicked(MouseButtonEvent event) {
+    public boolean mouseClicked(double mouseX, double mouseY) {
         EditBox box = refresh();
-        int line = lineAt(box, event.x(), event.y());
+        int line = lineAt(box, mouseX, mouseY);
         if (box == null || line < 0) {
             return false;
         }
@@ -101,7 +100,7 @@ final class CompletionPopup {
     }
 
     /// Draws the list over everything else on the screen. Call after the screen's own widgets.
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY) {
         EditBox box = refresh();
         if (box == null || matches.isEmpty()) {
             return;
@@ -110,7 +109,8 @@ final class CompletionPopup {
         int x = box.getX();
         int y = listTop(box);
         int width = listWidth(box);
-        graphics.nextStratum();
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 400);
         // Opaque, so the widgets underneath don't show through.
         graphics.fill(x - 1, y - 1, x + width + 1, y + visibleLines() * LINE_HEIGHT + 1, BORDER);
         graphics.fill(x, y, x + width, y + visibleLines() * LINE_HEIGHT, BACKGROUND);
@@ -121,8 +121,9 @@ final class CompletionPopup {
             if (highlighted) {
                 graphics.fill(x, lineY, x + width, lineY + LINE_HEIGHT, HIGHLIGHT);
             }
-            graphics.text(font, matches.get(index).label(), x + 2, lineY + 2, highlighted ? SELECTED_COLOR : UNSELECTED_COLOR);
+            graphics.drawString(font, matches.get(index).label(), x + 2, lineY + 2, highlighted ? SELECTED_COLOR : UNSELECTED_COLOR);
         }
+        graphics.pose().popPose();
     }
 
     // Recomputes the matches when focus, the focused box's text or the known registry keys have changed.

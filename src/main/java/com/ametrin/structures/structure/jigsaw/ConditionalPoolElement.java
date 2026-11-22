@@ -98,7 +98,7 @@ public class ConditionalPoolElement extends StructurePoolElement {
         if (minDepth < 0 || maxDepth.filter(max -> max < 0).isPresent()) {
             return Optional.of("depths can't be negative");
         }
-        return maxDepth.filter(max -> max < minDepth).map(_ -> "max_depth must be at least min_depth");
+        return maxDepth.filter(max -> max < minDepth).map(ignored -> "max_depth must be at least min_depth");
     }
 
     private static Optional<String> problem(int minCount, int softMinCount, Optional<Integer> maxCount) {
@@ -108,7 +108,7 @@ public class ConditionalPoolElement extends StructurePoolElement {
         if (softMinCount < minCount) {
             return Optional.of("soft_min_count must be at least min_count");
         }
-        return maxCount.filter(max -> max < softMinCount).map(_ -> "max_count must be at least soft_min_count");
+        return maxCount.filter(max -> max < softMinCount).map(ignored -> "max_count must be at least soft_min_count");
     }
 
     public StructurePoolElement element() {
@@ -156,7 +156,7 @@ public class ConditionalPoolElement extends StructurePoolElement {
     }
 
     @Override
-    public List<StructureTemplate.JigsawBlockInfo> getShuffledJigsawBlocks(StructureTemplateManager templates, BlockPos position, Rotation rotation, RandomSource random) {
+    public List<StructureTemplate.StructureBlockInfo> getShuffledJigsawBlocks(StructureTemplateManager templates, BlockPos position, Rotation rotation, RandomSource random) {
         return element.getShuffledJigsawBlocks(templates, position, rotation, random);
     }
 

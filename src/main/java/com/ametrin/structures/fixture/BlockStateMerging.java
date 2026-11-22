@@ -27,7 +27,7 @@ public final class BlockStateMerging {
 
     /// As [#mergedBlockState()], also leaving out `derived`, which the fixture sets itself.
     public static FieldType<BlockState> mergedBlockState(Collection<? extends Property<?>> derived) {
-        return FieldType.blockState().formattedBy((state, _) -> serialize(state, derived));
+        return FieldType.blockState().formattedBy((state, registries) -> serialize(state, derived));
     }
 
     /// `state` written like `/setblock` does, without the properties the merge sets: waterlogging, the

@@ -18,7 +18,7 @@ public final class StructuresCommand {
         // The permission checks are on `structures` and `loot_stats`, not the shared root. Brigadier merges nodes registered twice
         // and keeps the first requirement, so a check on the root would also apply to the API's commands.
         var structures = Commands.literal("structures")
-                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(SpreadCommand.spread())
                 .then(SpreadCommand.visit())
                 .then(CheckCommand.check())

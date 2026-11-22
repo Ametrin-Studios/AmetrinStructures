@@ -4,7 +4,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -45,7 +44,7 @@ public record FoamSpread(FoamSpreadBehavior behavior,
     }
 
     @Override
-    public void addToTooltip(Item.TooltipContext context, Consumer<Component> tooltip, TooltipFlag flag, DataComponentGetter components) {
+    public void addToTooltip(Item.TooltipContext context, Consumer<Component> tooltip, TooltipFlag flag) {
         tooltip.accept(Component.translatable(Keys.FILL, Component.keybind("key.sneak"))
                 .withStyle(ChatFormatting.GRAY));
         tooltip.accept(line(behavior.description(), ChatFormatting.BLUE));

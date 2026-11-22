@@ -1,5 +1,6 @@
 package com.ametrin.structures.fixture;
 
+import com.ametrin.structures.util.ItemStackTemplate;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.Codec;
@@ -16,10 +17,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.*;
@@ -63,43 +63,43 @@ public record FieldType<T>(
     }
 
     public static FieldType<Boolean> bool() {
-        return new FieldType<>("boolean", Codec.BOOL, (text, _) -> switch (text.trim().toLowerCase(Locale.ROOT)) {
+        return new FieldType<>("boolean", Codec.BOOL, (text, registries) -> switch (text.trim().toLowerCase(Locale.ROOT)) {
             case "true" -> DataResult.success(true);
             case "false" -> DataResult.success(false);
             default -> DataResult.error(() -> "not true or false: " + text);
-        }, (value, _) -> value.toString(), Editor.TOGGLE, _ -> List.of("true", "false"), Optional.empty());
+        }, (value, registries) -> value.toString(), Editor.TOGGLE, ignored -> List.of("true", "false"), Optional.empty());
     }
 
     public static FieldType<Integer> integer(int min, int max) {
-        return new FieldType<>("integer", Codec.intRange(min, max), (text, _) -> {
+        return new FieldType<>("integer", Codec.intRange(min, max), (text, registries) -> {
             try {
                 return inRange(Integer.parseInt(text.trim()), min, max);
             } catch (NumberFormatException exception) {
                 return DataResult.error(() -> "not a whole number: " + text);
             }
-        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty());
+        }, (value, registries) -> value.toString(), Editor.TEXT, ignored -> List.of(), Optional.empty());
     }
 
     public static FieldType<Float> number(float min, float max) {
-        return new FieldType<>("number", Codec.floatRange(min, max), (text, _) -> {
+        return new FieldType<>("number", Codec.floatRange(min, max), (text, registries) -> {
             try {
                 return inRange(Float.parseFloat(text.trim()), min, max);
             } catch (NumberFormatException exception) {
                 return DataResult.error(() -> "not a number: " + text);
             }
-        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty());
+        }, (value, registries) -> value.toString(), Editor.TEXT, ignored -> List.of(), Optional.empty());
     }
 
     /// A key in `registry`. It doesn't have to exist yet, since it's only looked up when the fixture runs.
     public static <R> FieldType<ResourceKey<R>> registryKey(ResourceKey<? extends Registry<R>> registry) {
         return new FieldType<>(
-                registry.identifier().getPath(),
+                registry.location().getPath(),
                 ResourceKey.codec(registry),
-                (text, _) -> Identifier.read(text.trim()).map(id -> ResourceKey.create(registry, id)),
-                (value, _) -> value.identifier().toString(),
+                (text, registries) -> ResourceLocation.read(text.trim()).map(id -> ResourceKey.create(registry, id)),
+                (value, registries) -> value.location().toString(),
                 Editor.TEXT,
                 registries -> registries.lookup(registry)
-                        .map(lookup -> lookup.listElementIds().map(key -> key.identifier().toString()).toList())
+                        .map(lookup -> lookup.listElementIds().map(key -> key.location().toString()).toList())
                         .orElseGet(List::of),
                 Optional.of(registry));
     }
@@ -112,25 +112,25 @@ public record FieldType<T>(
             } catch (CommandSyntaxException exception) {
                 return DataResult.error(exception::getMessage);
             }
-        }, (value, _) -> BlockStateParser.serialize(value), Editor.BLOCK_STATE, _ -> List.of(), Optional.empty());
+        }, (value, registries) -> BlockStateParser.serialize(value), Editor.BLOCK_STATE, ignored -> List.of(), Optional.empty());
     }
 
     /// Written like `/give` does, with an optional count: `minecraft:leather_helmet[dyed_color=255] 2`.
     public static FieldType<ItemStackTemplate> item() {
         return new FieldType<>("item", ItemStackTemplate.CODEC, FieldType::parseItem, FieldType::formatItem, Editor.TEXT,
-                _ -> BuiltInRegistries.ITEM.keySet().stream().map(Identifier::toString).toList(),
+                ignored -> BuiltInRegistries.ITEM.keySet().stream().map(ResourceLocation::toString).toList(),
                 Optional.empty());
     }
 
     /// SNBT, like `{Health:5f}`.
     public static FieldType<CompoundTag> nbt() {
-        return new FieldType<>("nbt", TagParser.LENIENT_CODEC, (text, _) -> {
+        return new FieldType<>("nbt", TagParser.LENIENT_CODEC, (text, registries) -> {
             try {
-                return DataResult.success(TagParser.parseCompoundFully(text.trim()));
+                return DataResult.success(TagParser.parseTag(text.trim()));
             } catch (CommandSyntaxException exception) {
                 return DataResult.error(exception::getMessage);
             }
-        }, (value, _) -> value.toString(), Editor.TEXT, _ -> List.of(), Optional.empty());
+        }, (value, registries) -> value.toString(), Editor.TEXT, ignored -> List.of(), Optional.empty());
     }
 
     public static <E extends Enum<E> & StringRepresentable> FieldType<E> choice(Class<E> type) {
@@ -138,14 +138,14 @@ public record FieldType<T>(
         return new FieldType<>(
                 type.getSimpleName(),
                 StringRepresentable.fromValues(() -> constants),
-                (text, _) -> Arrays.stream(constants)
+                (text, registries) -> Arrays.stream(constants)
                         .filter(constant -> constant.getSerializedName().equalsIgnoreCase(text.trim()))
                         .findFirst()
                         .map(DataResult::success)
                         .orElseGet(() -> DataResult.error(() -> "not a " + type.getSimpleName() + ": " + text)),
-                (value, _) -> value.getSerializedName(),
+                (value, registries) -> value.getSerializedName(),
                 Editor.CHOICE,
-                _ -> Arrays.stream(constants).map(StringRepresentable::getSerializedName).toList(),
+                ignored -> Arrays.stream(constants).map(StringRepresentable::getSerializedName).toList(),
                 Optional.empty());
     }
 
@@ -201,7 +201,7 @@ public record FieldType<T>(
 
     // The item's id, its components the way ItemParser reads them, and the count unless it's 1.
     private static String formatItem(ItemStackTemplate item, HolderLookup.Provider registries) {
-        var text = new StringBuilder(item.typeHolder().getRegisteredName());
+        var text = new StringBuilder(item.item().getRegisteredName());
         var components = new ArrayList<String>();
         DynamicOps<Tag> ops = registries.createSerializationContext(NbtOps.INSTANCE);
         for (Map.Entry<DataComponentType<?>, Optional<?>> entry : item.components().entrySet()) {

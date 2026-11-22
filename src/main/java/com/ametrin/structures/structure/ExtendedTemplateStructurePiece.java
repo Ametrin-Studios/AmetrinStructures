@@ -2,13 +2,14 @@ package com.ametrin.structures.structure;
 
 import com.ametrin.structures.fixture.FixtureGeneration;
 import com.ametrin.structures.foam.RemoveFoamProcessor;
+import com.ametrin.structures.util.ASNbt;
 import com.mojang.serialization.DynamicOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -51,15 +52,14 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
             StructurePieceType type,
             int genDepth,
             StructureTemplateManager manager,
-            Identifier template,
+            ResourceLocation template,
             StructurePlaceSettings settings,
             BlockPos position,
             TerrainAdjustment terrainAdaptation,
             TerrainBox terrainBox,
             int groundLevelDelta) {
-        var ownProcessors = List.copyOf(settings.getProcessors());
         super(type, genDepth, manager, template, template.toString(), settings, position);
-        this.ownProcessors = ownProcessors;
+        this.ownProcessors = List.copyOf(settings.getProcessors());
         this.terrain = terrainBox.fit(terrainAdaptation, this.template, groundLevelDelta);
         applySettings();
     }
@@ -68,17 +68,17 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
             StructurePieceType type,
             CompoundTag tag,
             StructurePieceSerializationContext context,
-            Function<Identifier, StructurePlaceSettings> settingsFactory) {
+            Function<ResourceLocation, StructurePlaceSettings> settingsFactory) {
         super(type, tag, context.structureTemplateManager(), id -> readLiquidSettings(tag, settingsFactory.apply(id)));
         this.ownProcessors = List.copyOf(placeSettings.getProcessors());
-        this.structureProcessors = tag.read(STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context));
-        this.foundation = tag.read(FOUNDATION_KEY, Foundation.CODEC);
-        this.terrain = TerrainFit.read(tag, tag.getIntOr(GROUND_LEVEL_DELTA_KEY, 0));
+        this.structureProcessors = ASNbt.read(tag, STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context));
+        this.foundation = ASNbt.read(tag, FOUNDATION_KEY, Foundation.CODEC);
+        this.terrain = TerrainFit.read(tag, ASNbt.getIntOr(tag, GROUND_LEVEL_DELTA_KEY, 0));
         applySettings();
     }
 
     private static StructurePlaceSettings readLiquidSettings(CompoundTag tag, StructurePlaceSettings settings) {
-        tag.read(LIQUID_SETTINGS_KEY, LiquidSettings.CODEC).ifPresent(settings::setLiquidSettings);
+        ASNbt.read(tag, LIQUID_SETTINGS_KEY, LiquidSettings.CODEC).ifPresent(settings::setLiquidSettings);
         return settings;
     }
 
@@ -107,7 +107,7 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
         applySettings();
     }
 
-    public Identifier templateId() {
+    public ResourceLocation templateId() {
         return makeTemplateLocation();
     }
 
@@ -161,10 +161,10 @@ public abstract class ExtendedTemplateStructurePiece extends TemplateStructurePi
     @Override
     protected void addAdditionalSaveData(StructurePieceSerializationContext context, CompoundTag tag) {
         super.addAdditionalSaveData(context, tag);
-        tag.store(LIQUID_SETTINGS_KEY, LiquidSettings.CODEC, liquidSettings());
-        foundation.ifPresent(value -> tag.store(FOUNDATION_KEY, Foundation.CODEC, value));
+        ASNbt.store(tag, LIQUID_SETTINGS_KEY, LiquidSettings.CODEC, liquidSettings());
+        foundation.ifPresent(value -> ASNbt.store(tag, FOUNDATION_KEY, Foundation.CODEC, value));
         terrain.write(tag);
-        structureProcessors.ifPresent(list -> tag.store(STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context), list));
+        structureProcessors.ifPresent(list -> ASNbt.store(tag, STRUCTURE_PROCESSORS_KEY, StructureProcessorType.LIST_CODEC, registryOps(context), list));
     }
 
     @Override

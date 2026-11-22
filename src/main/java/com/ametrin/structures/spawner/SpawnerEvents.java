@@ -4,7 +4,7 @@ import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.registry.ASAttachments;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.vehicle.minecart.MinecartSpawner;
+import net.minecraft.world.entity.vehicle.MinecartSpawner;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.gameevent.GameEvent;
@@ -23,8 +23,7 @@ public final class SpawnerEvents {
     static void onUseOnSpawner(PlayerInteractEvent.RightClickBlock event) {
         // Only if vanilla applies the egg, otherwise the profile would be lost for nothing.
         if (event.getLevel() instanceof ServerLevel level
-                && level.isSpawnerBlockEnabled()
-                && SpawnEggItem.getType(event.getItemStack()) != null
+                && event.getItemStack().getItem() instanceof SpawnEggItem
                 && level.getBlockEntity(event.getPos()) instanceof SpawnerBlockEntity spawner) {
             spawner.removeData(ASAttachments.SPAWNER_PROFILE);
         }
@@ -37,10 +36,10 @@ public final class SpawnerEvents {
             return;
         }
         var stack = event.getItemStack();
-        var type = SpawnEggItem.getType(stack);
-        if (type == null || !level.isSpawnerBlockEnabled()) {
+        if (!(stack.getItem() instanceof SpawnEggItem egg)) {
             return;
         }
+        var type = egg.getType(stack);
         var player = event.getEntity();
         cart.getSpawner().setEntityId(type, level, level.getRandom(), cart.blockPosition());
         cart.removeData(ASAttachments.SPAWNER_PROFILE);

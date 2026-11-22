@@ -61,7 +61,7 @@ class FixtureConditionsTest {
 
     @Test
     void anAlternativeForAMissingModKeepsItsConditionsSoItIsNeverDrawn(MinecraftServer server) throws Exception {
-        var stored = TagParser.parseCompoundFully("""
+        var stored = TagParser.parseTag("""
                 {type: "not_installed:crate", weight: 100, conditions: [{type: "neoforge:mod_loaded", modid: "not_installed"}]}""");
         var unreadable = WeightedFixture.decodeLeniently(server.registryAccess().createSerializationContext(NbtOps.INSTANCE), stored);
         assertInstanceOf(Fixture.Unreadable.class, unreadable.fixture());

@@ -68,7 +68,7 @@ registries.add(Registries.TEMPLATE_POOL, CastlePools::bootstrap);
 - `empty(weight)` adds an empty element, and `add(...)` any other element, like a feature or list element.
 - `defaultElementSettings(...)` sets what every element starts with, on a pool for its elements or on `JigsawPools` for the pools declared after it.
 
-An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. Jigsaw layouts don't use the terrain box yet, only a modular structure's templates do, see [overhangs](structures.md#overhangs).
+An element takes a `weight(...)` and the same template settings as a modular structure's templates: `processors(...)`, `foundation(...)`, `liquidSettings(...)`, `noFoamProcessing()` and `terrainBox(...)`. Jigsaw layouts don't use the terrain box (works since 26.1), only a modular structure's templates do, see [overhangs](structures.md#overhangs).
 
 The elements are `ametrin_structures:single_pool_element`s. They run fixtures and remove foam like modular structures do. If you write pools by hand, use that element type to get the same. Vanilla's `minecraft:single_pool_element` places fixture blocks as they are.
 
@@ -139,7 +139,7 @@ The structure's `pieces` are an `ametrin_structures:jigsaw` source:
 | `start_jigsaw_name` | `startJigsawName` | a jigsaw name |
 | `offset` | `offset` | `[x, y, z]` from the structure's origin |
 | `size` | `size` | 0 to 128, or an int provider. Defaults to 7 |
-| `max_distance_from_center` | `maxDistanceFromCenter` | like vanilla's. Defaults to 80 |
+| `max_distance_from_center` | `maxDistanceFromCenter` | 1 to 128. Defaults to 80 |
 | `use_expansion_hack` | `useExpansionHack` | `true` or `false` (default) |
 | `pool_aliases` | `poolAliases` | like vanilla's |
 | `dimension_padding` | `dimensionPadding` | like vanilla's |

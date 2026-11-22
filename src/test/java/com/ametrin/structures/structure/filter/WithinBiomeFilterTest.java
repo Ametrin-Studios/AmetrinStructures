@@ -17,7 +17,7 @@ import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -108,7 +108,7 @@ class WithinBiomeFilterTest {
                 server.registryAccess(),
                 new DebugLevelSource(plains),
                 source,
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
+                RandomState.create(server.registryAccess().asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 new WorldgenRandom(new LegacyRandomSource(0)),
                 0,

@@ -11,8 +11,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
@@ -26,7 +26,7 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -76,6 +76,8 @@ public class ModularStructure extends ExtendedStructure {
         this.rotation = rotation;
     }
 
+    // StructurePiecesBuilder#offsetPiecesVertically is deprecated in 1.21.1 without a replacement.
+    @SuppressWarnings("deprecation")
     @Override
     protected Either<Candidate, Evaluation> layOut(GenerationContext context, Timer timer) {
         var chunkPos = context.chunkPos();
@@ -160,7 +162,7 @@ public class ModularStructure extends ExtendedStructure {
 
     /// For a structure outside a [com.ametrin.structures.structure.StructureBootstrap]. Templates default to `id`'s namespace.
     /// Create it with [Builder#build(BootstrapContext)].
-    public static Builder builder(Identifier id) {
+    public static Builder builder(ResourceLocation id) {
         return new Builder(id.getNamespace(), id.getPath());
     }
 
@@ -186,7 +188,7 @@ public class ModularStructure extends ExtendedStructure {
         }
 
         public Builder single(String template) {
-            return pieces(_ -> new PieceSources.SingleSource(TemplateEntry.of(Identifier.fromNamespaceAndPath(namespace, template))));
+            return pieces(ignored -> new PieceSources.SingleSource(TemplateEntry.of(ResourceLocation.fromNamespaceAndPath(namespace, template))));
         }
 
         public Builder single(Consumer<TemplateEntry.Builder> configure) {

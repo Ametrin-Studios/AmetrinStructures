@@ -1,11 +1,15 @@
 package com.ametrin.structures.spawner;
 
+import com.ametrin.structures.util.ASNbt;
+import com.ametrin.structures.util.ItemStackTemplate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DynamicOps;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.FloatTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
@@ -16,10 +20,9 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.storage.loot.LootTable;
 
@@ -28,6 +31,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /// An entity's data, for spawners, entity fixtures and passengers.
 ///
@@ -35,12 +39,16 @@ import java.util.Map;
 /// Entity fixtures keep the randomization when only a [#deathLootTable] or equipment is set.
 public final class EntityDataBuilder {
     public static final String DEATH_LOOT_TABLE_KEY = "DeathLootTable";
+    /// Where a mob keeps its equipment.
+    public static final List<String> EQUIPMENT_KEYS = List.of("ArmorItems", "HandItems", "body_armor_item");
+    private static final List<EquipmentSlot> ARMOR_SLOTS = List.of(EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD);
+    private static final List<EquipmentSlot> HAND_SLOTS = List.of(EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND);
 
     private final EntityType<?> entity;
     private final CompoundTag data = new CompoundTag();
-    private final CompoundTag equipment = new CompoundTag();
+    private final Map<EquipmentSlot, Tag> equipment = new EnumMap<>(EquipmentSlot.class);
     private final Map<EquipmentSlot, ItemStackTemplate> items = new EnumMap<>(EquipmentSlot.class);
-    private final CompoundTag dropChances = new CompoundTag();
+    private final Map<EquipmentSlot, Float> dropChances = new EnumMap<>(EquipmentSlot.class);
     private final Map<Holder<Attribute>, Double> attributes = new LinkedHashMap<>();
     private final List<MobEffectInstance> effects = new ArrayList<>();
     private final List<String> tags = new ArrayList<>();
@@ -55,7 +63,7 @@ public final class EntityDataBuilder {
     }
 
     public EntityDataBuilder name(Component name) {
-        data.store("CustomName", ComponentSerialization.CODEC, name);
+        ASNbt.store(data, "CustomName", ComponentSerialization.CODEC, name);
         return this;
     }
 
@@ -146,19 +154,19 @@ public final class EntityDataBuilder {
 
     // An item stack reads the same fields.
     private EntityDataBuilder equip(EquipmentSlot slot, ItemStackTemplate stack, DynamicOps<Tag> ops) {
-        equipment.put(slot.getSerializedName(), ItemStackTemplate.MAP_CODEC.codec().encodeStart(ops, stack).getOrThrow());
+        equipment.put(slot, ItemStackTemplate.MAP_CODEC.codec().encodeStart(ops, stack).getOrThrow());
         items.put(slot, stack);
         return this;
     }
 
     public EntityDataBuilder deathLootTable(ResourceKey<LootTable> lootTable) {
-        data.store(DEATH_LOOT_TABLE_KEY, LootTable.KEY_CODEC, lootTable);
+        ASNbt.store(data, DEATH_LOOT_TABLE_KEY, ResourceKey.codec(Registries.LOOT_TABLE), lootTable);
         return this;
     }
 
     /// Default is 0.085. 1 or more always drops undamaged.
     public EntityDataBuilder dropChance(EquipmentSlot slot, float chance) {
-        dropChances.putFloat(slot.getSerializedName(), chance);
+        dropChances.put(slot, chance);
         return this;
     }
 
@@ -187,25 +195,55 @@ public final class EntityDataBuilder {
         var tag = data.copy();
         tag.putString("id", BuiltInRegistries.ENTITY_TYPE.getKey(entity).toString());
         if (!attributes.isEmpty()) {
-            tag.store("attributes", AttributeInstance.Packed.LIST_CODEC, attributes.entrySet().stream()
-                    .map(attribute -> new AttributeInstance.Packed(attribute.getKey(), attribute.getValue(), List.of()))
-                    .toList());
+            var list = new ListTag();
+            attributes.forEach((attribute, base) -> {
+                var entry = new CompoundTag();
+                entry.putString("id", attribute.unwrapKey().orElseThrow().location().toString());
+                entry.putDouble("base", base);
+                list.add(entry);
+            });
+            tag.put("attributes", list);
         }
         if (!effects.isEmpty()) {
-            tag.store("active_effects", MobEffectInstance.CODEC.listOf(), effects);
+            ASNbt.store(tag, "active_effects", MobEffectInstance.CODEC.listOf(), effects);
         }
         if (!tags.isEmpty()) {
-            tag.store("Tags", Codec.STRING.listOf(), tags);
+            ASNbt.store(tag, "Tags", Codec.STRING.listOf(), tags);
         }
-        if (!equipment.isEmpty()) {
-            tag.put("equipment", equipment.copy());
-        }
-        if (!dropChances.isEmpty()) {
-            tag.put("drop_chances", dropChances.copy());
-        }
+        putEquipment(tag);
+        putDropChances(tag);
         if (!passengers.isEmpty()) {
             tag.put("Passengers", passengers.copy());
         }
         return tag;
+    }
+
+    // Mobs read each list as a whole, so slots in a list that are left out are empty.
+    private void putEquipment(CompoundTag tag) {
+        putSlots(tag, "ArmorItems", ARMOR_SLOTS, equipment, CompoundTag::new);
+        putSlots(tag, "HandItems", HAND_SLOTS, equipment, CompoundTag::new);
+        if (equipment.containsKey(EquipmentSlot.BODY)) {
+            tag.put("body_armor_item", equipment.get(EquipmentSlot.BODY).copy());
+        }
+    }
+
+    // The same for drop chances, so slots in a list that are left out get vanilla's default.
+    private void putDropChances(CompoundTag tag) {
+        var chances = new EnumMap<EquipmentSlot, Tag>(EquipmentSlot.class);
+        dropChances.forEach((slot, chance) -> chances.put(slot, FloatTag.valueOf(chance)));
+        putSlots(tag, "ArmorDropChances", ARMOR_SLOTS, chances, () -> FloatTag.valueOf(Mob.DEFAULT_EQUIPMENT_DROP_CHANCE));
+        putSlots(tag, "HandDropChances", HAND_SLOTS, chances, () -> FloatTag.valueOf(Mob.DEFAULT_EQUIPMENT_DROP_CHANCE));
+        if (dropChances.containsKey(EquipmentSlot.BODY)) {
+            tag.putFloat("body_armor_drop_chance", dropChances.get(EquipmentSlot.BODY));
+        }
+    }
+
+    private static void putSlots(CompoundTag tag, String key, List<EquipmentSlot> slots, Map<EquipmentSlot, Tag> values, Supplier<Tag> missing) {
+        if (slots.stream().noneMatch(values::containsKey)) {
+            return;
+        }
+        var list = new ListTag();
+        slots.forEach(slot -> list.add(values.containsKey(slot) ? values.get(slot).copy() : missing.get()));
+        tag.put(key, list);
     }
 }

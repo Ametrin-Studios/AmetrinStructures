@@ -5,14 +5,14 @@ import com.ametrin.structures.structure.TerrainBox;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -84,7 +84,7 @@ public abstract class TemplateElementBuilder<B extends TemplateElementBuilder<B>
     }
 
     /// The element for `template` with the settings as they are now.
-    protected Function<StructureTemplatePool.Projection, ExtendedSinglePoolElement> element(Identifier template) {
+    protected Function<StructureTemplatePool.Projection, ExtendedSinglePoolElement> element(ResourceLocation template) {
         var processors = this.processors != null ? this.processors : ExtendedSinglePoolElement.NO_PROCESSORS;
         var liquidSettings = this.liquidSettings;
         var processFoam = this.processFoam;

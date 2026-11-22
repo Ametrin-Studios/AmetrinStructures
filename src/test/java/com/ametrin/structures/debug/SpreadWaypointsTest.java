@@ -4,7 +4,7 @@ import com.ametrin.structures.network.ASPayloads;
 import io.netty.buffer.Unpooled;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +17,7 @@ class SpreadWaypointsTest {
     @Test
     void defaultColorsSkipBlackAndGray() {
         for (int i = 0; i < 500; i++) {
-            var color = SpreadCommand.defaultColor(Identifier.fromNamespaceAndPath("examplemod", "structure_" + i));
+            var color = SpreadCommand.defaultColor(ResourceLocation.fromNamespaceAndPath("examplemod", "structure_" + i));
             assertTrue(color.isColor());
             assertNotEquals(ChatFormatting.BLACK, color);
             assertNotEquals(ChatFormatting.GRAY, color);
@@ -28,12 +28,12 @@ class SpreadWaypointsTest {
     @Test
     void waypointsSurviveThePacket() {
         var payload = new ASPayloads.SpreadWaypoints(
-                Identifier.fromNamespaceAndPath("examplemod", "ruins"),
+                ResourceLocation.fromNamespaceAndPath("examplemod", "ruins"),
                 Level.OVERWORLD,
                 ChatFormatting.GOLD.getId(),
                 true,
-                List.of(new ASPayloads.SpreadWaypoints.FoundSpot(new BlockPos(10, 64, -20), Identifier.fromNamespaceAndPath("examplemod", "ruined_tower")),
-                        new ASPayloads.SpreadWaypoints.FoundSpot(new BlockPos(-300, 71, 42), Identifier.fromNamespaceAndPath("examplemod", "ruined_hut"))),
+                List.of(new ASPayloads.SpreadWaypoints.FoundSpot(new BlockPos(10, 64, -20), ResourceLocation.fromNamespaceAndPath("examplemod", "ruined_tower")),
+                        new ASPayloads.SpreadWaypoints.FoundSpot(new BlockPos(-300, 71, 42), ResourceLocation.fromNamespaceAndPath("examplemod", "ruined_hut"))),
                 List.of(new ASPayloads.SpreadWaypoints.RejectedSpot(new BlockPos(5, 60, 5), "filter", "ametrin_structures:flatness")));
         var buffer = Unpooled.buffer();
         ASPayloads.SpreadWaypoints.STREAM_CODEC.encode(buffer, payload);

@@ -21,15 +21,15 @@ public final class StructurePlacements {
     }
 
     public static boolean hasStructureChunkInRange(ChunkGeneratorStructureState state, Holder<Structure> structure, int x, int z, int range) {
-        return hasStructureChunkInRange(state, _ -> true, holder -> holder.equals(structure), x, z, range);
+        return hasStructureChunkInRange(state, ignored -> true, holder -> holder.equals(structure), x, z, range);
     }
 
     public static boolean hasStructureChunkInRange(ChunkGeneratorStructureState state, HolderSet<Structure> structures, int x, int z, int range) {
-        return hasStructureChunkInRange(state, _ -> true, structures::contains, x, z, range);
+        return hasStructureChunkInRange(state, ignored -> true, structures::contains, x, z, range);
     }
 
     public static boolean hasStructureChunkInRange(ChunkGeneratorStructureState state, TagKey<Structure> structures, int x, int z, int range) {
-        return hasStructureChunkInRange(state, _ -> true, holder -> holder.is(structures), x, z, range);
+        return hasStructureChunkInRange(state, ignored -> true, holder -> holder.is(structures), x, z, range);
     }
 
     /// Only checks sets that `sets` accepts and that contain a structure `structures` accepts.

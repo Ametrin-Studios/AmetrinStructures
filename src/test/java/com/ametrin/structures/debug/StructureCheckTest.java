@@ -3,10 +3,11 @@ package com.ametrin.structures.debug;
 import com.ametrin.structures.structure.ExtendedStructureSettings;
 import com.ametrin.structures.structure.Foundation;
 import com.ametrin.structures.structure.jigsaw.ConditionalPoolElement;
+import com.ametrin.structures.structure.jigsaw.JigsawBlockInfo;
 import com.ametrin.structures.structure.jigsaw.JigsawSource;
+import com.ametrin.structures.structure.modular.ModularStructure;
 import com.ametrin.structures.structure.modular.PieceSource;
 import com.ametrin.structures.structure.modular.PieceSources;
-import com.ametrin.structures.structure.modular.ModularStructure;
 import com.ametrin.structures.structure.modular.TemplateEntry;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.datafixers.util.Pair;
@@ -18,7 +19,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.Pools;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.JigsawBlock;
@@ -43,18 +44,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EphemeralTestServerProvider.class)
 class StructureCheckTest {
-    private static final Identifier STRUCTURE = Identifier.fromNamespaceAndPath("test", "structure");
+    private static final ResourceLocation STRUCTURE = ResourceLocation.fromNamespaceAndPath("test", "structure");
 
     /// Vanilla's own mistakes, and nothing else: a pool names a template that doesn't exist, a bastion
-    /// path leads to a jigsaw name no template has, a chamber has a jigsaw into the wrong pool, and a
-    /// zombie village's cats face the wrong way.
+    /// path leads to a jigsaw name no template has, and a zombie village's cats face the wrong way.
     @Test
     void findsOnlyVanillasKnownMistakes(MinecraftServer server) {
-        var report = StructureCheck.run(server, structure -> structure.key().identifier().getNamespace().equals("minecraft"));
+        var report = StructureCheck.run(server, structure -> structure.key().location().getNamespace().equals("minecraft"));
         assertEquals(List.of(
                 "STRUCTURE minecraft:ancient_city missing_template",
                 "STRUCTURE minecraft:bastion_remnant unmatched_jigsaw",
-                "STRUCTURE minecraft:trial_chambers unmatched_jigsaw",
                 "STRUCTURE minecraft:village_plains misfacing_jigsaw",
                 "STRUCTURE minecraft:village_plains misfacing_jigsaw"), describe(report));
         assertTrue(report.structures() > 0);
@@ -63,8 +62,8 @@ class StructureCheckTest {
 
     @Test
     void aMissingTemplateIsReportedEvenOnceSomethingAskedForIt(MinecraftServer server) {
-        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(Identifier.fromNamespaceAndPath("test", "missing")))));
-        var missing = Identifier.fromNamespaceAndPath("test", "asked_for");
+        assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(ResourceLocation.fromNamespaceAndPath("test", "missing")))));
+        var missing = ResourceLocation.fromNamespaceAndPath("test", "asked_for");
         server.getStructureManager().getOrCreate(missing);
         assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(check(server, modular(missing))));
     }
@@ -139,14 +138,14 @@ class StructureCheckTest {
 
     @Test
     void aMissingTemplateInAConditionalElementIsReported(MinecraftServer server) {
-        var report = check(server, jigsawSource(server, new ConditionalPoolElement(single(Identifier.fromNamespaceAndPath("test", "missing")), 1, 1, Optional.empty())));
+        var report = check(server, jigsawSource(server, new ConditionalPoolElement(single(ResourceLocation.fromNamespaceAndPath("test", "missing")), 1, 1, Optional.empty())));
         assertEquals(List.of("STRUCTURE test:structure missing_template"), describe(report));
     }
 
     @Test
     void aConditionalElementInAVanillaJigsawStructureIsReported(MinecraftServer server) {
         var pools = server.registryAccess().lookupOrThrow(Registries.TEMPLATE_POOL);
-        var element = new ConditionalPoolElement(single(Identifier.withDefaultNamespace("igloo/top")), 0, 0, Optional.of(1));
+        var element = new ConditionalPoolElement(single(ResourceLocation.withDefaultNamespace("igloo/top")), 0, 0, Optional.of(1));
         var start = Holder.direct(new StructureTemplatePool(pools.getOrThrow(Pools.EMPTY), List.of(Pair.of(element, 1))));
         var structure = new JigsawStructure(new Structure.StructureSettings(HolderSet.empty()), start, 2, ConstantHeight.of(VerticalAnchor.absolute(0)), false);
         assertEquals(List.of("STRUCTURE test:structure ignored_conditions"), describe(check(server, structure)));
@@ -160,19 +159,19 @@ class StructureCheckTest {
         assertFalse(StructureCheck.canFace(jigsaw(FrontAndTop.UP_NORTH), jigsaw(FrontAndTop.UP_NORTH)));
     }
 
-    private static StructureTemplate.JigsawBlockInfo jigsaw(FrontAndTop orientation) {
+    private static JigsawBlockInfo jigsaw(FrontAndTop orientation) {
         var state = Blocks.JIGSAW.defaultBlockState().setValue(JigsawBlock.ORIENTATION, orientation);
-        return new StructureTemplate.JigsawBlockInfo(
+        return new JigsawBlockInfo(
                 new StructureTemplate.StructureBlockInfo(BlockPos.ZERO, state, null),
-                JigsawBlockEntity.JointType.ROLLABLE, JigsawBlockEntity.EMPTY_ID, Pools.EMPTY, JigsawBlockEntity.EMPTY_ID, 0, 0);
+                JigsawBlockEntity.JointType.ROLLABLE, ResourceLocation.withDefaultNamespace("empty"), Pools.EMPTY, ResourceLocation.withDefaultNamespace("empty"), 0, 0);
     }
 
     private static StructureCheck.Report check(MinecraftServer server, Structure structure) {
-        return new StructureCheck(server.getStructureManager(), server.registryAccess(), server.reloadableRegistries().lookup())
+        return new StructureCheck(server.getStructureManager(), server.registryAccess(), server.reloadableRegistries().get())
                 .check(Map.of(STRUCTURE, structure));
     }
 
-    private static ModularStructure modular(Identifier template) {
+    private static ModularStructure modular(ResourceLocation template) {
         return modular(new PieceSources.SingleSource(TemplateEntry.of(template)));
     }
 
@@ -183,7 +182,7 @@ class StructureCheckTest {
         return modular(new PieceSources.CompoundSource(List.of(new JigsawSource.Builder(start).build())));
     }
 
-    private static StructurePoolElement single(Identifier template) {
+    private static StructurePoolElement single(ResourceLocation template) {
         return StructurePoolElement.single(template.toString()).apply(StructureTemplatePool.Projection.RIGID);
     }
 
@@ -199,9 +198,9 @@ class StructureCheckTest {
     }
 
     /// Makes a template the server's template manager holds, from SNBT.
-    private static Identifier template(MinecraftServer server, String path, String snbt) throws CommandSyntaxException {
-        var id = Identifier.fromNamespaceAndPath("test", path);
-        server.getStructureManager().getOrCreate(id).load(server.registryAccess().lookupOrThrow(Registries.BLOCK), TagParser.parseCompoundFully(snbt));
+    private static ResourceLocation template(MinecraftServer server, String path, String snbt) throws CommandSyntaxException {
+        var id = ResourceLocation.fromNamespaceAndPath("test", path);
+        server.getStructureManager().getOrCreate(id).load(server.registryAccess().lookupOrThrow(Registries.BLOCK), TagParser.parseTag(snbt));
         return id;
     }
 

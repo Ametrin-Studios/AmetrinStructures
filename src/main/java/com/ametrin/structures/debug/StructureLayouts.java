@@ -23,7 +23,7 @@ final class StructureLayouts {
 
     /// The structure's pieces at `chunk` with `seed`, or empty when it lays out none.
     static Optional<PiecesContainer> layOut(ServerLevel level, Structure structure, ChunkPos chunk, long seed) {
-        var context = StructureSpread.context(level, seed, chunk, _ -> true);
+        var context = StructureSpread.context(level, seed, chunk, ignored -> true);
         var stub = structure instanceof ExtendedStructure extended ? extended.layOutUnchecked(context) : structure.findValidGenerationPoint(context);
         return stub.map(found -> found.getPiecesBuilder().build()).filter(pieces -> !pieces.isEmpty());
     }
@@ -39,7 +39,7 @@ final class StructureLayouts {
 
     private static String name(StructurePoolElement element) {
         return switch (element) {
-            case SinglePoolElement single -> single.getTemplateLocation().toString();
+            case SinglePoolElement single -> single.template.orThrow().toString();
             case ConditionalPoolElement counted -> name(counted.element());
             case RepeatedPoolElement repeated -> name(repeated.element());
             default -> String.valueOf(BuiltInRegistries.STRUCTURE_POOL_ELEMENT.getKey(element.getType()));

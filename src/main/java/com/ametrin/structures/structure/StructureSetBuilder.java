@@ -5,8 +5,8 @@ import com.ametrin.structures.placement.ScatteredGridPlacement;
 import com.ametrin.structures.structure.modular.ModularStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
@@ -33,7 +33,7 @@ public final class StructureSetBuilder {
     StructureSetBuilder(String namespace, String name) {
         this.namespace = namespace;
         this.name = name;
-        this.placement = _ -> salted(EvenSpreadPlacement.builder()::build);
+        this.placement = ignored -> salted(EvenSpreadPlacement.builder()::build);
     }
 
     public StructureSetBuilder modular(String suffix, int weight, Consumer<ModularStructure.Builder> configure) {
@@ -59,9 +59,9 @@ public final class StructureSetBuilder {
 
     /// @param weight relative chance to be tried first among the set's structures
     public StructureSetBuilder existing(ResourceKey<Structure> structure, int weight) {
-        checkWeight(structure.identifier().toString(), weight);
+        checkWeight(structure.location().toString(), weight);
         if (existing.putIfAbsent(structure, weight) != null) {
-            throw fail("adds " + structure.identifier() + " twice");
+            throw fail("adds " + structure.location() + " twice");
         }
         return this;
     }
@@ -127,7 +127,7 @@ public final class StructureSetBuilder {
     }
 
     public StructureSetBuilder horizontalPlacement(StructurePlacement placement) {
-        return horizontalPlacement(_ -> placement);
+        return horizontalPlacement(ignored -> placement);
     }
 
     /// For placements that need registry entries, such as the preferred biomes of concentric rings. Defaults to an even spread.
@@ -152,9 +152,9 @@ public final class StructureSetBuilder {
         var bootstraps = new LinkedHashMap<ResourceKey<Structure>, Function<BootstrapContext<Structure>, Structure>>();
         var weights = new LinkedHashMap<>(existing);
         structures.forEach((suffix, entry) -> {
-            var key = ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath(namespace, compose(suffix)));
+            var key = ResourceKey.create(Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath(namespace, compose(suffix)));
             if (existing.containsKey(key)) {
-                throw fail("declares " + key.identifier() + " and also adds it as an existing structure");
+                throw fail("declares " + key.location() + " and also adds it as an existing structure");
             }
             keys.put(suffix, key);
             bootstraps.put(key, entry.structure()::bootstrap);
@@ -168,7 +168,7 @@ public final class StructureSetBuilder {
                     .toList();
             return new StructureSet(selection, resolvedPlacement.apply(context));
         };
-        var setKey = ResourceKey.create(Registries.STRUCTURE_SET, Identifier.fromNamespaceAndPath(namespace, name));
+        var setKey = ResourceKey.create(Registries.STRUCTURE_SET, ResourceLocation.fromNamespaceAndPath(namespace, name));
         return new Declared(new StructureSetKeys(setKey, keys, List.copyOf(existing.keySet())), bootstraps, set);
     }
 

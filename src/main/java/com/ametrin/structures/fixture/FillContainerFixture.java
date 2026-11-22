@@ -4,17 +4,19 @@ import com.ametrin.structures.registry.ASFixtures;
 import com.ametrin.structures.util.ASLog;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.Util;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.util.RandomSource;
-import net.minecraft.util.Util;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BrewingStandBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.ChiseledBookShelfBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -91,8 +93,6 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
     /// are broken randomly.
     ///
     /// @return what didn't fit
-    // Items are set as if inside a transaction. That skips side effects like a chiseled bookshelf
-    // updating its block, which would need a level the generating block entity doesn't have.
     static List<ItemStack> fill(Container container, Container judge, List<ItemStack> items, RandomSource random) {
         var slots = IntStream.range(0, container.getContainerSize()).boxed().collect(Collectors.toCollection(ArrayList::new));
         Util.shuffle(slots, random);
@@ -105,7 +105,7 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
                 int slot = iterator.next();
                 var portion = stack.copyWithCount(Math.min(stack.getCount(), container.getMaxStackSize(stack)));
                 if (container.getItem(slot).isEmpty() && judge.canPlaceItem(slot, portion)) {
-                    container.setItem(slot, portion, true);
+                    setItem(container, slot, portion);
                     // Some containers reject items in setItem itself, like a chiseled bookshelf with anything but books.
                     if (!container.getItem(slot).isEmpty()) {
                         stack.shrink(portion.getCount());
@@ -120,12 +120,23 @@ public record FillContainerFixture(ResourceKey<LootTable> lootTable, BlockState 
         return leftOver;
     }
 
+    // A chiseled bookshelf updates its block when an item is set, which needs a level the generating block entity doesn't have. So its books are set directly.
+    private static void setItem(Container container, int slot, ItemStack stack) {
+        if (container instanceof ChiseledBookShelfBlockEntity shelf && !shelf.hasLevel()) {
+            if (stack.is(ItemTags.BOOKSHELF_BOOKS)) {
+                shelf.items.set(slot, stack);
+            }
+        } else {
+            container.setItem(slot, stack);
+        }
+    }
+
     /// How many kinds of items each slot of `judge` takes, counted over every registered item.
     static int[] breadth(Container judge) {
         // Cached per block entity type. It's only used to order slots, so if a datapack changes what a slot
         // accepts, like brewing ingredients, the order is a bit off at worst.
         if (judge instanceof BlockEntity blockEntity) {
-            var known = SLOT_BREADTH.computeIfAbsent(blockEntity.getType(), _ -> countBreadth(judge));
+            var known = SLOT_BREADTH.computeIfAbsent(blockEntity.getType(), key -> countBreadth(judge));
             if (known.length == judge.getContainerSize()) {
                 return known;
             }

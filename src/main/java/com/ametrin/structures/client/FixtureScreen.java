@@ -7,7 +7,7 @@ import com.ametrin.structures.registry.ASRegistries;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ComponentPath;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.components.tabs.Tab;
@@ -19,9 +19,6 @@ import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -29,12 +26,13 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import org.jspecify.annotations.Nullable;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -81,16 +79,17 @@ public class FixtureScreen extends Screen {
     private static final int GAP = 4;
     private static final int FOOTER_BUTTON_WIDTH = 100;
     private static final int INVALID_COLOR = 0xFFFF5555;
+    private static final Style HINT_STYLE = Style.EMPTY.applyFormats(ChatFormatting.GRAY, ChatFormatting.ITALIC);
 
     private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
-    private final TabManager tabManager = new TabManager(this::addRenderableWidget, this::removeWidget, this::onTabSelected, _ -> {});
+    private final TabManager tabManager = new TabManager(this::addRenderableWidget, this::removeWidget);
     private @Nullable TabNavigationBar tabNavigationBar;
     private int tabIndex;
     private final List<ListTab> tabs = new ArrayList<>();
 
     private final BlockPos pos;
     private final List<AlternativeDraft> alternatives = new ArrayList<>();
-    private final List<Identifier> availableTypes;
+    private final List<ResourceLocation> availableTypes;
     private int selected;
     private boolean rebuildFixtures;
     private boolean refocusType;
@@ -118,7 +117,7 @@ public class FixtureScreen extends Screen {
         this.becomes = marker.declaredBecomes().map(BlockStateParser::serialize).orElse("");
         RegistryKeyCache.refresh();
         this.availableTypes = ASRegistries.FIXTURE_TYPES.keySet().stream()
-                .sorted(Comparator.comparing(Identifier::toString))
+                .sorted(Comparator.comparing(ResourceLocation::toString))
                 .toList();
         if (alternatives.isEmpty() && !availableTypes.isEmpty()) {
             var empty = ASFixtures.EMPTY.getId();
@@ -128,6 +127,11 @@ public class FixtureScreen extends Screen {
 
     @Override
     protected void init() {
+        // Rebuilding the widgets keeps the selected tab.
+        var current = currentTab();
+        if (current != null) {
+            tabIndex = tabs.indexOf(current);
+        }
         tabs.clear();
         tabs.add(new ListTab(Component.translatable(Keys.PAGE_FIXTURES), this::populateFixtures));
         tabs.add(new ListTab(Component.translatable(Keys.PAGE_SETTINGS), this::populateSettings));
@@ -135,12 +139,12 @@ public class FixtureScreen extends Screen {
         addRenderableWidget(tabNavigationBar);
 
         var footer = layout.addToFooter(LinearLayout.horizontal().spacing(8));
-        footer.addChild(Button.builder(Component.translatable(Keys.GENERATE), _ -> generate())
+        footer.addChild(Button.builder(Component.translatable(Keys.GENERATE), button -> generate())
                 .width(FOOTER_BUTTON_WIDTH)
                 .tooltip(Tooltip.create(Component.translatable(Keys.GENERATE_TOOLTIP)))
                 .build());
-        footer.addChild(Button.builder(CommonComponents.GUI_DONE, _ -> onClose()).width(FOOTER_BUTTON_WIDTH).build());
-        footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, _ -> close()).width(FOOTER_BUTTON_WIDTH).build());
+        footer.addChild(Button.builder(CommonComponents.GUI_DONE, button -> onClose()).width(FOOTER_BUTTON_WIDTH).build());
+        footer.addChild(Button.builder(CommonComponents.GUI_CANCEL, button -> close()).width(FOOTER_BUTTON_WIDTH).build());
         layout.visitWidgets(widget -> {
             widget.setTabOrderGroup(1);
             addRenderableWidget(widget);
@@ -154,7 +158,8 @@ public class FixtureScreen extends Screen {
         if (tabNavigationBar == null) {
             return;
         }
-        tabNavigationBar.updateWidth(width);
+        tabNavigationBar.setWidth(width);
+        tabNavigationBar.arrangeElements();
         int tabAreaTop = tabNavigationBar.getRectangle().bottom();
         tabManager.setTabArea(new ScreenRectangle(0, tabAreaTop, width, height - layout.getFooterHeight() - tabAreaTop));
         layout.setHeaderHeight(tabAreaTop);
@@ -181,12 +186,6 @@ public class FixtureScreen extends Screen {
         }
     }
 
-    private void onTabSelected(Tab tab) {
-        if (tab instanceof ListTab listTab && tabs.contains(listTab)) {
-            tabIndex = tabs.indexOf(listTab);
-        }
-    }
-
     private void requestFixturesRebuild() {
         rebuildFixtures = true;
     }
@@ -198,18 +197,18 @@ public class FixtureScreen extends Screen {
         list.addRow(typeRow);
         var weightLabel = Component.translatable(Keys.WEIGHT);
         var weightBox = editBox(controlWidth(), weightLabel, alternative.weight);
-        weightBox.setHint(Component.literal("1").withStyle(EditBox.SEARCH_HINT_STYLE));
+        weightBox.setHint(Component.literal("1").withStyle(HINT_STYLE));
         onEdit(weightBox, value -> FixtureInput.parseWeight(value).isPresent(), value -> alternative.weight = value);
         list.addRow(new Row(weightLabel, List.of(), weightBox));
         var chanceLabel = Component.translatable(Keys.GENERATION_CHANCE);
         var chanceBox = editBox(controlWidth(), chanceLabel, alternative.chance);
-        chanceBox.setHint(Component.literal("1.0").withStyle(EditBox.SEARCH_HINT_STYLE));
+        chanceBox.setHint(Component.literal("1.0").withStyle(HINT_STYLE));
         onEdit(chanceBox, value -> FixtureInput.parseChance(value).isPresent(), value -> alternative.chance = value);
         list.addRow(new Row(chanceLabel, tooltip(Component.translatable(Keys.GENERATION_CHANCE_TOOLTIP)), chanceBox));
         var conditionsLabel = Component.translatable(Keys.CONDITIONS);
         var conditionsBox = editBox(controlWidth(), conditionsLabel, alternative.conditions);
         conditionsBox.setMaxLength(Integer.MAX_VALUE);
-        conditionsBox.setHint(Component.translatable(Keys.NONE).withStyle(EditBox.SEARCH_HINT_STYLE));
+        conditionsBox.setHint(Component.translatable(Keys.NONE).withStyle(HINT_STYLE));
         onEdit(conditionsBox, value -> value.isBlank() || FixtureInput.parseConditions(registries(), value).isPresent(), value -> alternative.conditions = value);
         list.addRow(new Row(conditionsLabel, tooltip(Component.translatable(Keys.CONDITIONS_TOOLTIP)), conditionsBox));
 
@@ -239,7 +238,7 @@ public class FixtureScreen extends Screen {
 
     private EditBox typeBox(AlternativeDraft alternative, CompletionPopup completions) {
         var box = editBox(controlWidth(), Component.translatable(Keys.TYPE), alternative.type().toString());
-        completions.attach(box, () -> availableTypes.stream().map(Identifier::toString).toList());
+        completions.attach(box, () -> availableTypes.stream().map(ResourceLocation::toString).toList());
         onEdit(box, value -> knownType(value).isPresent(), value -> knownType(value)
                 .filter(type -> !type.equals(alternative.type()))
                 .ifPresent(type -> {
@@ -251,9 +250,9 @@ public class FixtureScreen extends Screen {
         return box;
     }
 
-    private Optional<Identifier> knownType(String value) {
+    private Optional<ResourceLocation> knownType(String value) {
         // An alias counts as known, but stays as written.
-        return Optional.ofNullable(Identifier.tryParse(value)).filter(type -> availableTypes.contains(ASRegistries.FIXTURE_TYPES.resolve(type)));
+        return Optional.ofNullable(ResourceLocation.tryParse(value)).filter(type -> availableTypes.contains(ASRegistries.FIXTURE_TYPES.resolve(type)));
     }
 
     private Row fieldRow(FixtureField<?> field, AlternativeDraft alternative, CompletionPopup completions) {
@@ -275,7 +274,7 @@ public class FixtureScreen extends Screen {
             boolean value = Boolean.parseBoolean(text.isBlank() ? defaultText.orElse("false") : text);
             var toggle = CycleButton.onOffBuilder(value)
                     .displayOnlyValue()
-                    .create(0, 0, controlWidth(), WIDGET_HEIGHT, name, (_, enabled) -> alternative.texts.put(key, enabled.toString()));
+                    .create(0, 0, controlWidth(), WIDGET_HEIGHT, name, (button, enabled) -> alternative.texts.put(key, enabled.toString()));
             return new Row(name, tooltip, toggle);
         }
         if (type.editor() == FieldType.Editor.CHOICE) {
@@ -283,7 +282,7 @@ public class FixtureScreen extends Screen {
         }
 
         var box = editBox(controlWidth(), name, text);
-        box.setHint(hint(field, defaultText).withStyle(EditBox.SEARCH_HINT_STYLE));
+        box.setHint(hint(field, defaultText).withStyle(HINT_STYLE));
         Predicate<String> valid = value -> type.textToTag(value, registries()).isSuccess();
         completions.attach(box, type.editor() == FieldType.Editor.BLOCK_STATE
                 ? Completer.blockState(blocks(), valid)
@@ -313,12 +312,11 @@ public class FixtureScreen extends Screen {
         if (!values.contains(initial)) {
             values.add(initial);
         }
-        return CycleButton.<String>builder(
-                        value -> value.isEmpty() ? Component.translatable(Keys.NONE) : Component.literal(value),
-                        initial)
+        return CycleButton.<String>builder(value -> value.isEmpty() ? Component.translatable(Keys.NONE) : Component.literal(value))
                 .withValues(values)
+                .withInitialValue(initial)
                 .displayOnlyValue()
-                .create(0, 0, controlWidth(), WIDGET_HEIGHT, name, (_, value) -> alternative.texts.put(field.key(), value));
+                .create(0, 0, controlWidth(), WIDGET_HEIGHT, name, (button, value) -> alternative.texts.put(field.key(), value));
     }
 
     private void populateSettings(RowList list, CompletionPopup completions) {
@@ -334,7 +332,7 @@ public class FixtureScreen extends Screen {
         for (int axis = 0; axis < 3; axis++) {
             int index = axis;
             var box = editBox(offsetWidth, Component.literal(axes[axis]), FixtureInput.formatOffset(offset[axis]));
-            box.setHint(Component.literal(axes[axis]).withStyle(EditBox.SEARCH_HINT_STYLE));
+            box.setHint(Component.literal(axes[axis]).withStyle(HINT_STYLE));
             onEdit(box, value -> FixtureInput.parseOffset(value).isPresent(), value -> FixtureInput.parseOffset(value).ifPresent(parsed -> offset[index] = parsed));
             offsetBoxes[axis] = box;
         }
@@ -343,8 +341,8 @@ public class FixtureScreen extends Screen {
 
         var becomesLabel = Component.translatable(Keys.BECOMES);
         var becomesBox = editBox(controlWidth(), becomesLabel, becomes);
-        becomesBox.setHint(Component.translatable(Keys.BECOMES_HINT).withStyle(EditBox.SEARCH_HINT_STYLE));
-        completions.attach(becomesBox, Completer.blockState(blocks(), _ -> true));
+        becomesBox.setHint(Component.translatable(Keys.BECOMES_HINT).withStyle(HINT_STYLE));
+        completions.attach(becomesBox, Completer.blockState(blocks(), ignored -> true));
         onEdit(becomesBox, value -> FixtureInput.parseState(registries(), value).isPresent(), value -> becomes = value);
         list.addRow(new Row(becomesLabel, List.of(), becomesBox));
 
@@ -354,7 +352,7 @@ public class FixtureScreen extends Screen {
                 List.of(),
                 CycleButton.onOffBuilder(useGravity)
                         .displayOnlyValue()
-                        .create(0, 0, controlWidth(), WIDGET_HEIGHT, gravityLabel, (_, value) -> useGravity = value)));
+                        .create(0, 0, controlWidth(), WIDGET_HEIGHT, gravityLabel, (button, value) -> useGravity = value)));
 
         var postProcessingLabel = Component.translatable(Keys.MARK_POST_PROCESSING);
         list.addRow(new Row(
@@ -362,7 +360,7 @@ public class FixtureScreen extends Screen {
                 List.of(),
                 CycleButton.onOffBuilder(markPostProcessing)
                         .displayOnlyValue()
-                        .create(0, 0, controlWidth(), WIDGET_HEIGHT, postProcessingLabel, (_, value) -> markPostProcessing = value)));
+                        .create(0, 0, controlWidth(), WIDGET_HEIGHT, postProcessingLabel, (button, value) -> markPostProcessing = value)));
     }
 
     private AlternativeDraft current() {
@@ -414,7 +412,7 @@ public class FixtureScreen extends Screen {
     }
 
     private Button smallButton(String symbol, String tooltipKey, Runnable action) {
-        return Button.builder(Component.literal(symbol), _ -> action.run())
+        return Button.builder(Component.literal(symbol), button -> action.run())
                 .size(SMALL_BUTTON, WIDGET_HEIGHT)
                 .tooltip(Tooltip.create(Component.translatable(tooltipKey)))
                 .build();
@@ -434,9 +432,9 @@ public class FixtureScreen extends Screen {
         var box = new EditBox(font, width, WIDGET_HEIGHT, label) {
             // hint and text isn't clipped to the box by default.
             @Override
-            public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
                 graphics.enableScissor(getX(), getY(), getRight(), getBottom());
-                super.extractWidgetRenderState(graphics, mouseX, mouseY, partialTick);
+                super.renderWidget(graphics, mouseX, mouseY, partialTick);
                 graphics.disableScissor();
             }
         };
@@ -462,7 +460,7 @@ public class FixtureScreen extends Screen {
     private static List<String> candidates(FieldType<?> type) {
         Set<String> candidates = new LinkedHashSet<>(type.suggestions().apply(registries()));
         type.registry()
-                .ifPresent(registry -> RegistryKeyCache.get(registry.identifier()).forEach(id -> candidates.add(id.toString())));
+                .ifPresent(registry -> RegistryKeyCache.get(registry.location()).forEach(id -> candidates.add(id.toString())));
         return List.copyOf(candidates);
     }
 
@@ -471,18 +469,18 @@ public class FixtureScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         var tab = currentTab();
-        if (tab != null && tab.completions.keyPressed(event)) {
+        if (tab != null && tab.completions.keyPressed(keyCode)) {
             return true;
         }
-        return tabNavigationBar != null && tabNavigationBar.keyPressed(event) || super.keyPressed(event);
+        return tabNavigationBar != null && tabNavigationBar.keyPressed(keyCode) || super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
         var tab = currentTab();
-        return tab != null && tab.completions.mouseClicked(event) || super.mouseClicked(event, doubleClick);
+        return tab != null && tab.completions.mouseClicked(mouseX, mouseY) || super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
@@ -492,18 +490,18 @@ public class FixtureScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
         var tab = currentTab();
         if (tab != null) {
-            tab.completions.extractRenderState(graphics, mouseX, mouseY);
+            tab.completions.render(graphics, mouseX, mouseY);
         }
     }
 
     @Override
-    protected void extractMenuBackground(GuiGraphicsExtractor graphics) {
-        graphics.blit(RenderPipelines.GUI_TEXTURED, CreateWorldScreen.TAB_HEADER_BACKGROUND, 0, 0, 0.0F, 0.0F, width, layout.getHeaderHeight(), 16, 16);
-        extractMenuBackground(graphics, 0, layout.getHeaderHeight(), width, height);
+    protected void renderMenuBackground(GuiGraphics graphics) {
+        graphics.blit(CreateWorldScreen.TAB_HEADER_BACKGROUND, 0, 0, 0.0F, 0.0F, width, layout.getHeaderHeight(), 16, 16);
+        renderMenuBackground(graphics, 0, layout.getHeaderHeight(), width, height);
     }
 
     /// Saves like pressing Done. Losing edits by accident is worse than an unwanted save.
@@ -520,12 +518,12 @@ public class FixtureScreen extends Screen {
     /// Saves the edits and runs the marker in place. Running it removes the block, so the server gives it back as an item first.
     private void generate() {
         sendUpdate();
-        ClientPacketDistributor.sendToServer(new ASPayloads.GenerateFixture(pos));
+        PacketDistributor.sendToServer(new ASPayloads.GenerateFixture(pos));
         close();
     }
 
     private void sendUpdate() {
-        ClientPacketDistributor.sendToServer(new ASPayloads.UpdateFixture(
+        PacketDistributor.sendToServer(new ASPayloads.UpdateFixture(
                 pos,
                 alternatives.stream().map(alternative -> alternative.toTag(registries())).toList(),
                 customName.isBlank() ? Optional.empty() : Optional.of(Component.literal(customName)),
@@ -561,9 +559,10 @@ public class FixtureScreen extends Screen {
         private void populate() {
             completions.clear();
             list.setFocused(null);
-            list.clearEntries();
+            list.clear();
             populator.populate(list, completions);
-            list.refreshScrollAmount();
+            // Clamps the scroll to the new rows.
+            list.setScrollAmount(list.getScrollAmount());
         }
 
         private void scrollToTop() {
@@ -576,18 +575,14 @@ public class FixtureScreen extends Screen {
         }
 
         @Override
-        public Component getTabExtraNarration() {
-            return Component.empty();
-        }
-
-        @Override
         public void visitChildren(Consumer<AbstractWidget> consumer) {
             consumer.accept(list);
         }
 
         @Override
         public void doLayout(ScreenRectangle area) {
-            list.updateSizeAndPosition(area.width(), area.height(), area.left(), area.top());
+            list.updateSizeAndPosition(area.width(), area.height(), area.top());
+            list.setX(area.left());
         }
     }
 
@@ -598,6 +593,10 @@ public class FixtureScreen extends Screen {
 
         private void addRow(Entry row) {
             addEntry(row);
+        }
+
+        private void clear() {
+            clearEntries();
         }
 
         @Override
@@ -621,22 +620,22 @@ public class FixtureScreen extends Screen {
         }
 
         @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            int x = getContentRight();
+        public void render(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = left + width;
             for (var control : controls.reversed()) {
                 x -= control.getWidth();
-                control.setPosition(x, getContentY());
-                control.extractRenderState(graphics, mouseX, mouseY, partialTick);
+                control.setPosition(x, top);
+                control.render(graphics, mouseX, mouseY, partialTick);
                 x -= GAP;
             }
-            int labelWidth = Math.max(20, x - getContentX());
+            int labelWidth = Math.max(20, x - left);
             var lines = font.split(label, labelWidth);
-            int y = getContentY() + (WIDGET_HEIGHT - Math.min(lines.size(), 2) * 10) / 2 + 1;
+            int y = top + (WIDGET_HEIGHT - Math.min(lines.size(), 2) * 10) / 2 + 1;
             for (int line = 0; line < Math.min(lines.size(), 2); line++) {
-                graphics.text(font, lines.get(line), getContentX(), y + line * 10, -1);
+                graphics.drawString(font, lines.get(line), left, y + line * 10, -1);
             }
-            boolean overLabel = mouseX >= getContentX() && mouseX < getContentX() + labelWidth
-                    && mouseY >= getContentY() && mouseY < getContentY() + WIDGET_HEIGHT;
+            boolean overLabel = mouseX >= left && mouseX < left + labelWidth
+                    && mouseY >= top && mouseY < top + WIDGET_HEIGHT;
             if (hovered && overLabel) {
                 var shown = new ArrayList<FormattedCharSequence>();
                 if (lines.size() > 2) {
@@ -644,7 +643,7 @@ public class FixtureScreen extends Screen {
                 }
                 shown.addAll(tooltip);
                 if (!shown.isEmpty()) {
-                    graphics.setTooltipForNextFrame(shown, mouseX, mouseY);
+                    setTooltipForNextRenderPass(shown);
                 }
             }
         }
@@ -668,8 +667,8 @@ public class FixtureScreen extends Screen {
         }
 
         @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            graphics.centeredText(font, label, getContentXMiddle(), getContentY() + 6, -1);
+        public void render(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            graphics.drawCenteredString(font, label, left + width / 2, top + 6, -1);
         }
 
         @Override

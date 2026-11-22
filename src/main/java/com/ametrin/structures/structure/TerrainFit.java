@@ -1,5 +1,6 @@
 package com.ametrin.structures.structure;
 
+import com.ametrin.structures.util.ASNbt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -23,14 +24,14 @@ public record TerrainFit(TerrainAdjustment adaptation, Optional<BoundingBox> box
     /// @param groundLevelDelta used for pieces saved without one
     public static TerrainFit read(CompoundTag tag, int groundLevelDelta) {
         return new TerrainFit(
-                tag.read(ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE),
-                tag.read(BOX_KEY, BoundingBox.CODEC),
-                tag.getIntOr(GROUND_LEVEL_DELTA_KEY, groundLevelDelta));
+                ASNbt.read(tag, ADAPTATION_KEY, TerrainAdjustment.CODEC).orElse(TerrainAdjustment.NONE),
+                ASNbt.read(tag, BOX_KEY, BoundingBox.CODEC),
+                ASNbt.getIntOr(tag, GROUND_LEVEL_DELTA_KEY, groundLevelDelta));
     }
 
     public void write(CompoundTag tag) {
-        tag.store(ADAPTATION_KEY, TerrainAdjustment.CODEC, adaptation);
-        box.ifPresent(value -> tag.store(BOX_KEY, BoundingBox.CODEC, value));
+        ASNbt.store(tag, ADAPTATION_KEY, TerrainAdjustment.CODEC, adaptation);
+        box.ifPresent(value -> ASNbt.store(tag, BOX_KEY, BoundingBox.CODEC, value));
         tag.putInt(GROUND_LEVEL_DELTA_KEY, groundLevelDelta);
     }
 

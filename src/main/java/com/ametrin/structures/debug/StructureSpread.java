@@ -8,7 +8,7 @@ import com.ametrin.structures.structure.filter.PlacementFilter;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
@@ -17,9 +17,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
-import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
-import org.jspecify.annotations.Nullable;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Function;
@@ -59,16 +59,16 @@ public final class StructureSpread {
     }
 
     public record Found(Holder<Structure> structure, BlockPos origin, BoundingBox box, BlockPos visit) {
-        public Identifier id() {
-            return structure.unwrapKey().orElseThrow().identifier();
+        public ResourceLocation id() {
+            return structure.unwrapKey().orElseThrow().location();
         }
     }
 
     public record RejectedSpot(BlockPos position, Reason reason, boolean inBiome) {}
 
     public record Timing(Holder<Structure> structure, long nanos, int attempts, Map<Step, Long> steps) {
-        public Identifier id() {
-            return structure.unwrapKey().orElseThrow().identifier();
+        public ResourceLocation id() {
+            return structure.unwrapKey().orElseThrow().location();
         }
     }
 
@@ -247,7 +247,7 @@ public final class StructureSpread {
             Map<Holder<Structure>, Stopwatch> stopwatches) {
         Outcome.@Nullable Rejected rejected = null;
         for (var selected : StructureSetOrder.of(set, state.getLevelSeed(), chunk)) {
-            var outcome = attempt(level, state, selected.structure(), chunk, stopwatches.computeIfAbsent(selected.structure(), _ -> new Stopwatch()));
+            var outcome = attempt(level, state, selected.structure(), chunk, stopwatches.computeIfAbsent(selected.structure(), key -> new Stopwatch()));
             if (targets.test(selected.structure())) {
                 switch (outcome) {
                     case Outcome.Generated generated -> {
@@ -352,7 +352,7 @@ public final class StructureSpread {
     }
 
     private static String name(Holder<Structure> structure) {
-        return structure.unwrapKey().map(key -> key.identifier().toString()).orElse("?");
+        return structure.unwrapKey().map(key -> key.location().toString()).orElse("?");
     }
 
     static double horizontalDistance(BlockPos a, BlockPos b) {

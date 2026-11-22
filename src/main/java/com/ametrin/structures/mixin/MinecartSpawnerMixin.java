@@ -1,9 +1,9 @@
 package com.ametrin.structures.mixin;
 
 import com.ametrin.structures.spawner.SpawnerProfiles;
-import net.minecraft.world.entity.vehicle.minecart.MinecartSpawner;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.vehicle.MinecartSpawner;
 import net.minecraft.world.level.BaseSpawner;
-import net.minecraft.world.level.storage.ValueInput;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,7 +18,7 @@ public abstract class MinecartSpawnerMixin {
     private BaseSpawner spawner;
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
-    private void ametrin$applySpawnerProfile(ValueInput input, CallbackInfo callback) {
+    private void ametrin$applySpawnerProfile(CompoundTag tag, CallbackInfo callback) {
         var self = (MinecartSpawner) (Object) this;
         SpawnerProfiles.applyAttached(self, spawner, self.level().registryAccess());
     }

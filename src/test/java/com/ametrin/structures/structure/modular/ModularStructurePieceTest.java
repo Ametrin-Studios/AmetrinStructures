@@ -3,30 +3,30 @@ package com.ametrin.structures.structure.modular;
 import com.ametrin.structures.structure.InlineFromStructureProcessor;
 import com.ametrin.structures.structure.TerrainBox;
 import com.ametrin.structures.structure.jigsaw.ExtendedSinglePoolElement;
-import com.mojang.datafixers.util.Either;
 import com.google.gson.JsonParser;
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.ProcessorLists;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
-import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(EphemeralTestServerProvider.class)
 class ModularStructurePieceTest {
     private static final BlockPos ORIGIN = new BlockPos(0, 64, 0);
-    private static final Identifier TEMPLATE = Identifier.withDefaultNamespace("igloo/top");
+    private static final ResourceLocation TEMPLATE = ResourceLocation.withDefaultNamespace("igloo/top");
 
     @Test
     void theGroundStaysAtTheStartHeightWhetherTheTemplateIsSunkOrRaised(MinecraftServer server) {
@@ -96,7 +96,7 @@ class ModularStructurePieceTest {
         var mossify = server.registryAccess().lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ProcessorLists.MOSSIFY_10_PERCENT);
         var piece = createPiece(server, Optional.empty(), Optional.of(mossify));
         var tag = piece.createTag(context);
-        assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT.identifier().toString()), tag.getCompoundOrEmpty("pool_element").getString("processors"));
+        assertEquals(ProcessorLists.MOSSIFY_10_PERCENT.location().toString(), tag.getCompound("pool_element").getString("processors"));
         var reloaded = new ModularStructurePiece(context, tag);
         assertEquals(Optional.of(ProcessorLists.MOSSIFY_10_PERCENT), assertInstanceOf(SinglePoolElement.class, reloaded.getElement()).processors.unwrapKey());
     }
@@ -117,7 +117,7 @@ class ModularStructurePieceTest {
                 {"template": "minecraft:igloo/top", "offset": [0, -2, 0], "terrain_box": "footprint"}
                 """);
         var template = assertInstanceOf(ExtendedSinglePoolElement.class, TemplateEntry.CODEC.parse(ops, templateJson).getOrThrow().element());
-        assertEquals(TEMPLATE, template.getTemplateLocation());
+        assertEquals(TEMPLATE, template.template.orThrow());
         assertEquals(TerrainBox.footprint(), template.terrainBox());
         assertEquals(templateJson, TemplateEntry.CODEC.encodeStart(ops, new TemplateEntry(template, new BlockPos(0, -2, 0))).getOrThrow());
 

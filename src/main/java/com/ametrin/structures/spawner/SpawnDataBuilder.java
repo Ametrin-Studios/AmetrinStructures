@@ -2,14 +2,14 @@ package com.ametrin.structures.spawner;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.InclusiveRange;
-import net.minecraft.util.random.Weighted;
-import net.minecraft.world.entity.DropChances;
+import net.minecraft.util.random.WeightedEntry;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentTable;
 import net.minecraft.world.level.SpawnData;
 import net.minecraft.world.level.storage.loot.LootTable;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
 import java.util.Optional;
 
 public final class SpawnDataBuilder {
@@ -30,7 +30,7 @@ public final class SpawnDataBuilder {
     }
 
     public SpawnDataBuilder equipment(ResourceKey<LootTable> lootTable) {
-        return equipment(new EquipmentTable(lootTable, DropChances.DEFAULT_EQUIPMENT_DROP_CHANCE));
+        return equipment(new EquipmentTable(lootTable, Map.of()));
     }
 
     public SpawnDataBuilder equipment(EquipmentTable equipment) {
@@ -58,7 +58,7 @@ public final class SpawnDataBuilder {
         return new SpawnData(entity.build(), Optional.ofNullable(spawnRules), Optional.ofNullable(equipment));
     }
 
-    public Weighted<SpawnData> build(int weight) {
-        return new Weighted<>(build(), weight);
+    public WeightedEntry.Wrapper<SpawnData> build(int weight) {
+        return WeightedEntry.wrap(build(), weight);
     }
 }

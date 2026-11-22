@@ -15,7 +15,7 @@ import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -41,7 +41,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnorePr
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -90,7 +90,7 @@ class ModularStructureEvaluateTest {
             }
 
             @Override
-            public void filter(@NonNull PlacementFilter filter, long nanos) {
+            public void filter(@NotNull PlacementFilter filter, long nanos) {
                 steps.add("filter " + filters.indexOf(filter));
             }
         };
@@ -201,21 +201,21 @@ class ModularStructureEvaluateTest {
         var source = withSteps(context -> {
             context.afterPlacement((builder, origin) -> {
                 ran.add("first at " + origin.getY());
-                context.afterPlacement((_, _) -> ran.add("registered by the first"));
+                context.afterPlacement((innerBuilder, innerOrigin) -> ran.add("registered by the first"));
                 return true;
             });
-            context.afterPlacement((builder, _) -> ran.add("second with " + builder.build().pieces().getFirst().getBoundingBox().minY()));
+            context.afterPlacement((builder, origin) -> ran.add("second with " + builder.build().pieces().getFirst().getBoundingBox().minY()));
         });
         assertInstanceOf(ModularStructure.Evaluation.Generated.class, structure(source).evaluateGenerationPoint(context(server)));
         assertEquals(List.of("first at 64", "second with 64", "registered by the first"), ran);
 
-        var rejecting = withSteps(context -> context.afterPlacement((_, _) -> false));
+        var rejecting = withSteps(context -> context.afterPlacement((builder, origin) -> false));
         assertInstanceOf(ModularStructure.Evaluation.NoPieces.class, structure(rejecting).evaluateGenerationPoint(context(server)), "a step can reject the spot");
     }
 
     // An igloo top, plus whatever `register` adds to the context.
     private static PieceSource withSteps(Consumer<PieceSource.Context> register) {
-        var igloo = new PieceSources.SingleSource(TemplateEntry.of(Identifier.withDefaultNamespace("igloo/top")));
+        var igloo = new PieceSources.SingleSource(TemplateEntry.of(ResourceLocation.withDefaultNamespace("igloo/top")));
         return new PieceSource() {
             @Override
             public void appendPieces(StructurePiecesBuilder builder, Context context) {
@@ -247,7 +247,7 @@ class ModularStructureEvaluateTest {
         return new ModularStructure(
                 new Structure.StructureSettings(HolderSet.empty()),
                 extendedSettings,
-                new PieceSources.SingleSource(TemplateEntry.of(Identifier.withDefaultNamespace("igloo/top"))),
+                new PieceSources.SingleSource(TemplateEntry.of(ResourceLocation.withDefaultNamespace("igloo/top"))),
                 startHeight,
                 LiquidSettings.IGNORE_WATERLOGGING,
                 Optional.<Foundation>empty(),
@@ -272,7 +272,7 @@ class ModularStructureEvaluateTest {
                 registries,
                 new DebugLevelSource(plains(server)),
                 biomeSource,
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
+                RandomState.create(server.registryAccess().asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 0,
                 new ChunkPos(0, 0),
@@ -286,7 +286,7 @@ class ModularStructureEvaluateTest {
 
     private static RegistryAccess registriesWith(StructureSet set) {
         var sets = new MappedRegistry<>(Registries.STRUCTURE_SET, Lifecycle.stable());
-        Registry.register(sets, Identifier.fromNamespaceAndPath("test", "set"), set);
+        Registry.register(sets, ResourceLocation.fromNamespaceAndPath("test", "set"), set);
         return new RegistryAccess.ImmutableRegistryAccess(List.of(sets));
     }
 

@@ -1,9 +1,10 @@
 package com.ametrin.structures;
 
+import com.ametrin.structures.client.ClientPayloadHandlers;
+import com.ametrin.structures.data.provider.ASBlockStateProvider;
 import com.ametrin.structures.data.provider.ASBlockTagsProvider;
 import com.ametrin.structures.data.provider.ASItemTagsProvider;
 import com.ametrin.structures.data.provider.ASLanguageProvider;
-import com.ametrin.structures.data.provider.ASModelProvider;
 import com.ametrin.structures.debug.SpreadCommand;
 import com.ametrin.structures.debug.StructuresCommand;
 import com.ametrin.structures.fixture.FixturePresets;
@@ -13,7 +14,7 @@ import com.ametrin.structures.network.ASPayloads;
 import com.ametrin.structures.network.ServerPayloadHandlers;
 import com.ametrin.structures.registry.*;
 import net.minecraft.core.RegistrySetBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Items;
 import net.neoforged.bus.api.IEventBus;
@@ -34,7 +35,6 @@ public class AmetrinStructures {
         modBus.addListener(ASRegistries::registerDatapackRegistries);
         modBus.addListener(ASDataMaps::register);
         modBus.addListener(AmetrinStructures::registerPayloads);
-        modBus.addListener(ASDataComponents::registerTooltips);
         modBus.addListener(AmetrinStructures::addToCreativeTabs);
         modBus.addListener(AmetrinStructures::gatherData);
         NeoForge.EVENT_BUS.addListener(StructuresCommand::register);
@@ -61,8 +61,8 @@ public class AmetrinStructures {
         ASFixtureConditions.REGISTER.register(modBus);
     }
 
-    public static Identifier locate(String path) {
-        return Identifier.fromNamespaceAndPath(MOD_ID, path);
+    public static ResourceLocation locate(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
@@ -90,15 +90,16 @@ public class AmetrinStructures {
                 ASPayloads.GenerateFixture.TYPE,
                 ASPayloads.GenerateFixture.STREAM_CODEC,
                 ServerPayloadHandlers::generateFixture);
-        registrar.playToClient(ASPayloads.SendRegistryKeys.TYPE, ASPayloads.SendRegistryKeys.STREAM_CODEC);
-        registrar.playToClient(ASPayloads.SpreadWaypoints.TYPE, ASPayloads.SpreadWaypoints.STREAM_CODEC);
-        registrar.playToClient(ASPayloads.ClearSpreadWaypoints.TYPE, ASPayloads.ClearSpreadWaypoints.STREAM_CODEC);
+        registrar.playToClient(ASPayloads.SendRegistryKeys.TYPE, ASPayloads.SendRegistryKeys.STREAM_CODEC, ClientPayloadHandlers::sendRegistryKeys);
+        registrar.playToClient(ASPayloads.SpreadWaypoints.TYPE, ASPayloads.SpreadWaypoints.STREAM_CODEC, ClientPayloadHandlers::spreadWaypoints);
+        registrar.playToClient(ASPayloads.ClearSpreadWaypoints.TYPE, ASPayloads.ClearSpreadWaypoints.STREAM_CODEC, ClientPayloadHandlers::clearSpreadWaypoints);
     }
 
-    private static void gatherData(GatherDataEvent.Client event) {
+    private static void gatherData(GatherDataEvent event) {
         event.createDatapackRegistryObjects(new RegistrySetBuilder().add(ASRegistries.SPAWNER_PROFILE, ASSpawnerProfiles::bootstrap));
-        event.createProvider(ASModelProvider::new);
+        var files = event.getExistingFileHelper();
+        event.createProvider(output -> new ASBlockStateProvider(output, files));
         event.createProvider(ASLanguageProvider::new);
-        event.createBlockAndItemTags(ASBlockTagsProvider::new, ASItemTagsProvider::new);
+        event.createBlockAndItemTags((output, lookup) -> new ASBlockTagsProvider(output, lookup, files), (output, lookup, blockTags) -> new ASItemTagsProvider(output, lookup, blockTags, files));
     }
 }

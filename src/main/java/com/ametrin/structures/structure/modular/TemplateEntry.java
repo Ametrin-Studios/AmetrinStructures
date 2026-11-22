@@ -10,12 +10,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -34,13 +34,13 @@ public record TemplateEntry(StructurePoolElement element, BlockPos offset) {
 
     public static final Codec<TemplateEntry> CODEC = MAP_CODEC.codec();
 
-    public static TemplateEntry of(Identifier template) {
+    public static TemplateEntry of(ResourceLocation template) {
         return new TemplateEntry(new Template(template, Optional.empty(), TerrainBox.template()).element(), BlockPos.ZERO);
     }
 
-    private record Template(Identifier template, Optional<Holder<StructureProcessorList>> processors, TerrainBox terrainBox) {
+    private record Template(ResourceLocation template, Optional<Holder<StructureProcessorList>> processors, TerrainBox terrainBox) {
         static final MapCodec<Template> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        Identifier.CODEC.fieldOf("template").forGetter(Template::template),
+                        ResourceLocation.CODEC.fieldOf("template").forGetter(Template::template),
                         StructureProcessorType.LIST_CODEC.optionalFieldOf("processors").forGetter(Template::processors),
                         TerrainBox.CODEC.optionalFieldOf("terrain_box", TerrainBox.template()).forGetter(Template::terrainBox))
                 .apply(instance, Template::new));
@@ -64,7 +64,7 @@ public record TemplateEntry(StructurePoolElement element, BlockPos offset) {
     public static class Builder extends TemplateElementBuilder<Builder> {
         private final String defaultNamespace;
         @Nullable
-        private Identifier template;
+        private ResourceLocation template;
         @Nullable
         private StructurePoolElement element;
         private BlockPos offset = BlockPos.ZERO;
@@ -75,10 +75,10 @@ public record TemplateEntry(StructurePoolElement element, BlockPos offset) {
         }
 
         public Builder template(String template) {
-            return template(Identifier.fromNamespaceAndPath(defaultNamespace, template));
+            return template(ResourceLocation.fromNamespaceAndPath(defaultNamespace, template));
         }
 
-        public Builder template(Identifier template) {
+        public Builder template(ResourceLocation template) {
             this.template = template;
             return this;
         }

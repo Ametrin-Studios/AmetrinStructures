@@ -12,10 +12,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.util.valueproviders.IntProvider;
-import net.minecraft.util.valueproviders.IntProviders;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
@@ -39,11 +38,11 @@ import java.util.stream.Stream;
 /// @param maxBacktracks how often the layout may go back to place an element below its soft minimum before it settles for fewer, or gives up on the spot below the minimum
 public record JigsawSource(
         Holder<StructureTemplatePool> startPool,
-        Optional<Identifier> startJigsawName,
+        Optional<ResourceLocation> startJigsawName,
         BlockPos offset,
         IntProvider size,
         boolean useExpansionHack,
-        JigsawStructure.MaxDistance maxDistanceFromCenter,
+        MaxDistance maxDistanceFromCenter,
         List<PoolAliasBinding> poolAliases,
         DimensionPadding dimensionPadding,
         int maxBacktracks) implements PieceSource {
@@ -55,11 +54,11 @@ public record JigsawSource(
 
     public static final MapCodec<JigsawSource> CODEC = RecordCodecBuilder.<JigsawSource>mapCodec(instance -> instance.group(
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(JigsawSource::startPool),
-                    Identifier.CODEC.optionalFieldOf("start_jigsaw_name").forGetter(JigsawSource::startJigsawName),
+                    ResourceLocation.CODEC.optionalFieldOf("start_jigsaw_name").forGetter(JigsawSource::startJigsawName),
                     BlockPos.CODEC.optionalFieldOf("offset", BlockPos.ZERO).forGetter(JigsawSource::offset),
-                    IntProviders.codec(0, MAX_SIZE).optionalFieldOf("size", ConstantInt.of(7)).forGetter(JigsawSource::size),
+                    IntProvider.codec(0, MAX_SIZE).optionalFieldOf("size", ConstantInt.of(7)).forGetter(JigsawSource::size),
                     Codec.BOOL.optionalFieldOf("use_expansion_hack", false).forGetter(JigsawSource::useExpansionHack),
-                    JigsawStructure.MaxDistance.CODEC.optionalFieldOf("max_distance_from_center", new JigsawStructure.MaxDistance(80)).forGetter(JigsawSource::maxDistanceFromCenter),
+                    MaxDistance.CODEC.optionalFieldOf("max_distance_from_center", new MaxDistance(80)).forGetter(JigsawSource::maxDistanceFromCenter),
                     Codec.list(PoolAliasBinding.CODEC).optionalFieldOf("pool_aliases", List.of()).forGetter(JigsawSource::poolAliases),
                     DimensionPadding.CODEC.optionalFieldOf("dimension_padding", JigsawStructure.DEFAULT_DIMENSION_PADDING).forGetter(JigsawSource::dimensionPadding),
                     Codec.intRange(0, 1024).optionalFieldOf("max_backtracks", DEFAULT_MAX_BACKTRACKS).forGetter(JigsawSource::maxBacktracks))
@@ -87,7 +86,7 @@ public record JigsawSource(
         var rotation = context.rotation();
         var origin = context.origin().offset(offset.rotate(rotation));
         var aliases = PoolAliasLookup.create(poolAliases, origin, generation.seed());
-        var pool = startPool.unwrapKey().flatMap(key -> pools.getOptional(aliases.lookup(key))).orElse(startPool.value());
+        var pool = startPool.unwrapKey().flatMap(key -> pools.get(aliases.lookup(key))).map(Holder::value).orElse(startPool.value());
         var element = pool.getRandomTemplate(random);
         if (element == EmptyPoolElement.INSTANCE) {
             return;
@@ -98,7 +97,7 @@ public record JigsawSource(
             var name = startJigsawName.get();
             var anchor = Jigsaws.shuffled(element, templates, origin, rotation, random).stream().filter(jigsaw -> name.equals(jigsaw.name())).findFirst();
             if (anchor.isEmpty()) {
-                ASLog.error("No starting jigsaw {} found in start pool {}", name, startPool.unwrapKey().map(key -> key.identifier().toString()).orElse("<unregistered>"));
+                ASLog.error("No starting jigsaw {} found in start pool {}", name, startPool.unwrapKey().map(key -> key.location().toString()).orElse("<unregistered>"));
                 return;
             }
             position = origin.subtract(anchor.get().info().pos().subtract(origin));
@@ -110,7 +109,7 @@ public record JigsawSource(
         int depth = size.sample(random);
         context.afterPlacement((pieces, placedOrigin) -> {
             var box = start.getBoundingBox();
-            if (dimensionPadding != DimensionPadding.ZERO && (box.minY() < generation.heightAccessor().getMinY() + dimensionPadding.bottom() || box.maxY() > generation.heightAccessor().getMaxY() - dimensionPadding.top())) {
+            if (dimensionPadding != DimensionPadding.ZERO && (box.minY() < generation.heightAccessor().getMinBuildHeight() + dimensionPadding.bottom() || box.maxY() > generation.heightAccessor().getMaxBuildHeight() - 1 - dimensionPadding.top())) {
                 return false;
             }
             var free = JigsawAssembler.freeSpace(box, placedOrigin.getY() + offset.getY(), maxDistanceFromCenter, generation.heightAccessor(), dimensionPadding);
@@ -135,11 +134,11 @@ public record JigsawSource(
 
     public static class Builder {
         private final Holder<StructureTemplatePool> startPool;
-        private Optional<Identifier> startJigsawName = Optional.empty();
+        private Optional<ResourceLocation> startJigsawName = Optional.empty();
         private BlockPos offset = BlockPos.ZERO;
         private IntProvider size = ConstantInt.of(7);
         private boolean useExpansionHack = false;
-        private JigsawStructure.MaxDistance maxDistanceFromCenter = new JigsawStructure.MaxDistance(80);
+        private MaxDistance maxDistanceFromCenter = new MaxDistance(80);
         private List<PoolAliasBinding> poolAliases = List.of();
         private DimensionPadding dimensionPadding = JigsawStructure.DEFAULT_DIMENSION_PADDING;
         private int maxBacktracks = DEFAULT_MAX_BACKTRACKS;
@@ -148,7 +147,7 @@ public record JigsawSource(
             this.startPool = startPool;
         }
 
-        public Builder startJigsawName(Identifier name) {
+        public Builder startJigsawName(ResourceLocation name) {
             this.startJigsawName = Optional.of(name);
             return this;
         }
@@ -184,14 +183,14 @@ public record JigsawSource(
         }
 
         public Builder maxDistanceFromCenter(int maxDistanceFromCenter) {
-            return maxDistanceFromCenter(new JigsawStructure.MaxDistance(maxDistanceFromCenter));
+            return maxDistanceFromCenter(new MaxDistance(maxDistanceFromCenter));
         }
 
         public Builder maxDistanceFromCenter(int horizontal, int vertical) {
-            return maxDistanceFromCenter(new JigsawStructure.MaxDistance(horizontal, vertical));
+            return maxDistanceFromCenter(new MaxDistance(horizontal, vertical));
         }
 
-        public Builder maxDistanceFromCenter(JigsawStructure.MaxDistance maxDistanceFromCenter) {
+        public Builder maxDistanceFromCenter(MaxDistance maxDistanceFromCenter) {
             this.maxDistanceFromCenter = maxDistanceFromCenter;
             return this;
         }

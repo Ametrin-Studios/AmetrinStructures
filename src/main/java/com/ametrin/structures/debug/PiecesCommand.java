@@ -1,11 +1,13 @@
 package com.ametrin.structures.debug;
 
+import com.ametrin.structures.structure.jigsaw.JigsawBlockInfo;
 import com.ametrin.structures.util.ASLog;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceKeyArgument;
@@ -16,16 +18,14 @@ import net.minecraft.data.worldgen.Pools;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.util.RandomSource;
-import net.minecraft.util.Util;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.JigsawBlock;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -71,21 +71,21 @@ public final class PiecesCommand {
 
     static Layout describe(StructureTemplateManager templates, PiecesContainer pieces) {
         var names = new HashMap<String, Integer>();
-        var jigsaws = new LinkedHashMap<PoolElementStructurePiece, List<StructureTemplate.JigsawBlockInfo>>();
+        var jigsaws = new LinkedHashMap<PoolElementStructurePiece, List<JigsawBlockInfo>>();
         for (var piece : pieces.pieces()) {
             names.merge(StructureLayouts.name(piece), 1, Integer::sum);
             if (piece instanceof PoolElementStructurePiece pooled) {
                 // The random only shuffles the order.
-                jigsaws.put(pooled, pooled.getElement().getShuffledJigsawBlocks(templates, pooled.getPosition(), pooled.getRotation(), RandomSource.create(0)));
+                jigsaws.put(pooled, pooled.getElement().getShuffledJigsawBlocks(templates, pooled.getPosition(), pooled.getRotation(), RandomSource.create(0)).stream().map(JigsawBlockInfo::of).toList());
             }
         }
         var owners = new HashMap<Face, List<Owner>>();
-        jigsaws.forEach((piece, own) -> own.forEach(jigsaw -> owners.computeIfAbsent(Face.of(jigsaw.info().pos(), facing(jigsaw)), _ -> new ArrayList<>()).add(new Owner(piece, jigsaw.info().pos().getY()))));
+        jigsaws.forEach((piece, own) -> own.forEach(jigsaw -> owners.computeIfAbsent(Face.of(jigsaw.info().pos(), facing(jigsaw)), key -> new ArrayList<>()).add(new Owner(piece, jigsaw.info().pos().getY()))));
         var open = new HashMap<String, Integer>();
         jigsaws.forEach((piece, own) -> {
             for (var jigsaw : own) {
                 if (!jigsaw.pool().equals(Pools.EMPTY) && attached(piece, jigsaw, owners) == null) {
-                    open.merge(jigsaw.pool().identifier().toString(), 1, Integer::sum);
+                    open.merge(jigsaw.pool().location().toString(), 1, Integer::sum);
                 }
             }
         });
@@ -94,7 +94,7 @@ public final class PiecesCommand {
 
     // How many attached jigsaws lie between each piece and the first piece of its layout. A structure with several jigsaw
     // layouts, like a compound of jigsaw sources, starts again at each piece no earlier layout reaches.
-    private static Map<String, List<Integer>> depths(Map<PoolElementStructurePiece, List<StructureTemplate.JigsawBlockInfo>> jigsaws, Map<Face, List<Owner>> owners) {
+    private static Map<String, List<Integer>> depths(Map<PoolElementStructurePiece, List<JigsawBlockInfo>> jigsaws, Map<Face, List<Owner>> owners) {
         var depths = new HashMap<PoolElementStructurePiece, Integer>();
         for (var root : jigsaws.keySet()) {
             if (depths.containsKey(root)) {
@@ -114,14 +114,14 @@ public final class PiecesCommand {
             }
         }
         var byName = new HashMap<String, List<Integer>>();
-        depths.forEach((piece, depth) -> byName.computeIfAbsent(StructureLayouts.name(piece), _ -> new ArrayList<>()).add(depth));
+        depths.forEach((piece, depth) -> byName.computeIfAbsent(StructureLayouts.name(piece), key -> new ArrayList<>()).add(depth));
         return byName;
     }
 
     // The piece this jigsaw is attached to: one with a jigsaw facing it from the neighboring block, where both pieces have a junction for the
     // attachment, so jigsaws that only happen to face each other don't count. Terrain matching pieces move up or down after they're attached, so
     // when one is involved, the closest sideways jigsaw in the column counts.
-    private static @Nullable PoolElementStructurePiece attached(PoolElementStructurePiece piece, StructureTemplate.JigsawBlockInfo jigsaw, Map<Face, List<Owner>> owners) {
+    private static @Nullable PoolElementStructurePiece attached(PoolElementStructurePiece piece, JigsawBlockInfo jigsaw, Map<Face, List<Owner>> owners) {
         var facing = facing(jigsaw);
         var pos = jigsaw.info().pos();
         var target = pos.relative(facing);
@@ -148,7 +148,7 @@ public final class PiecesCommand {
         return piece.getElement().getProjection() == StructureTemplatePool.Projection.RIGID;
     }
 
-    private static Direction facing(StructureTemplate.JigsawBlockInfo jigsaw) {
+    private static Direction facing(JigsawBlockInfo jigsaw) {
         return JigsawBlock.getFrontFacing(jigsaw.info().state());
     }
 
@@ -164,9 +164,9 @@ public final class PiecesCommand {
     private static int pieces(CommandContext<CommandSourceStack> command, int count) throws CommandSyntaxException {
         var source = command.getSource();
         var structure = ResourceKeyArgument.getStructure(command, "structure");
-        var name = structure.key().identifier().toString();
+        var name = structure.key().location().toString();
         var level = source.getLevel();
-        var chunk = ChunkPos.containing(BlockPos.containing(source.getPosition()));
+        var chunk = new ChunkPos(BlockPos.containing(source.getPosition()));
         var random = level.getRandom().fork();
         source.sendSuccess(() -> Component.translatable(Keys.STARTED, count, name), false);
         CompletableFuture.supplyAsync(() -> {
@@ -207,7 +207,7 @@ public final class PiecesCommand {
         var openBreakdown = breakdown("open jigsaws into\tper layout\tshare of layouts", open, samples);
         long openTotal = open.stream().mapToLong(entry -> entry.getValue().total()).sum();
         var openLine = Component.translatable(Keys.OPEN_JIGSAWS, format((double) openTotal / samples));
-        extraLines.add(open.isEmpty() ? openLine : openLine.withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent.ShowText(openBreakdown.hover()))));
+        extraLines.add(open.isEmpty() ? openLine : openLine.withStyle(style -> style.withUnderlined(true).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, openBreakdown.hover()))));
 
         var tsv = new StringBuilder("piece\tper layout\tshare of layouts\tfewest\tmost\tlowest depth\taverage depth\thighest depth\n");
         var lines = new ArrayList<Component>();
@@ -225,7 +225,7 @@ public final class PiecesCommand {
             if (depth.getCount() > 0) {
                 details.append("\n").append(Component.translatable(Keys.DEPTH, depth.getMin(), depth.getMax(), format(depth.getAverage())));
             }
-            lines.add(line(counts, samples, entry.getKey()).withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(details))));
+            lines.add(line(counts, samples, entry.getKey()).withStyle(style -> style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, details))));
         }
         tsv.append(openBreakdown.tsv());
         ChatReport.send(source, summary, extraLines, lines, tsv.toString(), "/ametrin structures pieces");

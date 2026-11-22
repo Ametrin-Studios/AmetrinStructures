@@ -2,6 +2,7 @@ package com.ametrin.structures.client;
 
 import com.ametrin.structures.fixture.FixtureBlockEntity;
 import com.ametrin.structures.fixture.FixtureCondition;
+import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.HolderLookup;
@@ -62,7 +63,11 @@ final class FixtureInput {
 
     static Optional<Tag> parseConditions(HolderLookup.Provider registries, String raw) {
         try {
-            var tag = TagParser.create(NbtOps.INSTANCE).parseFully(raw.trim());
+            var reader = new StringReader(raw.trim());
+            var tag = new TagParser(reader).readValue();
+            if (reader.canRead()) {
+                return Optional.empty();
+            }
             var ops = registries.createSerializationContext(NbtOps.INSTANCE);
             return FixtureCondition.LIST_CODEC.parse(ops, tag).isSuccess() ? Optional.of(tag) : Optional.empty();
         } catch (CommandSyntaxException exception) {

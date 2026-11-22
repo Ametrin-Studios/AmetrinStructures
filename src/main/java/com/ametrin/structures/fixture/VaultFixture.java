@@ -1,12 +1,12 @@
 package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.registry.ASFixtures;
+import com.ametrin.structures.util.ItemStackTemplate;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.VaultBlock;

@@ -98,7 +98,7 @@ class PieceSourcesTest {
                 server.registryAccess(),
                 new DebugLevelSource(plains),
                 new FixedBiomeSource(plains),
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
+                RandomState.create(server.registryAccess().asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 new WorldgenRandom(new LegacyRandomSource(seed)),
                 seed,

@@ -36,30 +36,30 @@ public final class TerrainSampler {
     }
 
     public int surfaceHeight(Heightmap.Types type, int x, int z) {
-        return heights(type).computeIfAbsent(ColumnPos.asLong(x, z), _ -> context.chunkGenerator()
+        return heights(type).computeIfAbsent(ColumnPos.asLong(x, z), key -> context.chunkGenerator()
                 .getFirstFreeHeight(x, z, type, context.heightAccessor(), context.randomState()));
     }
 
     public int columnHeight(Heightmap.Types type, int x, int z) {
-        return heights(type).computeIfAbsent(ColumnPos.asLong(x, z), _ -> {
+        return heights(type).computeIfAbsent(ColumnPos.asLong(x, z), key -> {
             // As the chunk generator measures it: one above the highest block the heightmap counts.
             var column = column(x, z);
             var opaque = type.isOpaque();
             var level = context.heightAccessor();
-            for (int y = level.getMaxY(); y >= level.getMinY(); y--) {
+            for (int y = level.getMaxBuildHeight() - 1; y >= level.getMinBuildHeight(); y--) {
                 if (opaque.test(column.getBlock(y))) {
                     return y + 1;
                 }
             }
-            return level.getMinY();
+            return level.getMinBuildHeight();
         });
     }
 
     private Long2IntMap heights(Heightmap.Types type) {
-        return heights.computeIfAbsent(type, _ -> new Long2IntOpenHashMap());
+        return heights.computeIfAbsent(type, key -> new Long2IntOpenHashMap());
     }
 
     public NoiseColumn column(int x, int z) {
-        return columns.computeIfAbsent(ColumnPos.asLong(x, z), _ -> context.chunkGenerator().getBaseColumn(x, z, context.heightAccessor(), context.randomState()));
+        return columns.computeIfAbsent(ColumnPos.asLong(x, z), key -> context.chunkGenerator().getBaseColumn(x, z, context.heightAccessor(), context.randomState()));
     }
 }

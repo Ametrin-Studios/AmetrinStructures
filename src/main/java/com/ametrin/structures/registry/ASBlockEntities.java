@@ -12,8 +12,8 @@ public final class ASBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> REGISTER = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, AmetrinStructures.MOD_ID);
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FoamSpreaderBlockEntity>> FOAM_SPREADER =
-            REGISTER.register("foam_spreader", () -> new BlockEntityType<>(FoamSpreaderBlockEntity::new, false, ASBlocks.FOAM_SPREADER.get()));
+            REGISTER.register("foam_spreader", () -> BlockEntityType.Builder.of(FoamSpreaderBlockEntity::new, ASBlocks.FOAM_SPREADER.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FixtureBlockEntity>> FIXTURE =
-            REGISTER.register("fixture", () -> new BlockEntityType<>(FixtureBlockEntity::new, true, ASBlocks.FIXTURE.get()));
+            REGISTER.register("fixture", () -> BlockEntityType.Builder.of(FixtureBlockEntity::new, ASBlocks.FIXTURE.get()).build(null));
 }

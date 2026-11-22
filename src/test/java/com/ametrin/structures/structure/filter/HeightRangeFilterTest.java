@@ -73,7 +73,7 @@ class HeightRangeFilterTest {
                 server.registryAccess(),
                 new DebugLevelSource(plains),
                 new FixedBiomeSource(plains),
-                RandomState.create(server.registryAccess(), NoiseGeneratorSettings.OVERWORLD, 0),
+                RandomState.create(server.registryAccess().asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 0,
                 new ChunkPos(0, 0),

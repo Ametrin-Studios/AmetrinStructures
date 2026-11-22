@@ -7,15 +7,14 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.RandomSource;
-import net.minecraft.util.Util;
 import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.util.valueproviders.IntProvider;
-import net.minecraft.util.valueproviders.IntProviders;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.JigsawBlock;
@@ -29,7 +28,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSetting
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,16 +44,16 @@ import java.util.stream.IntStream;
 /// Jigsaws that face a neighboring copy are left out. The others stay open on every copy.
 public class RepeatedPoolElement extends StructurePoolElement implements StructureSettingsElement {
     public static final int MAX_COUNT = 256;
-    private static final Comparator<StructureTemplate.JigsawBlockInfo> HIGHEST_SELECTION_PRIORITY_FIRST = Comparator.comparingInt(StructureTemplate.JigsawBlockInfo::selectionPriority).reversed();
+    private static final Comparator<JigsawBlockInfo> HIGHEST_SELECTION_PRIORITY_FIRST = Comparator.comparingInt(JigsawBlockInfo::selectionPriority).reversed();
 
     public static final MapCodec<RepeatedPoolElement> CODEC = RecordCodecBuilder.<RepeatedPoolElement>mapCodec(instance -> instance.group(
                     StructurePoolElement.CODEC.fieldOf("element").forGetter(RepeatedPoolElement::element),
                     Direction.CODEC.fieldOf("direction").forGetter(RepeatedPoolElement::direction),
-                    IntProviders.codec(1, MAX_COUNT).fieldOf("count").forGetter(RepeatedPoolElement::count),
+                    IntProvider.codec(1, MAX_COUNT).fieldOf("count").forGetter(RepeatedPoolElement::count),
                     Codec.intRange(1, MAX_COUNT).optionalFieldOf("min_count", 1).forGetter(RepeatedPoolElement::minCount),
                     PlacementFilter.CODEC.listOf().optionalFieldOf("filters", List.of()).forGetter(RepeatedPoolElement::filters))
             .apply(instance, RepeatedPoolElement::new))
-            .validate(repeated -> repeated.minCount > repeated.count.maxInclusive()
+            .validate(repeated -> repeated.minCount > repeated.count.getMaxValue()
                     ? DataResult.error(() -> "min_count must be at most the count")
                     : DataResult.success(repeated));
 
@@ -113,7 +112,7 @@ public class RepeatedPoolElement extends StructurePoolElement implements Structu
     /// Where the copy `index` goes, for the element at `position`.
     public BlockPos copyPosition(StructureTemplateManager templates, BlockPos position, Rotation rotation, int index) {
         var size = element.getSize(templates, Rotation.NONE);
-        var step = direction.getUnitVec3i().multiply(direction.getAxis().choose(size.getX(), size.getY(), size.getZ()));
+        var step = direction.getNormal().multiply(direction.getAxis().choose(size.getX(), size.getY(), size.getZ()));
         return position.offset(new BlockPos(step.multiply(index)).rotate(rotation));
     }
 
@@ -123,12 +122,12 @@ public class RepeatedPoolElement extends StructurePoolElement implements Structu
     }
 
     /// The first copy's jigsaws that don't face a second one, which it can attach by.
-    List<StructureTemplate.JigsawBlockInfo> attachingJigsaws(StructureTemplateManager templates, BlockPos position, Rotation rotation, RandomSource random) {
+    List<JigsawBlockInfo> attachingJigsaws(StructureTemplateManager templates, BlockPos position, Rotation rotation, RandomSource random) {
         var next = element.getBoundingBox(templates, copyPosition(templates, position, rotation, 1), rotation);
         return Jigsaws.shuffled(element, templates, position, rotation, random).stream().filter(jigsaw -> !next.isInside(front(jigsaw))).toList();
     }
 
-    private static BlockPos front(StructureTemplate.JigsawBlockInfo jigsaw) {
+    private static BlockPos front(JigsawBlockInfo jigsaw) {
         return jigsaw.info().pos().relative(JigsawBlock.getFrontFacing(jigsaw.info().state()));
     }
 
@@ -139,10 +138,10 @@ public class RepeatedPoolElement extends StructurePoolElement implements Structu
     }
 
     @Override
-    public List<StructureTemplate.JigsawBlockInfo> getShuffledJigsawBlocks(StructureTemplateManager templates, BlockPos position, Rotation rotation, RandomSource random) {
+    public List<StructureTemplate.StructureBlockInfo> getShuffledJigsawBlocks(StructureTemplateManager templates, BlockPos position, Rotation rotation, RandomSource random) {
         var positions = copyPositions(templates, position, rotation);
         var boxes = positions.stream().map(copy -> element.getBoundingBox(templates, copy, rotation)).toList();
-        var jigsaws = new ArrayList<StructureTemplate.JigsawBlockInfo>();
+        var jigsaws = new ArrayList<JigsawBlockInfo>();
         for (int i = 0; i < positions.size(); i++) {
             for (var jigsaw : Jigsaws.shuffled(element, templates, positions.get(i), rotation, random)) {
                 var front = front(jigsaw);
@@ -153,7 +152,7 @@ public class RepeatedPoolElement extends StructurePoolElement implements Structu
         }
         Util.shuffle(jigsaws, random);
         jigsaws.sort(HIGHEST_SELECTION_PRIORITY_FIRST);
-        return jigsaws;
+        return jigsaws.stream().map(JigsawBlockInfo::info).toList();
     }
 
     @Override

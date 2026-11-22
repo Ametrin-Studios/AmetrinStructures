@@ -2,7 +2,7 @@ package com.ametrin.structures.placement;
 
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.StructureTags;
 import net.minecraft.world.level.ChunkPos;
 import org.junit.jupiter.api.Test;
@@ -31,11 +31,11 @@ class EvenSpreadPlacementTest {
     }
 
     private static List<ChunkPos> spots(EvenSpreadPlacement placement, long seed) {
-        return candidates(placement, seed).stream().filter(chunk -> placement.applyAdditionalChunkRestrictions(chunk.x(), chunk.z(), seed)).toList();
+        return candidates(placement, seed).stream().filter(chunk -> placement.applyAdditionalChunkRestrictions(chunk.x, chunk.z, seed)).toList();
     }
 
     private static double distance(ChunkPos a, ChunkPos b) {
-        return Math.hypot(a.x() - b.x(), a.z() - b.z());
+        return Math.hypot(a.x - b.x, a.z - b.z);
     }
 
     @Test
@@ -56,8 +56,8 @@ class EvenSpreadPlacementTest {
         var placement = evenSpread(24).minChunksFromCenter(100).build();
         var spots = spots(placement, SEED);
         for (var candidate : candidates(placement, SEED)) {
-            if (placement.isTooCloseToCenter(candidate.x(), candidate.z()) || spots.contains(candidate)
-                    || Math.abs(candidate.x()) > (CELLS - 3) * placement.spacing() || Math.abs(candidate.z()) > (CELLS - 3) * placement.spacing()) {
+            if (placement.isTooCloseToCenter(candidate.x, candidate.z) || spots.contains(candidate)
+                    || Math.abs(candidate.x) > (CELLS - 3) * placement.spacing() || Math.abs(candidate.z) > (CELLS - 3) * placement.spacing()) {
                 continue;
             }
             assertTrue(spots.stream().anyMatch(spot -> distance(spot, candidate) < 24), "nothing dropped " + candidate);
@@ -85,7 +85,7 @@ class EvenSpreadPlacementTest {
         var shared = EvenSpreadPlacement.builder().minDistance(24);
         var first = shared.build("test", "first");
         assertNotEquals(spots(first, SEED), spots(shared.build("test", "second"), SEED));
-        assertEquals(spots(first, SEED), spots(shared.build(Identifier.fromNamespaceAndPath("test", "first")), SEED));
+        assertEquals(spots(first, SEED), spots(shared.build(ResourceLocation.fromNamespaceAndPath("test", "first")), SEED));
         assertEquals(spots(evenSpread(24).salt(7).build(), SEED), spots(shared.salt(7).build("test", "third"), SEED), "an explicit salt wins");
     }
 
@@ -107,7 +107,7 @@ class EvenSpreadPlacementTest {
     @Test
     void nothingGeneratesNearTheCenter() {
         var placement = evenSpread(8).minChunksFromCenter(50).build();
-        assertTrue(spots(placement, SEED).stream().noneMatch(spot -> placement.isTooCloseToCenter(spot.x(), spot.z())));
+        assertTrue(spots(placement, SEED).stream().noneMatch(spot -> placement.isTooCloseToCenter(spot.x, spot.z)));
         assertFalse(placement.applyAdditionalChunkRestrictions(0, 0, SEED));
     }
 

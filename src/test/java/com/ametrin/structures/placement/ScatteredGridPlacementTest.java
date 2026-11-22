@@ -1,6 +1,6 @@
 package com.ametrin.structures.placement;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /// Grid chunk selection: one structure per cell, moved a seeded random amount up to the offset.
 class ScatteredGridPlacementTest {
-    private static final Identifier STRUCTURE = Identifier.fromNamespaceAndPath("test", "structure");
+    private static final ResourceLocation STRUCTURE = ResourceLocation.fromNamespaceAndPath("test", "structure");
     private static final long SEED = 12345L;
 
     private static ScatteredGridPlacement.Builder grid(int spacing) {
@@ -33,8 +33,8 @@ class ScatteredGridPlacementTest {
         for (int cellX = -8; cellX < 8; cellX++) {
             for (int cellZ = -8; cellZ < 8; cellZ++) {
                 ChunkPos chunk = placement.getPotentialStructureChunk(SEED, cellX * 16 + 5, cellZ * 16 + 5);
-                int dx = chunk.x() - cellX * 16;
-                int dz = chunk.z() - cellZ * 16;
+                int dx = chunk.x - cellX * 16;
+                int dz = chunk.z - cellZ * 16;
                 assertTrue(dx >= 0 && dx <= 3 && dz >= 0 && dz <= 3, "cell " + cellX + "," + cellZ + " picked " + chunk);
             }
         }
@@ -47,7 +47,7 @@ class ScatteredGridPlacementTest {
         for (int cell = 0; cell < 32; cell++) {
             ChunkPos chunk = placement.getPotentialStructureChunk(SEED, cell * 16, 0);
             assertEquals(chunk, placement.getPotentialStructureChunk(SEED, cell * 16 + 7, 9), "same cell, same chunk");
-            localPositions.add(new ChunkPos(chunk.x() - cell * 16, chunk.z()));
+            localPositions.add(new ChunkPos(chunk.x - cell * 16, chunk.z));
         }
         assertTrue(localPositions.size() > 1, "every cell picked the same spot: " + localPositions);
     }

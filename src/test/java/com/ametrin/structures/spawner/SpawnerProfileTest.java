@@ -2,13 +2,14 @@ package com.ametrin.structures.spawner;
 
 import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.registry.ASAttachments;
+import com.ametrin.structures.util.ASNbt;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.random.Weighted;
+import net.minecraft.util.random.WeightedEntry;
 import net.minecraft.world.level.SpawnData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -58,9 +59,10 @@ class SpawnerProfileTest {
     void clientsGetTheNextSpawnAfterALoad(MinecraftServer server) {
         var reloaded = reload(server, new SpawnerBlockEntity(BlockPos.ZERO, SPAWNER));
         var updateTag = reloaded.getUpdateTag(server.registryAccess());
-        var next = updateTag.getCompound("SpawnData").flatMap(data -> data.getCompound("entity")).flatMap(entity -> entity.getString("id"));
-        assertTrue(next.isPresent(), "update tag without the next spawn: " + updateTag);
-        assertTrue(reloaded.getSpawner().spawnPotentials.contains(SpawnerAccess.nextSpawnData(reloaded.getSpawner())));
+        var next = updateTag.getCompound("SpawnData").getCompound("entity").getString("id");
+        assertFalse(next.isEmpty(), "update tag without the next spawn: " + updateTag);
+        var spawnData = SpawnerAccess.nextSpawnData(reloaded.getSpawner());
+        assertTrue(reloaded.getSpawner().spawnPotentials.unwrap().stream().anyMatch(entry -> entry.data().equals(spawnData)));
     }
 
     @Test
@@ -94,7 +96,7 @@ class SpawnerProfileTest {
         return SpawnerProfile.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json));
     }
 
-    private static String describe(Weighted<SpawnData> entry) {
-        return entry.value().entityToSpawn().getStringOr("id", "?") + " x" + entry.weight();
+    private static String describe(WeightedEntry.Wrapper<SpawnData> entry) {
+        return ASNbt.getStringOr(entry.data().entityToSpawn(), "id", "?") + " x" + entry.getWeight().asInt();
     }
 }

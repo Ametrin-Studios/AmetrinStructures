@@ -44,32 +44,37 @@ base {
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
     withSourcesJar()
 }
 neoForge {
     version = project.neo_version
 
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
     runs {
         client {
             client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "${project.mod_id},${project.mod_id}_test"
             systemProperty 'ametrin_structures.template_sources', files('src/main/resources', 'src/gametest/resources').asPath
         }
 
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "${project.mod_id},${project.mod_id}_test"
         }
 
         gameTestServer {
             type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', "${project.mod_id},${project.mod_id}_test"
         }
 
         data {
-            clientData()
+            data()
             programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
 
@@ -117,6 +122,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
             neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

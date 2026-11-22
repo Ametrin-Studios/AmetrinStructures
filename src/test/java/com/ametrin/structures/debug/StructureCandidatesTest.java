@@ -39,8 +39,8 @@ class StructureCandidatesTest {
                 everySeventhChunk());
         for (var placement : placements) {
             var expected = new HashSet<ChunkPos>();
-            for (int x = CENTER.x() - RADIUS; x <= CENTER.x() + RADIUS; x++) {
-                for (int z = CENTER.z() - RADIUS; z <= CENTER.z() + RADIUS; z++) {
+            for (int x = CENTER.x - RADIUS; x <= CENTER.x + RADIUS; x++) {
+                for (int z = CENTER.z - RADIUS; z <= CENTER.z + RADIUS; z++) {
                     var chunk = new ChunkPos(x, z);
                     if (chunk.distanceSquared(CENTER) <= RADIUS * RADIUS && placement.isStructureChunk(state, x, z)) {
                         expected.add(chunk);
@@ -78,7 +78,7 @@ class StructureCandidatesTest {
         var registries = server.registryAccess();
         var biomes = registries.lookupOrThrow(Registries.BIOME);
         var biomeSource = new CheckerboardColumnBiomeSource(HolderSet.direct(biomes.getOrThrow(Biomes.PLAINS)), 2);
-        var randomState = RandomState.create(registries, NoiseGeneratorSettings.OVERWORLD, 0);
+        var randomState = RandomState.create(registries.asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0);
         return ChunkGeneratorStructureState.createForNormal(randomState, 0, biomeSource, registries.lookupOrThrow(Registries.STRUCTURE_SET));
     }
 }

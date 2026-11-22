@@ -13,6 +13,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ColorArgument;
@@ -25,20 +26,19 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.*;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Util;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -138,13 +138,13 @@ public final class SpreadCommand {
     }
 
     /// @param box empty for a chunk a placement picked
-    private record Stop(Identifier id, BlockPos origin, BlockPos target, Optional<BoundingBox> box) {
+    private record Stop(ResourceLocation id, BlockPos origin, BlockPos target, Optional<BoundingBox> box) {
         static Stop of(StructureSpread.Found spot) {
             return new Stop(spot.id(), spot.origin(), spot.visit(), Optional.of(spot.box()));
         }
     }
 
-    private record Target(Kind kind, Identifier id, Predicate<Holder<StructureSet>> sets,
+    private record Target(Kind kind, ResourceLocation id, Predicate<Holder<StructureSet>> sets,
                           Predicate<Holder<Structure>> structures, @Nullable StructurePlacement placement) {
         enum Kind {
             STRUCTURE,
@@ -152,7 +152,7 @@ public final class SpreadCommand {
             SET
         }
 
-        static Target of(Kind kind, Identifier id, Predicate<Holder<Structure>> structures) {
+        static Target of(Kind kind, ResourceLocation id, Predicate<Holder<Structure>> structures) {
             return new Target(kind, id, set -> set.value().structures().stream().anyMatch(entry -> structures.test(entry.structure())), structures, null);
         }
 
@@ -194,7 +194,7 @@ public final class SpreadCommand {
 
     private static <T extends ArgumentBuilder<CommandSourceStack, T>> T withOptions(T node, TargetArgument target) {
         return node.executes(context -> spread(context, target.read(context), DEFAULT_RADIUS, null, Rejected.NONE))
-                .then(withRejected(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS)), target, _ -> null)
+                .then(withRejected(Commands.argument("radius", IntegerArgumentType.integer(1, MAX_RADIUS)), target, ignored -> null)
                         .then(withRejected(Commands.argument("color", ColorArgument.color()), target, SpreadCommand::color)));
     }
 
@@ -221,7 +221,7 @@ public final class SpreadCommand {
         var key = argument.unwrap().left();
         if (key.isPresent()) {
             registry.get(key.get()).orElseThrow(() -> INVALID_STRUCTURE.create(argument.asPrintable()));
-            return Target.of(Target.Kind.STRUCTURE, key.get().identifier(), argument);
+            return Target.of(Target.Kind.STRUCTURE, key.get().location(), argument);
         }
         var tag = argument.unwrap().right().orElseThrow();
         registry.get(tag).orElseThrow(() -> INVALID_STRUCTURE.create(argument.asPrintable()));
@@ -231,8 +231,8 @@ public final class SpreadCommand {
     private static Target set(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         var key = ResourceKeyArgument.getRegistryKey(context, "set", Registries.STRUCTURE_SET, INVALID_SET);
         context.getSource().registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).get(key)
-                .orElseThrow(() -> INVALID_SET.create(key.identifier()));
-        return new Target(Target.Kind.SET, key.identifier(), set -> set.is(key), _ -> true, null);
+                .orElseThrow(() -> INVALID_SET.create(key.location()));
+        return new Target(Target.Kind.SET, key.location(), set -> set.is(key), ignored -> true, null);
     }
 
     private static Target setWithPlacement(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -298,7 +298,7 @@ public final class SpreadCommand {
 
     private static int spread(CommandContext<CommandSourceStack> context, Target target, int radius, @Nullable ChatFormatting color, Rejected rejected) {
         var source = context.getSource();
-        Identifier reportId;
+        ResourceLocation reportId;
         ChatFormatting waypointColor;
         Component name;
         if (target.placement() == null) {
@@ -312,7 +312,7 @@ public final class SpreadCommand {
             name = Component.translatable(Keys.WITH_PLACEMENT, target.name(waypointColor), number);
         }
         var level = source.getLevel();
-        var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
+        var center = new ChunkPos(BlockPos.containing(source.getPosition()));
         var player = source.getPlayer();
 
         source.sendSuccess(() -> Component.translatable(Keys.STARTED, name, radius), false);
@@ -338,11 +338,11 @@ public final class SpreadCommand {
         var placement = placement(context);
         var source = context.getSource();
         int number = nextPlacementReport(source);
-        var report = Identifier.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement/" + number);
+        var report = ResourceLocation.fromNamespaceAndPath(AmetrinStructures.MOD_ID, "placement/" + number);
         var waypointColor = color != null ? color : randomColor();
         var name = Component.translatable(Keys.PLACEMENT, number).withStyle(waypointColor);
         var level = source.getLevel();
-        var center = ChunkPos.containing(BlockPos.containing(source.getPosition()));
+        var center = new ChunkPos(BlockPos.containing(source.getPosition()));
         var player = source.getPlayer();
 
         source.sendSuccess(() -> Component.translatable(Keys.PLACEMENT_STARTED, name, radius), false);
@@ -370,7 +370,7 @@ public final class SpreadCommand {
         return 1;
     }
 
-    static ChatFormatting defaultColor(Identifier id) {
+    static ChatFormatting defaultColor(ResourceLocation id) {
         return WAYPOINT_COLORS.get(Math.floorMod(id.hashCode(), WAYPOINT_COLORS.size()));
     }
 
@@ -379,13 +379,13 @@ public final class SpreadCommand {
     }
 
     private static void sendWaypoints(
-            ServerPlayer player, Identifier report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
+            ServerPlayer player, ResourceLocation report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
             StructureSpread.Report spread) {
         sendWaypoints(player, report, dimension, color, shownRejected, spread.found().stream().map(Stop::of).toList(), spread.rejectedSpots());
     }
 
     private static void sendWaypoints(
-            ServerPlayer player, Identifier report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
+            ServerPlayer player, ResourceLocation report, ResourceKey<Level> dimension, ChatFormatting color, Rejected shownRejected,
             List<Stop> stops, List<StructureSpread.RejectedSpot> rejectedSpots) {
         if (!player.connection.hasChannel(ASPayloads.SpreadWaypoints.TYPE)) {
             return;
@@ -429,7 +429,7 @@ public final class SpreadCommand {
             report.found().stream()
                     .collect(Collectors.groupingBy(StructureSpread.Found::id, Collectors.counting()))
                     .entrySet().stream()
-                    .sorted(Map.Entry.<Identifier, Long>comparingByValue().reversed())
+                    .sorted(Map.Entry.<ResourceLocation, Long>comparingByValue().reversed())
                     .forEach(entry -> line(source, Component.translatable(
                             Keys.GENERATED, entry.getKey().toString(), entry.getValue())));
         }
@@ -470,8 +470,8 @@ public final class SpreadCommand {
         if (source.getPlayer() != null) {
             line(source, Component.translatable(Keys.VISIT_HINT)
                     .withStyle(style -> style.withColor(ChatFormatting.GREEN)
-                            .withClickEvent(new ClickEvent.RunCommand(VISIT_NEXT))
-                            .withHoverEvent(new HoverEvent.ShowText(Component.literal(VISIT_NEXT)))));
+                            .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, VISIT_NEXT))
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(VISIT_NEXT)))));
         }
     }
 
@@ -523,7 +523,7 @@ public final class SpreadCommand {
         VISITS.put(player.getUUID(), visits.at(index));
         var stop = visits.stops().get(index);
         var target = stop.target();
-        player.teleportTo(level, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
+        player.teleportTo(level, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, Set.of(), player.getYRot(), player.getXRot());
 
         source.sendSuccess(() -> stop.box()
                 .map(box -> Component.translatable(Keys.VISIT_ARRIVED,

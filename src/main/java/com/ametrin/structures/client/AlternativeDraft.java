@@ -6,8 +6,8 @@ import com.ametrin.structures.fixture.WeightedFixture;
 import com.ametrin.structures.registry.ASRegistries;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.*;
-import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.Nullable;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,11 +22,11 @@ final class AlternativeDraft {
     String chance = "";
     String conditions = "";
     final Map<String, String> texts = new LinkedHashMap<>();
-    private Identifier type;
+    private ResourceLocation type;
     // Sent back as is for what the screen doesn't edit, like an unknown type's fields.
     private CompoundTag stored;
 
-    AlternativeDraft(Identifier type) {
+    AlternativeDraft(ResourceLocation type) {
         this.type = type;
         this.stored = typeOnly(type);
     }
@@ -43,7 +43,8 @@ final class AlternativeDraft {
     AlternativeDraft(Tag stored, HolderLookup.Provider registries) {
         var data = stored instanceof CompoundTag compound ? compound : new CompoundTag();
         this.stored = data;
-        this.type = data.getString(Fixture.TYPE_KEY).map(Identifier::tryParse).orElseGet(() -> Identifier.withDefaultNamespace("unknown"));
+        var type = data.contains(Fixture.TYPE_KEY, Tag.TAG_STRING) ? ResourceLocation.tryParse(data.getString(Fixture.TYPE_KEY)) : null;
+        this.type = type != null ? type : ResourceLocation.withDefaultNamespace("unknown");
         this.weight = text(data.get(WeightedFixture.WEIGHT_KEY)).orElse("");
         this.chance = text(data.get(WeightedFixture.GENERATION_CHANCE_KEY)).orElse("");
         this.conditions = Optional.ofNullable(data.get(WeightedFixture.CONDITIONS_KEY)).map(Tag::toString).orElse("");
@@ -55,12 +56,12 @@ final class AlternativeDraft {
         }
     }
 
-    Identifier type() {
+    ResourceLocation type() {
         return type;
     }
 
     /// Drops the old type's fields.
-    void setType(Identifier type) {
+    void setType(ResourceLocation type) {
         this.type = type;
         this.texts.clear();
         this.stored = typeOnly(type);
@@ -68,7 +69,7 @@ final class AlternativeDraft {
 
     /// Empty for an unknown type.
     List<FixtureField<?>> fields() {
-        var fixture = ASRegistries.FIXTURE_TYPES.getValue(type);
+        var fixture = ASRegistries.FIXTURE_TYPES.get(type);
         return fixture == null ? List.of() : fixture.fields();
     }
 
@@ -83,7 +84,7 @@ final class AlternativeDraft {
         return data;
     }
 
-    private static CompoundTag typeOnly(Identifier type) {
+    private static CompoundTag typeOnly(ResourceLocation type) {
         var data = new CompoundTag();
         data.putString(Fixture.TYPE_KEY, type.toString());
         return data;
@@ -102,7 +103,7 @@ final class AlternativeDraft {
     private static Optional<String> text(@Nullable Tag tag) {
         return switch (tag) {
             case null -> Optional.empty();
-            case StringTag(String value) -> Optional.of(value);
+            case StringTag string -> Optional.of(string.getAsString());
             case NumericTag number -> Optional.of(number.toString().replaceAll("[bsLfd]$", ""));
             default -> Optional.of(tag.toString());
         };

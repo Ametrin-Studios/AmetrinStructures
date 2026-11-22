@@ -4,8 +4,8 @@ import com.ametrin.structures.structure.modular.ModularStructure;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
@@ -57,7 +57,7 @@ public final class StructureBootstrap {
 
     private ResourceKey<Structure> register(String name, StructureBuilder<?> structure) {
         structure.validate();
-        var key = ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath(namespace, name));
+        var key = ResourceKey.create(Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath(namespace, name));
         checkUnregistered(key);
         structures.put(key, structure::bootstrap);
         return key;
@@ -65,7 +65,7 @@ public final class StructureBootstrap {
 
     private void checkUnregistered(ResourceKey<Structure> key) {
         if (structures.containsKey(key)) {
-            throw new IllegalStateException("structure " + key.identifier() + " is registered twice");
+            throw new IllegalStateException("structure " + key.location() + " is registered twice");
         }
     }
 

@@ -25,7 +25,7 @@ public record FeatureFixture(ResourceKey<ConfiguredFeature<?, ?>> feature) imple
                 .map(Holder::value)
                 .ifPresentOrElse(
                         value -> value.place(context.level(), context.generator(), context.random(), context.actionBlockPos()),
-                        () -> ASLog.warn("fixture feature {} is not registered", feature.identifier()));
+                        () -> ASLog.warn("fixture feature {} is not registered", feature.location()));
     }
 
     @Override

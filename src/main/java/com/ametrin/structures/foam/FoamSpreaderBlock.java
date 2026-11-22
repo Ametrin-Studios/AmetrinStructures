@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import org.jetbrains.annotations.ApiStatus;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /// Foam that's still filling the space around it, see [FoamSpreaderBlockEntity].
 /// It turns into plain foam once the fill is done. Otherwise it behaves like foam, including dissolving.

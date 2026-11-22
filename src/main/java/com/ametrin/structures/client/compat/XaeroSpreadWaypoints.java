@@ -3,10 +3,10 @@ package com.ametrin.structures.client.compat;
 import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.network.ASPayloads;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import xaero.common.minimap.waypoints.Waypoint;
 import xaero.hud.minimap.BuiltInHudModules;
 import xaero.hud.minimap.waypoint.WaypointColor;
@@ -76,7 +76,7 @@ final class XaeroSpreadWaypoints {
     private static void clear(MinimapWorldRootContainer root) {
         for (var container : root.getSubContainers()) {
             var manager = container.getThirdPartyWaypointManager();
-            var ours = new ArrayList<Identifier>();
+            var ours = new ArrayList<ResourceLocation>();
             for (var waypoints : manager.getAll()) {
                 if (waypoints.getOriginId().getNamespace().equals(AmetrinStructures.MOD_ID)) {
                     ours.add(waypoints.getOriginId());
@@ -96,7 +96,7 @@ final class XaeroSpreadWaypoints {
         return root.addSubContainer(root.getPath().resolve(directory)).getThirdPartyWaypointManager();
     }
 
-    private static Identifier origin(String prefix, Identifier report) {
+    private static ResourceLocation origin(String prefix, ResourceLocation report) {
         return AmetrinStructures.locate(prefix + report.getNamespace() + "/" + report.getPath());
     }
 

@@ -11,7 +11,7 @@ import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.random.WeightedList;
+import net.minecraft.util.random.WeightedRandomList;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
@@ -21,7 +21,7 @@ import net.minecraft.world.level.levelgen.structure.StructureSpawnOverride;
 import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -68,7 +68,7 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
     /// @param categories leave empty for every category
     public B noSpawns(StructureSpawnOverride.BoundingBoxType boundingBox, MobCategory... categories) {
         for (var category : categories.length == 0 ? MobCategory.values() : categories) {
-            spawnOverride(category, new StructureSpawnOverride(boundingBox, WeightedList.of()));
+            spawnOverride(category, new StructureSpawnOverride(boundingBox, WeightedRandomList.create()));
         }
         return self();
     }
@@ -154,7 +154,7 @@ public abstract class StructureBuilder<B extends StructureBuilder<B>> {
 
     /// For template pieces without processors of their own, see [InlineFromStructureProcessor].
     public B processors(Holder<StructureProcessorList> processors) {
-        this.processors = _ -> processors;
+        this.processors = ignored -> processors;
         return self();
     }
 

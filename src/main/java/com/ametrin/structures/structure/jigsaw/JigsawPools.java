@@ -6,8 +6,8 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.data.worldgen.Pools;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
@@ -48,11 +48,11 @@ public final class JigsawPools {
     }
 
     public static ResourceKey<StructureTemplatePool> key(String modId, String path) {
-        return ResourceKey.create(Registries.TEMPLATE_POOL, Identifier.fromNamespaceAndPath(modId, path));
+        return ResourceKey.create(Registries.TEMPLATE_POOL, ResourceLocation.fromNamespaceAndPath(modId, path));
     }
 
-    public Identifier id(String name) {
-        return Identifier.fromNamespaceAndPath(modId, prefix + name);
+    public ResourceLocation id(String name) {
+        return ResourceLocation.fromNamespaceAndPath(modId, prefix + name);
     }
 
     public ResourceKey<StructureTemplatePool> key(String name) {
@@ -106,7 +106,7 @@ public final class JigsawPools {
             return element(id(name), configure);
         }
 
-        public Pool element(Identifier template, UnaryOperator<Element> configure) {
+        public Pool element(ResourceLocation template, UnaryOperator<Element> configure) {
             var element = configure.apply(defaultElementSettings.apply(new Element()));
             return add(element.weight, element.build(template, UnaryOperator.identity()));
         }
@@ -122,7 +122,7 @@ public final class JigsawPools {
         }
 
         /// `template` placed as a row of copies, see [Repeat]. The element settings apply to the row, and its template settings to each copy.
-        public Pool repeated(Identifier template, Repeat repeat, UnaryOperator<Element> configure) {
+        public Pool repeated(ResourceLocation template, Repeat repeat, UnaryOperator<Element> configure) {
             var element = configure.apply(defaultElementSettings.apply(new Element()));
             return add(element.weight, element.build(template, repeat::wrap));
         }
@@ -137,7 +137,7 @@ public final class JigsawPools {
             return this;
         }
 
-        public Pool elementIdentifiers(List<Identifier> templates, UnaryOperator<Element> configure) {
+        public Pool elementIdentifiers(List<ResourceLocation> templates, UnaryOperator<Element> configure) {
             templates.forEach(template -> element(template, configure));
             return this;
         }
@@ -158,7 +158,7 @@ public final class JigsawPools {
 
         private StructureTemplatePool build() {
             if (elements.isEmpty()) {
-                throw new IllegalStateException("pool " + key.identifier() + " has no elements");
+                throw new IllegalStateException("pool " + key.location() + " has no elements");
             }
             return new StructureTemplatePool(pools.getOrThrow(fallback), elements, projection);
         }
@@ -218,7 +218,7 @@ public final class JigsawPools {
             return this;
         }
 
-        private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(Identifier template, Function<StructurePoolElement, StructurePoolElement> around) {
+        private Function<StructureTemplatePool.Projection, ? extends StructurePoolElement> build(ResourceLocation template, Function<StructurePoolElement, StructurePoolElement> around) {
             var single = element(template);
             Function<StructureTemplatePool.Projection, StructurePoolElement> element = projection -> around.apply(single.apply(projection));
             var min = minCount;

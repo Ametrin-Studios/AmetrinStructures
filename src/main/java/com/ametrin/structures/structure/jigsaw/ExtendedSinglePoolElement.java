@@ -12,8 +12,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
@@ -31,7 +31,7 @@ import java.util.Optional;
 
 public class ExtendedSinglePoolElement extends SinglePoolElement implements StructureSettingsElement {
     public static final Holder<StructureProcessorList> NO_PROCESSORS = Holder.direct(new StructureProcessorList(List.of()));
-    private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, Identifier.withDefaultNamespace("empty"));
+    private static final ResourceKey<StructureProcessorList> EMPTY_PROCESSORS = ResourceKey.create(Registries.PROCESSOR_LIST, ResourceLocation.withDefaultNamespace("empty"));
 
     public static final MapCodec<ExtendedSinglePoolElement> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     templateCodec(),
@@ -56,7 +56,7 @@ public class ExtendedSinglePoolElement extends SinglePoolElement implements Stru
     }
 
     public ExtendedSinglePoolElement(
-            Either<Identifier, StructureTemplate> template,
+            Either<ResourceLocation, StructureTemplate> template,
             Holder<StructureProcessorList> processors,
             StructureTemplatePool.Projection projection,
             Optional<LiquidSettings> overrideLiquidSettings,

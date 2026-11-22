@@ -1,5 +1,6 @@
 package com.ametrin.structures.debug;
 
+import com.ametrin.structures.structure.jigsaw.JigsawBlockInfo;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.Pools;
@@ -24,7 +25,7 @@ public final class LayoutGameTests {
     private static void describesAVillage(GameTestHelper helper) {
         var level = helper.getLevel();
         var village = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(BuiltinStructures.VILLAGE_PLAINS).value();
-        var pieces = StructureLayouts.layOut(level, village, ChunkPos.containing(helper.absolutePos(BlockPos.ZERO)), 1).orElseThrow();
+        var pieces = StructureLayouts.layOut(level, village, new ChunkPos(helper.absolutePos(BlockPos.ZERO)), 1).orElseThrow();
         var layout = PiecesCommand.describe(level.getStructureManager(), pieces);
 
         int centers = layout.pieces().entrySet().stream()
@@ -47,7 +48,7 @@ public final class LayoutGameTests {
                 .filter(piece -> piece instanceof PoolElementStructurePiece)
                 .map(piece -> (PoolElementStructurePiece) piece)
                 .flatMap(piece -> piece.getElement().getShuffledJigsawBlocks(level.getStructureManager(), piece.getPosition(), piece.getRotation(), RandomSource.create(0)).stream())
-                .filter(jigsaw -> !jigsaw.pool().equals(Pools.EMPTY))
+                .filter(jigsaw -> !JigsawBlockInfo.of(jigsaw).pool().equals(Pools.EMPTY))
                 .count();
         int open = layout.openJigsaws().values().stream().mapToInt(Integer::intValue).sum();
         helper.assertTrue(intoPools - open >= pieces.pieces().size() - 1, "attached jigsaws aren't open, got " + open + " open of " + intoPools + " for " + pieces.pieces().size() + " pieces");
@@ -57,14 +58,14 @@ public final class LayoutGameTests {
     // Bastions and ancient cities are rigid and have pieces stacked on top of each other, with sideways jigsaws in the same columns.
     private static void depthsTellStackedPiecesApart(GameTestHelper helper) {
         var level = helper.getLevel();
-        var chunk = ChunkPos.containing(helper.absolutePos(BlockPos.ZERO));
+        var chunk = new ChunkPos(helper.absolutePos(BlockPos.ZERO));
         for (var key : List.of(BuiltinStructures.BASTION_REMNANT, BuiltinStructures.ANCIENT_CITY)) {
             var structure = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
             for (long seed = 0; seed < 5; seed++) {
                 var pieces = StructureLayouts.layOut(level, structure, chunk, seed).orElseThrow();
                 var depths = PiecesCommand.describe(level.getStructureManager(), pieces).depths();
                 long starts = depths.values().stream().flatMap(List::stream).filter(depth -> depth == 0).count();
-                helper.assertValueEqual(starts, 1L, "pieces at depth 0 in " + key.identifier() + " at seed " + seed + ", got " + depths);
+                helper.assertValueEqual(starts, 1L, "pieces at depth 0 in " + key.location() + " at seed " + seed + ", got " + depths);
             }
         }
         helper.succeed();

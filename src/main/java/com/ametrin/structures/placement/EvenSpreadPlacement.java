@@ -30,7 +30,10 @@ public class EvenSpreadPlacement extends ExtendedSpreadPlacement {
     // One candidate per cell. A candidate is dropped if a higher-priority candidate that isn't dropped itself is closer than minDistance (Matérn type III).
     public EvenSpreadPlacement(Vec3i locateOffset, float probability, int salt, Optional<TagExclusionZone> exclusionZone, int minChunksFromCenter, int minDistance) {
         // Small enough cells that the thinning doesn't leave gaps.
-        int cell = Math.max(1, minDistance / 2);
+        this(locateOffset, probability, salt, exclusionZone, minChunksFromCenter, minDistance, Math.max(1, minDistance / 2));
+    }
+
+    private EvenSpreadPlacement(Vec3i locateOffset, float probability, int salt, Optional<TagExclusionZone> exclusionZone, int minChunksFromCenter, int minDistance, int cell) {
         super(locateOffset, probability, salt, exclusionZone, minChunksFromCenter, cell, 0);
         this.minDistance = minDistance;
         // Spots d cells apart are at least d * cell - (cell - 1) chunks apart, so farther cells can't come within minDistance.
@@ -55,12 +58,12 @@ public class EvenSpreadPlacement extends ExtendedSpreadPlacement {
     }
 
     private boolean survives(long seed, int cellX, int cellZ, Long2BooleanOpenHashMap known) {
-        long key = ChunkPos.pack(cellX, cellZ);
+        long key = ChunkPos.asLong(cellX, cellZ);
         if (known.containsKey(key)) {
             return known.get(key);
         }
         var candidate = candidate(seed, cellX, cellZ);
-        boolean survives = !isTooCloseToCenter(candidate.x(), candidate.z());
+        boolean survives = !isTooCloseToCenter(candidate.x, candidate.z);
         if (survives) {
             long priority = priority(seed, cellX, cellZ);
             var rivals = new ArrayList<Rival>();
@@ -92,12 +95,12 @@ public class EvenSpreadPlacement extends ExtendedSpreadPlacement {
     }
 
     private long priority(long seed, int cellX, int cellZ) {
-        return HashCommon.mix(seed ^ HashCommon.mix(ChunkPos.pack(cellX, cellZ) ^ HashCommon.mix((long) salt())));
+        return HashCommon.mix(seed ^ HashCommon.mix(ChunkPos.asLong(cellX, cellZ) ^ HashCommon.mix((long) salt())));
     }
 
     private boolean isCloserThanMinDistance(ChunkPos a, ChunkPos b) {
-        long dx = a.x() - b.x();
-        long dz = a.z() - b.z();
+        long dx = a.x - b.x;
+        long dz = a.z - b.z;
         return dx * dx + dz * dz < (long) minDistance * minDistance;
     }
 

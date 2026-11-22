@@ -2,8 +2,8 @@ package com.ametrin.structures.placement;
 
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biomes;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /// The test data map excludes the igloos from a dimension that doesn't exist.
 @ExtendWith(EphemeralTestServerProvider.class)
 class DimensionExclusionsTest {
-    private static final ResourceKey<Level> VOID = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("ametrin_structures", "test_void"));
+    private static final ResourceKey<Level> VOID = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("ametrin_structures", "test_void"));
 
     @Test
     void excludedSetsAreLeftOutOnlyInTheirDimension(MinecraftServer server) {
@@ -45,7 +45,7 @@ class DimensionExclusionsTest {
         var biomes = registries.lookupOrThrow(Registries.BIOME);
         var biomeSource = new CheckerboardColumnBiomeSource(
                 HolderSet.direct(biomes.getOrThrow(Biomes.PLAINS), biomes.getOrThrow(Biomes.SNOWY_PLAINS)), 2);
-        var randomState = RandomState.create(registries, NoiseGeneratorSettings.OVERWORLD, 0);
+        var randomState = RandomState.create(registries.asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0);
         return ChunkGeneratorStructureState.createForNormal(randomState, 0, biomeSource, registries.lookupOrThrow(Registries.STRUCTURE_SET));
     }
 }

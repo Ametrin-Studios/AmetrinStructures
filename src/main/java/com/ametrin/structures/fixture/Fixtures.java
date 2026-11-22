@@ -1,6 +1,7 @@
 package com.ametrin.structures.fixture;
 
 import com.ametrin.structures.util.ASLog;
+import com.ametrin.structures.util.ASNbt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -9,7 +10,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.RandomizableContainer;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.decoration.HangingEntity;
-import net.minecraft.world.entity.vehicle.minecart.MinecartSpawner;
+import net.minecraft.world.entity.vehicle.MinecartSpawner;
 import net.minecraft.world.level.BaseSpawner;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
@@ -22,7 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.event.EventHooks;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -30,6 +31,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /// Helpers for writing fixtures.
@@ -76,7 +78,7 @@ public final class Fixtures {
     public static Optional<EntityType<?>> entityType(ResourceKey<EntityType<?>> key) {
         var type = BuiltInRegistries.ENTITY_TYPE.getOptional(key);
         if (type.isEmpty()) {
-            ASLog.warn("fixture entity {} is not registered", key.identifier());
+            ASLog.warn("fixture entity {} is not registered", key.location());
         }
         return type;
     }
@@ -91,10 +93,10 @@ public final class Fixtures {
         float yaw = FixtureBlock.horizontalFacing(context.markerState()).toYRot();
         boolean hanging = isHanging(type, level.getLevel());
         CompoundTag data = hanging ? hangingData(extraData, context) : extraData;
-        EntityProcessor place = entity -> {
+        Function<Entity, Entity> place = entity -> {
             // A hanging entity's position and direction come from its data.
             if (!hanging) {
-                entity.snapTo(pos.x, pos.y, pos.z, yaw, 0.0F);
+                entity.moveTo(pos.x, pos.y, pos.z, yaw, 0.0F);
             }
             if (entity instanceof LivingEntity living) {
                 living.setYHeadRot(yaw);
@@ -107,16 +109,16 @@ public final class Fixtures {
         };
         boolean configured = data != null && !data.isEmpty();
         Entity entity = configured
-                ? EntityType.loadEntityRecursive(type, data, level.getLevel(), EntitySpawnReason.STRUCTURE, place)
-                : type.create(level.getLevel(), EntitySpawnReason.STRUCTURE);
+                ? EntityType.loadEntityRecursive(withId(type, data), level.getLevel(), place)
+                : type.create(level.getLevel());
         if (entity == null) {
             return;
         }
         if (!configured) {
-            place.process(entity);
+            place.apply(entity);
             if (entity instanceof Mob mob) {
                 EventHooks.finalizeMobSpawn(
-                        mob, level, level.getCurrentDifficultyAt(context.actionBlockPos()), EntitySpawnReason.STRUCTURE, null);
+                        mob, level, level.getCurrentDifficultyAt(context.actionBlockPos()), MobSpawnType.STRUCTURE, null);
                 if (mob.isSpawnCancelled()) {
                     return;
                 }
@@ -126,13 +128,20 @@ public final class Fixtures {
         level.addFreshEntityWithPassengers(entity);
     }
 
+    /// `data` with the id of `type`, which loading reads the type from.
+    public static CompoundTag withId(EntityType<?> type, CompoundTag data) {
+        var tagged = data.copy();
+        tagged.putString("id", EntityType.getKey(type).toString());
+        return tagged;
+    }
+
     // Hanging entities like item frames and paintings only read their direction while loading. They hang
     // on the block behind the marker, facing its front. Paintings can only face sideways.
     private static CompoundTag hangingData(@Nullable CompoundTag extraData, FixtureContext context) {
         var data = extraData == null ? new CompoundTag() : extraData.copy();
         var blockPos = context.actionBlockPos();
-        data.store("Pos", Vec3.CODEC, Vec3.atCenterOf(blockPos));
-        data.store("block_pos", BlockPos.CODEC, blockPos);
+        ASNbt.store(data, "Pos", Vec3.CODEC, Vec3.atCenterOf(blockPos));
+        ASNbt.store(data, "block_pos", BlockPos.CODEC, blockPos);
         if (!data.contains("Facing")) {
             data.putByte("Facing", (byte) FixtureBlock.front(context.markerState()).get3DDataValue());
         }
@@ -144,7 +153,7 @@ public final class Fixtures {
 
     // EntityType#getBaseClass is always Entity, so check an instance instead.
     private static boolean isHanging(EntityType<?> type, Level level) {
-        return HANGING_TYPES.computeIfAbsent(type, _ -> type.create(level, EntitySpawnReason.STRUCTURE) instanceof HangingEntity);
+        return HANGING_TYPES.computeIfAbsent(type, key -> type.create(level) instanceof HangingEntity);
     }
 
     /// Places a spawner block, or spawns a spawner minecart, and hands it and its spawner to `configure`.

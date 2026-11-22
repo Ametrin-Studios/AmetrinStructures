@@ -21,7 +21,7 @@ class FieldTypeTest {
         var item = FieldType.item().parser().parse("minecraft:leather_helmet[dyed_color=255] 2", registries).getOrThrow();
         assertEquals(Items.LEATHER_HELMET, item.item().value());
         assertEquals(2, item.count());
-        assertEquals(new DyedItemColor(255), item.get(DataComponents.DYED_COLOR));
+        assertEquals(new DyedItemColor(255, true), item.create().get(DataComponents.DYED_COLOR));
         assertEquals(1, FieldType.item().parser().parse("minecraft:diamond", registries).getOrThrow().count());
         assertTrue(FieldType.item().parser().parse("minecraft:not_an_item", registries).isError());
         assertTrue(FieldType.item().parser().parse("minecraft:diamond 0", registries).isError());
@@ -32,7 +32,7 @@ class FieldTypeTest {
     void itemsReadBackAsTheTextThatParsesToThem(MinecraftServer server) {
         var registries = server.registryAccess();
         var type = FieldType.item();
-        for (var text : new String[]{"minecraft:diamond", "minecraft:diamond 3", "minecraft:leather_helmet[minecraft:dyed_color=255]"}) {
+        for (var text : new String[]{"minecraft:diamond", "minecraft:diamond 3", "minecraft:leather_helmet[minecraft:dyed_color={rgb:255}]"}) {
             var tag = type.textToTag(text, registries).getOrThrow();
             assertEquals(text, type.tagToText(tag, registries).getOrThrow());
         }

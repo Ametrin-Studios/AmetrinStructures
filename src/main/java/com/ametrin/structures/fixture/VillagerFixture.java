@@ -6,11 +6,11 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.monster.zombie.ZombieVillager;
-import net.minecraft.world.entity.npc.villager.Villager;
-import net.minecraft.world.entity.npc.villager.VillagerDataHolder;
-import net.minecraft.world.entity.npc.villager.VillagerProfession;
-import net.minecraft.world.entity.npc.villager.VillagerType;
+import net.minecraft.world.entity.monster.ZombieVillager;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerDataHolder;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.entity.npc.VillagerType;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,10 +41,10 @@ public record VillagerFixture(
             var registries = context.level().registryAccess();
             var data = villager.getVillagerData();
             if (villagerType.isPresent()) {
-                data = data.withType(registries, villagerType.get());
+                data = data.setType(registries.registryOrThrow(Registries.VILLAGER_TYPE).getOrThrow(villagerType.get()));
             }
             if (profession.isPresent()) {
-                data = data.withProfession(registries, profession.get());
+                data = data.setProfession(registries.registryOrThrow(Registries.VILLAGER_PROFESSION).getOrThrow(profession.get()));
             }
             villager.setVillagerData(data);
             // A villager without experience or a workstation loses its profession within seconds.

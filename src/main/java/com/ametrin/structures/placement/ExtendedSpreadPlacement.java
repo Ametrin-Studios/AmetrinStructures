@@ -6,13 +6,13 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Vec3i;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -124,7 +124,7 @@ public abstract class ExtendedSpreadPlacement extends RandomSpreadStructurePlace
         }
 
         /// salt defaults to one derived from `id`.
-        public P build(Identifier id) {
+        public P build(ResourceLocation id) {
             return build(id.getNamespace(), id.getPath());
         }
 

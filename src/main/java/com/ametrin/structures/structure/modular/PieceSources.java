@@ -8,7 +8,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
-import net.minecraft.util.random.WeightedList;
+import net.minecraft.util.random.SimpleWeightedRandomList;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
@@ -43,19 +43,19 @@ public final class PieceSources {
     }
 
     /// One of the sources, drawn by weight.
-    public record WeightedSource(WeightedList<PieceSource> sources) implements PieceSource {
+    public record WeightedSource(SimpleWeightedRandomList<PieceSource> sources) implements PieceSource {
         public static final MapCodec<WeightedSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        WeightedList.nonEmptyCodec(PieceSource.CODEC).fieldOf("sources").forGetter(WeightedSource::sources))
+                        SimpleWeightedRandomList.wrappedCodec(PieceSource.CODEC).fieldOf("sources").forGetter(WeightedSource::sources))
                 .apply(instance, WeightedSource::new));
 
         @Override
         public void appendPieces(StructurePiecesBuilder builder, Context context) {
-            sources.getRandom(context.generation().random()).ifPresent(source -> source.appendPieces(builder, context));
+            sources.getRandomValue(context.generation().random()).ifPresent(source -> source.appendPieces(builder, context));
         }
 
         @Override
         public Stream<TemplateEntry> templates() {
-            return sources.unwrap().stream().flatMap(source -> source.value().templates());
+            return sources.unwrap().stream().flatMap(source -> source.data().templates());
         }
 
         @Override
@@ -136,7 +136,7 @@ public final class PieceSources {
     }
 
     public static class WeightedBuilder extends NestingBuilder {
-        private final WeightedList.Builder<PieceSource> builder = WeightedList.builder();
+        private final SimpleWeightedRandomList.Builder<PieceSource> builder = SimpleWeightedRandomList.builder();
 
         public WeightedBuilder(String defaultNamespace, HolderGetter<StructureProcessorList> processorsGetter, HolderGetter<StructureTemplatePool> poolsGetter) {
             super(defaultNamespace, processorsGetter, poolsGetter);

@@ -13,7 +13,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -68,7 +68,7 @@ public final class ExportTemplatesCommand {
 
     /// The resource folders templates are exported to; empty outside a development environment.
     static List<Path> resourceRoots() {
-        if (FMLEnvironment.isProduction()) {
+        if (FMLEnvironment.production) {
             return List.of();
         }
         var declared = System.getProperty(SOURCES_PROPERTY);

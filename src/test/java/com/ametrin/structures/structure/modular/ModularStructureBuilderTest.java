@@ -7,8 +7,8 @@ import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.registries.RegistryPatchGenerator;
 import net.minecraft.data.registries.VanillaRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /// generation time is what makes a misconfigured structure look like a worldgen bug.
 class ModularStructureBuilderTest {
     private static final String ID = "tower";
-    private static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath("test", "tower");
+    private static final ResourceLocation TEMPLATE = ResourceLocation.fromNamespaceAndPath("test", "tower");
 
     private static StructureSetKeys register(Consumer<StructureSetBuilder> configure) {
         return new StructureBootstrap("test").registerSet(ID, configure);
@@ -67,8 +67,8 @@ class ModularStructureBuilderTest {
         var keys = register(set -> set
                 .modular("small", 1, tower -> tower.single("tower"))
                 .modular("large", 1, tower -> tower.single("tower")));
-        assertEquals("test:tower", keys.key().identifier().toString());
-        assertEquals("test:tower/large", keys.structure("large").identifier().toString());
+        assertEquals("test:tower", keys.key().location().toString());
+        assertEquals("test:tower/large", keys.structure("large").location().toString());
         assertEquals(List.of("small", "large"), List.copyOf(keys.declared().keySet()));
         assertThrows(IllegalArgumentException.class, () -> keys.structure("medium"));
         assertThrows(IllegalStateException.class, keys::structure);

@@ -6,8 +6,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.registries.RegistryPatchGenerator;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.data.worldgen.Pools;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
@@ -63,13 +63,13 @@ class StructureBootstrapTest {
                 .existing(BuiltinStructures.IGLOO)));
         assertThrows(IllegalStateException.class, () -> structures.registerSet("own", set -> set
                 .modular(tower -> tower.single("tower"))
-                .existing(ResourceKey.create(Registries.STRUCTURE, Identifier.fromNamespaceAndPath("test", "own")))));
+                .existing(ResourceKey.create(Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath("test", "own")))));
     }
 
     @Test
     void extendedSettingsNeedAnExtendedStructure() {
         var structures = new StructureBootstrap("test");
-        structures.registerStructure("plain", (settings, _, _) -> null, custom -> custom.filterFlatness(2));
+        structures.registerStructure("plain", (settings, extendedSettings, context) -> null, custom -> custom.filterFlatness(2));
         Throwable failure = assertThrows(RuntimeException.class, () -> build(structures));
         while (!(failure instanceof IllegalStateException) && failure.getCause() != null) {
             failure = failure.getCause();
