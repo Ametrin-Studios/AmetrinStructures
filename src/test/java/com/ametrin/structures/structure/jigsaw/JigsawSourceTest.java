@@ -87,7 +87,7 @@ class JigsawSourceTest {
 
     @Test
     void aVillageGrowsLikeVanilla(MinecraftServer server) {
-        assertGrowsLikeVanilla(server, new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(6).useExpansionHack(true).build(), 64);
+        assertGrowsLikeVanilla(server, new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(6).useExpansionHack(true), 64);
     }
 
     @Test
@@ -95,14 +95,13 @@ class JigsawSourceTest {
         var source = new JigsawSource.Builder(holder(server, pool("ancient_city/city_center")))
                 .startJigsawName(Identifier.withDefaultNamespace("city_anchor"))
                 .size(7)
-                .maxDistanceFromCenter(116)
-                .build();
+                .maxDistanceFromCenter(116);
         assertGrowsLikeVanilla(server, source, -27);
     }
 
     @Test
     void aBastionGrowsLikeVanilla(MinecraftServer server) {
-        assertGrowsLikeVanilla(server, new JigsawSource.Builder(holder(server, pool("bastion/starts"))).size(6).build(), 33);
+        assertGrowsLikeVanilla(server, new JigsawSource.Builder(holder(server, pool("bastion/starts"))).size(6), 33);
     }
 
     @Test
@@ -341,7 +340,8 @@ class JigsawSourceTest {
         var generated = assertInstanceOf(ExtendedStructure.Evaluation.Generated.class, structure.evaluateGenerationPoint(context(server, 0)));
         var pieces = generated.stub().getPiecesBuilder().build().pieces();
         var start = (PoolElementStructurePiece) pieces.getFirst();
-        assertEquals(70, start.getBoundingBox().minY() + start.getGroundLevelDelta());
+        assertEquals(70, start.getBoundingBox().minY());
+        assertEquals(0, start.getGroundLevelDelta());
         assertTrue(pieces.size() > 1, "the layout grew from the start piece");
     }
 
@@ -374,7 +374,8 @@ class JigsawSourceTest {
         }
 
         var raised = (PoolElementStructurePiece) grow(server, builder.offset(0, 3, 0).build(), 0).getFirst();
-        assertEquals(3, raised.getBoundingBox().minY() + raised.getGroundLevelDelta());
+        assertEquals(3, raised.getBoundingBox().minY());
+        assertEquals(0, raised.getBoundingBox().minY() + raised.getGroundLevelDelta(), "the ground stays at the start height");
     }
 
     @Test
@@ -492,7 +493,9 @@ class JigsawSourceTest {
                 """)).isError(), "the offset counts toward the range");
     }
 
-    private static void assertGrowsLikeVanilla(MinecraftServer server, JigsawSource source, int y) {
+    // Vanilla sinks the start piece one block.
+    private static void assertGrowsLikeVanilla(MinecraftServer server, JigsawSource.Builder builder, int y) {
+        var source = builder.offset(0, -1, 0).build();
         for (int seed = 0; seed < SEEDS; seed++) {
             var vanilla = JigsawPlacement.addPieces(context(server, seed), source.startPool(), source.startJigsawName(), source.size().sample(RandomSource.create()), new BlockPos(0, y, 0), source.useExpansionHack(), Optional.empty(), source.maxDistanceFromCenter(), PoolAliasLookup.EMPTY, DimensionPadding.ZERO, LiquidSettings.IGNORE_WATERLOGGING);
             var expected = vanilla.orElseThrow().getPiecesBuilder().build().pieces().stream().map(Placed::of).toList();

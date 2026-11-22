@@ -31,8 +31,8 @@ import java.util.stream.Stream;
 
 /// Grows a jigsaw layout from `start_pool`, like vanilla's jigsaw structure, and keeps [ConditionalPoolElement]s within their counts.
 ///
-/// The start piece's ground level is at the start height, measured under the start piece. With `start_jigsaw_name`, that jigsaw is at the origin instead, one block lower.
-/// `offset` moves the start from the origin and turns with the structure, like a template entry's.
+/// The start piece's bottom is at the start height, measured under the start piece. With `start_jigsaw_name`, that jigsaw is at the start height instead.
+/// `offset` moves the start from the origin and turns with the structure, like a template entry's. The ground stays at the start height.
 /// The rest of the layout grows once all pieces are at their start height, since terrain matching pieces follow the terrain. It keeps clear of the structure's other pieces.
 ///
 /// @param size          how many jigsaws deep the layout grows, from 0 to {@value #MAX_SIZE}. At the last depth only fallback pools attach.
@@ -103,8 +103,8 @@ public record JigsawSource(
             }
             position = origin.subtract(anchor.get().info().pos().subtract(origin));
         }
-        var start = JigsawAssembler.createPiece(context, element, position, element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation));
-        start.move(0, position.getY() - (start.getBoundingBox().minY() + start.getGroundLevelDelta()), 0);
+        var start = JigsawAssembler.createPiece(context, element, position, -offset.getY(), rotation, element.getBoundingBox(templates, position, rotation));
+        start.move(0, position.getY() - start.getBoundingBox().minY(), 0);
         builder.addPiece(start);
 
         int depth = size.sample(random);

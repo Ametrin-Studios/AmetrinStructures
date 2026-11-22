@@ -13,7 +13,7 @@ STRUCTURES.registerSet("castle", set -> set
 
 The layout grows like vanilla's, with a few differences:
 
-- The start height is measured under the start piece, like for other modular structures, and the start piece's ground level is at that height. With `startJigsawName(...)`, that jigsaw is at the origin instead, one block lower.
+- The start height is measured under the start piece, like for other modular structures. The start piece's bottom is at that height. With `startJigsawName(...)`, that jigsaw is at the start height instead. Like a template entry's, a Y `offset` moves the start piece but keeps the ground at the start height. Vanilla sinks the start piece one block into the ground. To match that behavior set the y offset -1.
 - The structure's [processors](structures.md#processors), [foundation](structures.md#foundations) and liquid settings apply to its pieces.
 - It can be [part of a weighted or compound structure](structures.md#pieces). In a compound structure it grows around the other pieces.
 - Pool elements can be [limited](#limiting-elements) in how often, how deep and where they appear.
