@@ -25,7 +25,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 /// A marker an author places inside a template.
 /// When the structure generates, the marker performs an action and removes itself.
@@ -45,8 +48,13 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
     }
 
     @Override
-    protected MapCodec<? extends BaseEntityBlock> codec() {
+    protected @NotNull MapCodec<? extends BaseEntityBlock> codec() {
         return CODEC;
+    }
+
+    @Override
+    protected @NotNull RenderShape getRenderShape(@NotNull BlockState state) {
+        return RenderShape.MODEL;
     }
 
     @Override
@@ -54,7 +62,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
         builder.add(ORIENTATION, WATERLOGGED);
     }
 
-    @Override
+    @Override @ParametersAreNonnullByDefault
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new FixtureBlockEntity(pos, state);
     }
@@ -84,22 +92,22 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
     }
 
     @Override
-    protected FluidState getFluidState(BlockState state) {
+    protected @NotNull FluidState getFluidState(BlockState state) {
         return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
     }
 
     @Override
-    protected BlockState rotate(BlockState state, Rotation rotation) {
+    protected @NotNull BlockState rotate(BlockState state, Rotation rotation) {
         return state.setValue(ORIENTATION, rotation.rotation().rotate(state.getValue(ORIENTATION)));
     }
 
     @Override
-    protected BlockState mirror(BlockState state, Mirror mirror) {
+    protected @NotNull BlockState mirror(BlockState state, Mirror mirror) {
         return state.setValue(ORIENTATION, mirror.rotation().rotate(state.getValue(ORIENTATION)));
     }
 
-    @Override
-    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+    @Override @ParametersAreNonnullByDefault
+    protected @NotNull InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(level.getBlockEntity(pos) instanceof FixtureBlockEntity marker) || !player.canUseGameMasterBlocks()) {
             return InteractionResult.PASS;
         }
@@ -111,7 +119,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
 
     // Fences, walls and panes connect to sturdy faces. Neighbors see the state the marker becomes, so a template saves them as they'll look once generated.
     @Override
-    protected VoxelShape getBlockSupportShape(BlockState state, BlockGetter level, BlockPos pos) {
+    protected @NotNull VoxelShape getBlockSupportShape(@NotNull BlockState state, BlockGetter level, @NotNull BlockPos pos) {
         if (level.getBlockEntity(pos) instanceof FixtureBlockEntity marker) {
             var becomes = marker.becomes();
             // A marker that becomes a marker would ask itself again.
@@ -124,7 +132,7 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
 
     // A picked marker's data loads after its neighbors updated, so update them again for its becomes state.
     @Override
-    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity by, ItemStack itemStack) {
+    public void setPlacedBy(Level level, @NotNull BlockPos pos, @NotNull BlockState state, @Nullable LivingEntity by, @NotNull ItemStack itemStack) {
         if (!level.isClientSide()
                 && level.getBlockEntity(pos) instanceof FixtureBlockEntity marker
                 && marker.declaredBecomes().isPresent()) {
@@ -133,11 +141,11 @@ public class FixtureBlock extends BaseEntityBlock implements GameMasterBlock, Si
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    protected boolean propagatesSkylightDown(BlockState state, @NotNull BlockGetter level, @NotNull BlockPos pos) {
         return !state.getValue(WATERLOGGED);
     }
 
-    @Override
+    @Override @ParametersAreNonnullByDefault
     protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
         return 1.0F;
     }
