@@ -9,6 +9,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
@@ -20,14 +21,22 @@ public final class StructureLookup {
     private StructureLookup() {}
 
     /// Whether a piece of a structure in `tag` intersects `box`. `box` may only span chunks the level can access.
+    /// During world generation a structure referenced in `box` may start outside the accessible chunks. It counts as intersecting.
     public static boolean intersectsTaggedStructure(WorldGenLevel level, BoundingBox box, TagKey<Structure> tag) {
-        var manager = structureManager(level);
         var structures = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         for (int chunkX = SectionPos.blockToSectionCoord(box.minX()); chunkX <= SectionPos.blockToSectionCoord(box.maxX()); chunkX++) {
             for (int chunkZ = SectionPos.blockToSectionCoord(box.minZ()); chunkZ <= SectionPos.blockToSectionCoord(box.maxZ()); chunkZ++) {
-                for (var start : manager.startsForStructure(new ChunkPos(chunkX, chunkZ), structure -> structures.wrapAsHolder(structure).is(tag))) {
-                    if (start.getBoundingBox().intersects(box) && start.getPieces().stream().anyMatch(piece -> piece.getBoundingBox().intersects(box))) {
-                        return true;
+                var references = level.getChunk(chunkX, chunkZ, ChunkStatus.STRUCTURE_REFERENCES).getAllReferences();
+                for (var entry : references.entrySet()) {
+                    if (!structures.wrapAsHolder(entry.getKey()).is(tag)) continue;
+                    for (long reference : entry.getValue()) {
+                        var startPos = new ChunkPos(reference);
+                        if (level instanceof WorldGenRegion region && !region.hasChunk(startPos.x, startPos.z)) return true;
+                        var start = level.getChunk(startPos.x, startPos.z, ChunkStatus.STRUCTURE_STARTS).getStartForStructure(entry.getKey());
+                        if (start != null && start.isValid() && start.getBoundingBox().intersects(box)
+                                && start.getPieces().stream().anyMatch(piece -> piece.getBoundingBox().intersects(box))) {
+                            return true;
+                        }
                     }
                 }
             }
