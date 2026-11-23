@@ -43,6 +43,8 @@ public final class ExportTemplatesCommand {
 
     public static final String SOURCES_PROPERTY = "ametrin_structures.template_sources";
     private static final String TEMPLATES = "structure";
+    // 1.21.1 saves templates to a different folder than data packs load them from.
+    private static final String SAVED_TEMPLATES = "structures";
     private static final String EXTENSION = ".nbt";
 
     private ExportTemplatesCommand() {}
@@ -128,7 +130,7 @@ public final class ExportTemplatesCommand {
                 skipped.add(exported);
                 continue;
             }
-            var from = saved.resolve(exported).resolve(TEMPLATES);
+            var from = saved.resolve(exported).resolve(SAVED_TEMPLATES);
             var to = dataFolder(root.get(), exported).resolve(TEMPLATES);
             for (var template : templatesIn(from)) {
                 switch (copy(template, to.resolve(from.relativize(template)))) {
@@ -167,7 +169,7 @@ public final class ExportTemplatesCommand {
             return List.of();
         }
         try (var namespaces = Files.list(saved)) {
-            return namespaces.filter(namespace -> Files.isDirectory(namespace.resolve(TEMPLATES)))
+            return namespaces.filter(namespace -> Files.isDirectory(namespace.resolve(SAVED_TEMPLATES)))
                     .map(namespace -> namespace.getFileName().toString())
                     .sorted()
                     .toList();

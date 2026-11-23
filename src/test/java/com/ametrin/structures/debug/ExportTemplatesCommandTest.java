@@ -26,18 +26,18 @@ class ExportTemplatesCommandTest {
         var saved = folder.resolve("generated");
         var resources = folder.resolve("resources");
         Files.createDirectories(resources.resolve("data/example"));
-        write(saved.resolve("example/structure/houses/hut.nbt"), 1);
-        write(saved.resolve("minecraft/structure/igloo/top.nbt"), 1);
+        write(saved.resolve("example/structures/houses/hut.nbt"), 1);
+        write(saved.resolve("minecraft/structures/igloo/top.nbt"), 1);
 
         var first = ExportTemplatesCommand.export(saved, List.of(resources), null);
         assertEquals(new ExportTemplatesCommand.Result(1, 0, 0, List.of("minecraft")), first);
         var exported = resources.resolve("data/example/structure/houses/hut.nbt");
         assertEquals(1, NbtIo.readCompressed(exported, NbtAccounter.unlimitedHeap()).getInt("version"));
-        assertTrue(Files.exists(saved.resolve("example/structure/houses/hut.nbt")), "the world keeps its copy");
+        assertTrue(Files.exists(saved.resolve("example/structures/houses/hut.nbt")), "the world keeps its copy");
 
         assertEquals(new ExportTemplatesCommand.Result(0, 0, 1, List.of()), ExportTemplatesCommand.export(saved, List.of(resources), "example"));
 
-        write(saved.resolve("example/structure/houses/hut.nbt"), 2);
+        write(saved.resolve("example/structures/houses/hut.nbt"), 2);
         assertEquals(new ExportTemplatesCommand.Result(0, 1, 0, List.of()), ExportTemplatesCommand.export(saved, List.of(resources), "example"));
         assertEquals(2, NbtIo.readCompressed(exported, NbtAccounter.unlimitedHeap()).getInt("version"));
     }
