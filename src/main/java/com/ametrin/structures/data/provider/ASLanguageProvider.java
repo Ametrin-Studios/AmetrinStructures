@@ -155,6 +155,7 @@ public class ASLanguageProvider extends LanguageProvider {
         add(SpreadCommand.Keys.GENERATED, " %s: %s");
         add(SpreadCommand.Keys.REJECTED, " %s × %s");
         add(SpreadCommand.Keys.HEIGHTS, " Start height: average %s, lowest %s, highest %s");
+        add(SpreadCommand.Keys.HEIGHT_AT, "%s at %s");
         add(SpreadCommand.Keys.SPACING, " Distance to the nearest other: average %s, closest %s blocks");
         add(SpreadCommand.Keys.NEAREST, " Nearest: %s blocks away at %s");
         add(SpreadCommand.Keys.VISIT_HINT, " [Visit them, nearest first]");
