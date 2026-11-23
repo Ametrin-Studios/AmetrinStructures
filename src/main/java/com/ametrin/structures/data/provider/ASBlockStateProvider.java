@@ -3,6 +3,7 @@ package com.ametrin.structures.data.provider;
 import com.ametrin.structures.AmetrinStructures;
 import com.ametrin.structures.fixture.FixtureBlock;
 import com.ametrin.structures.registry.ASBlocks;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.FrontAndTop;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
@@ -20,7 +21,7 @@ public class ASBlockStateProvider extends BlockStateProvider {
 
     @Override
     protected void registerStatesAndModels() {
-        var foam = cubeAll(ASBlocks.FOAM.get());
+        var foam = models().cubeAll(name(ASBlocks.FOAM.get()), blockTexture(ASBlocks.FOAM.get())).renderType(RenderType.translucent().name);
         simpleBlockWithItem(ASBlocks.FOAM.get(), foam);
         simpleBlock(ASBlocks.FOAM_SPREADER.get(), foam);
         fixture();
