@@ -4,6 +4,7 @@ import com.ametrin.structures.util.ASNbt;
 import com.ametrin.structures.util.ItemStackTemplate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -63,7 +64,7 @@ public final class EntityDataBuilder {
     }
 
     public EntityDataBuilder name(Component name) {
-        ASNbt.store(data, "CustomName", ComponentSerialization.CODEC, name);
+        data.putString("CustomName", ComponentSerialization.CODEC.encodeStart(JsonOps.INSTANCE, name).getOrThrow().toString());
         return this;
     }
 

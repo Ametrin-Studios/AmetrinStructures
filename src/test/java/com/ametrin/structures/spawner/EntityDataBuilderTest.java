@@ -9,7 +9,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -38,7 +37,7 @@ class EntityDataBuilderTest {
                 .set(DataComponents.DYED_COLOR, new DyedItemColor(0xB02E26, true))
                 .build());
         var tag = new EntityDataBuilder(EntityType.ZOMBIE)
-                .name(Component.literal("Gravedigger"))
+                .name(Component.translatable("entity.example.gravedigger"))
                 .nameVisible()
                 .maxHealth(40)
                 .attribute(Attributes.MOVEMENT_SPEED, 0.3)
@@ -54,7 +53,7 @@ class EntityDataBuilderTest {
                 .build();
 
         assertEquals("minecraft:zombie", ASNbt.getStringOr(tag, "id", ""));
-        assertEquals("Gravedigger", ASNbt.read(tag, "CustomName", ComponentSerialization.CODEC).orElseThrow().getString());
+        assertEquals(Component.translatable("entity.example.gravedigger"), Component.Serializer.fromJson(ASNbt.getStringOr(tag, "CustomName", ""), server.registryAccess()));
         assertTrue(ASNbt.getBooleanOr(tag, "CustomNameVisible", false));
         assertEquals(40.0F, ASNbt.getFloatOr(tag, "Health", 0));
         var attributes = tag.getList("attributes", Tag.TAG_COMPOUND);
@@ -78,7 +77,7 @@ class EntityDataBuilderTest {
         assertFalse(tag.contains("ArmorDropChances"));
         var passenger = tag.getList("Passengers", Tag.TAG_COMPOUND).getCompound(0);
         assertEquals("minecraft:chicken", ASNbt.getStringOr(passenger, "id", ""));
-        assertEquals("Clucky", ASNbt.read(passenger, "CustomName", ComponentSerialization.CODEC).orElseThrow().getString());
+        assertEquals("Clucky", Component.Serializer.fromJson(ASNbt.getStringOr(passenger, "CustomName", ""), server.registryAccess()).getString());
     }
 
     private static double base(ListTag attributes, String id) {
