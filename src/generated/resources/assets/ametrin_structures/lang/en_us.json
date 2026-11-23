@@ -72,6 +72,7 @@
   "commands.ametrin_structures.spread.cleared": "Removed the spread waypoints",
   "commands.ametrin_structures.spread.failed": "The spread report failed: %s",
   "commands.ametrin_structures.spread.generated": " %s: %s",
+  "commands.ametrin_structures.spread.height_at": "%s at %s",
   "commands.ametrin_structures.spread.heights": " Start height: average %s, lowest %s, highest %s",
   "commands.ametrin_structures.spread.invalid_placement": "Not a valid placement: %s",
   "commands.ametrin_structures.spread.invalid_set": "There is no structure set \"%s\"",

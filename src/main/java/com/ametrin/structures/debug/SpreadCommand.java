@@ -84,6 +84,7 @@ public final class SpreadCommand {
         public static final String OUTSIDE_BIOME_HIDDEN = "commands.ametrin_structures.spread.outside_biome_hidden";
         public static final String WAYPOINTS_LIMITED = "commands.ametrin_structures.spread.waypoints_limited";
         public static final String HEIGHTS = "commands.ametrin_structures.spread.heights";
+        public static final String HEIGHT_AT = "commands.ametrin_structures.spread.height_at";
         public static final String SPACING = "commands.ametrin_structures.spread.spacing";
         public static final String NEAREST = "commands.ametrin_structures.spread.nearest";
         public static final String VISIT_HINT = "commands.ametrin_structures.spread.visit_hint";
@@ -451,11 +452,25 @@ public final class SpreadCommand {
             return;
         }
 
-        var heights = report.startHeights();
-        line(source, Component.translatable(Keys.HEIGHTS,
-                String.format("%.1f", heights.getAverage()), heights.getMin(), heights.getMax()));
+        var found = report.found();
+        var byHeight = Comparator.comparingInt((StructureSpread.Found spot) -> spot.origin().getY());
+        line(source, Component.translatable(Keys.HEIGHTS, String.format("%.1f", report.startHeights().getAverage()),
+                visitable(source, found, Collections.min(found, byHeight)), visitable(source, found, Collections.max(found, byHeight))));
         sendSpacing(source, report.spacing());
         sendNearest(source, report.found().getFirst().origin());
+    }
+
+    /// The spot's height and coordinates. For a player, clicking them visits the spot.
+    private static Component visitable(CommandSourceStack source, List<StructureSpread.Found> found, StructureSpread.Found spot) {
+        var origin = spot.origin();
+        var coordinates = coordinates(origin);
+        if (source.getPlayer() != null) {
+            var command = "/ametrin structures visit " + (found.indexOf(spot) + 1);
+            coordinates.withStyle(style -> style.withUnderlined(true)
+                    .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(command))));
+        }
+        return Component.translatable(Keys.HEIGHT_AT, origin.getY(), coordinates);
     }
 
     private static void sendSpacing(CommandSourceStack source, Optional<DoubleSummaryStatistics> spacing) {
