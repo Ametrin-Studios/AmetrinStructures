@@ -85,7 +85,8 @@ class JigsawSourceTest {
 
     @Test
     void aVillageGrowsLikeVanilla(MinecraftServer server) {
-        assertGrowsLikeVanilla(server, new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(6).useExpansionHack(true), 64);
+        // The vertical max distance is measured from one block lower than vanilla's, so it spans the whole world to stay out of reach.
+        assertGrowsLikeVanilla(server, new JigsawSource.Builder(holder(server, TOWN_CENTERS)).size(6).useExpansionHack(true).maxDistanceFromCenter(80, 384), 64);
     }
 
     @Test
