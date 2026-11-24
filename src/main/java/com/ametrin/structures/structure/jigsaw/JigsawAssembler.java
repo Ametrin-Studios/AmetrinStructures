@@ -657,7 +657,7 @@ final class JigsawAssembler {
             int deltaY = placement.deltaY;
             int sourceDelta = source.piece.getGroundLevelDelta();
             // Ground levels go from the bottom of the box, which is below the position for a row of copies going down.
-            int targetDelta = targetRigid ? sourceDelta - (placement.box.minY() - sourceBoxY) : targetElement.getGroundLevelDelta();
+            int targetDelta = targetRigid ? sourceDelta - deltaY - (placement.box.minY() - placement.y) : targetElement.getGroundLevelDelta();
             var piece = createPiece(context, placed, placement.position, targetDelta, targetRotation, placement.box);
             int junctionY = sourceRigid ? sourceBoxY + localY : targetRigid ? placement.y + targetLocalY : baseHeight() + deltaY / 2;
             var jigsawPos = jigsaw.info().pos();

@@ -37,11 +37,14 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.ConstantInt;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.DebugLevelSource;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -484,14 +487,16 @@ class JigsawSourceTest {
                 """)).isError(), "the offset counts toward the range");
     }
 
-    // Vanilla sinks the start piece one block.
+    // Vanilla sinks the start piece one block. Uneven terrain checks the heights of pieces that attach to terrain matching ones.
     private static void assertGrowsLikeVanilla(MinecraftServer server, JigsawSource.Builder builder, int y) {
         var source = builder.offset(0, -1, 0).build();
+        var settings = server.registryAccess().lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD);
+        var generator = new NoiseBasedChunkGenerator(new FixedBiomeSource(plains(server)), settings);
         for (int seed = 0; seed < SEEDS; seed++) {
-            var vanilla = JigsawPlacement.addPieces(context(server, seed), source.startPool(), source.startJigsawName(), source.size().sample(RandomSource.create()), new BlockPos(0, y, 0), source.useExpansionHack(), Optional.empty(), source.maxDistanceFromCenter().horizontal(), PoolAliasLookup.EMPTY, DimensionPadding.ZERO, LiquidSettings.IGNORE_WATERLOGGING);
+            var vanilla = JigsawPlacement.addPieces(context(server, seed, generator), source.startPool(), source.startJigsawName(), source.size().sample(RandomSource.create()), new BlockPos(0, y, 0), source.useExpansionHack(), Optional.empty(), source.maxDistanceFromCenter().horizontal(), PoolAliasLookup.EMPTY, DimensionPadding.ZERO, LiquidSettings.IGNORE_WATERLOGGING);
             var expected = vanilla.orElseThrow().getPiecesBuilder().build().pieces().stream().map(Placed::of).toList();
 
-            var context = context(server, seed);
+            var context = context(server, seed, generator);
             var pieces = new StructurePiecesBuilder();
             var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
             source.appendPieces(pieces, pieceContext);
@@ -582,17 +587,24 @@ class JigsawSourceTest {
     }
 
     private static Structure.GenerationContext context(MinecraftServer server, long seed) {
-        var plains = server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
+        return context(server, seed, new DebugLevelSource(plains(server)));
+    }
+
+    private static Structure.GenerationContext context(MinecraftServer server, long seed, ChunkGenerator generator) {
         return new Structure.GenerationContext(
                 server.registryAccess(),
-                new DebugLevelSource(plains),
-                new FixedBiomeSource(plains),
+                generator,
+                new FixedBiomeSource(plains(server)),
                 RandomState.create(server.registryAccess().asGetterLookup(), NoiseGeneratorSettings.OVERWORLD, 0),
                 server.getStructureManager(),
                 seed,
                 new ChunkPos(0, 0),
                 LevelHeightAccessor.create(-64, 384),
                 biome -> true);
+    }
+
+    private static Holder.Reference<Biome> plains(MinecraftServer server) {
+        return server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
     }
 
     private static BootstrapContext<Structure> bootstrap(MinecraftServer server) {
