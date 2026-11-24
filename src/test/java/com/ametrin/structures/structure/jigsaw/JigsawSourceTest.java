@@ -35,9 +35,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.ConstantInt;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -487,14 +491,17 @@ class JigsawSourceTest {
                 """)).isError(), "the offset counts toward the range");
     }
 
-    // Vanilla sinks the start piece one block.
+    // Vanilla sinks the start piece one block. Uneven terrain checks the heights of pieces that attach to terrain matching ones.
     private static void assertGrowsLikeVanilla(MinecraftServer server, JigsawSource.Builder builder, int y) {
         var source = builder.offset(0, -1, 0).build();
+        var registries = server.registryAccess();
+        var plains = new FixedBiomeSource(registries.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS));
+        var generator = new NoiseBasedChunkGenerator(plains, registries.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD));
         for (int seed = 0; seed < SEEDS; seed++) {
-            var vanilla = JigsawPlacement.addPieces(context(server, seed), source.startPool(), source.startJigsawName(), source.size().sample(RandomSource.create()), new BlockPos(0, y, 0), source.useExpansionHack(), Optional.empty(), source.maxDistanceFromCenter(), PoolAliasLookup.EMPTY, DimensionPadding.ZERO, LiquidSettings.IGNORE_WATERLOGGING);
+            var vanilla = JigsawPlacement.addPieces(GenerationContexts.create(server, generator, plains, seed, biome -> true), source.startPool(), source.startJigsawName(), source.size().sample(RandomSource.create()), new BlockPos(0, y, 0), source.useExpansionHack(), Optional.empty(), source.maxDistanceFromCenter(), PoolAliasLookup.EMPTY, DimensionPadding.ZERO, LiquidSettings.IGNORE_WATERLOGGING);
             var expected = vanilla.orElseThrow().getPiecesBuilder().build().pieces().stream().map(Placed::of).toList();
 
-            var context = context(server, seed);
+            var context = GenerationContexts.create(server, generator, plains, seed, biome -> true);
             var pieces = new StructurePiecesBuilder();
             var pieceContext = new PieceSource.Context(context, BlockPos.ZERO, Rotation.getRandom(context.random()), TerrainAdjustment.NONE, LiquidSettings.IGNORE_WATERLOGGING, Optional.empty(), Optional.empty());
             source.appendPieces(pieces, pieceContext);
