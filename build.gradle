@@ -145,7 +145,7 @@ publishing {
     repositories {
         maven {
             name = 'Ametrin'
-            url = uri(rootProject.file("../maven"))
+            url = uri(rootProject.file("../../maven"))
         }
     }
 }

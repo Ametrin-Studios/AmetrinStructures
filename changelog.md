@@ -12,7 +12,9 @@
 - `ModularStructurePiece.create(...)` to use them in custom structures
 - `ametrin_structures:repeated` pool element
 - the terrain box moved on the structure piece
-- requires NeoForge 26.3.0.111 or later
+- (26.3) requires NeoForge 26.3.0.111 or later
+- (26.1) requires NeoForge 26.1.2.129 or later
+- (1.21.1) requires NeoForge 21.1.253 or later
 
 ## 0.3.2-beta
 - `ConditionalProcessor` (only applies if all `NeoForgeCondition`s are true)
